@@ -3129,11 +3129,15 @@
 	 * Registers the add-on in the game's Settings > Extensions. Choosing it opens the panel's ⚙ Settings tab and leaves the
 	 * game on its list of extensions, so the settings live in one place.
 	 */
+	/** The game's Settings > Extensions entries: a global binding of the game's scripts, never a property of window. */
+	const extensionEntries = () =>
+		// eslint-disable-next-line no-undef
+		typeof PreferenceExtensionsSettings === 'object' && PreferenceExtensionsSettings ? PreferenceExtensionsSettings : null;
 	function registerExtension() {
 		if (typeof w.PreferenceRegisterExtensionSetting !== 'function') {
 			return;
 		}
-		if (w.PreferenceExtensionsSettings && w.PreferenceExtensionsSettings.OculusNihili) {
+		if (extensionEntries()?.OculusNihili) {
 			return;
 		}
 		/** Back to the game's list of extensions, once the game has finished choosing this one. */
