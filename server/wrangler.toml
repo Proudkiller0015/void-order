@@ -2,9 +2,9 @@ name = "void-order"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 
-# The member number allowed to found the Order (the Order's first Head).
+# The app admin: the member number who runs the app, founds the Order and always has every power.
 [vars]
-FOUNDER = "255659"
+ADMIN = "255659"
 
 [[durable_objects.bindings]]
 name = "ORDER"

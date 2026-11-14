@@ -2,7 +2,7 @@
 // @name         The Void Order
 // @namespace    https://github.com/Proudkiller0015/void-order
 // @version      1.0.0
-// @description  The Void Order's add-on for Bondage Club: orders and photo sessions, the member list, ID cards and joining. /void opens it. Always runs the newest version.
+// @description  The Void Order's add-on for Bondage Club: orders and photo sessions, the members by branch, ID cards and Void dice. /void opens it. Always runs the newest version.
 // @author       SlimeQueenSamantha
 // @homepageURL  https://github.com/Proudkiller0015/void-order
 // @downloadURL  https://raw.githubusercontent.com/Proudkiller0015/void-order/main/void.user.js

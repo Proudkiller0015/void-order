@@ -1,14 +1,14 @@
-// Plays several members of the Order against the server: npm run dev:test first (FOUNDER 11), then node test-server.js.
+// Plays several members of the Order against the server: npm run dev:test first (ADMIN 11), then node test-server.js.
 // Each run uses a fresh Order (?o=), so runs don't see each other.
 const BASE = process.env.SERVER || 'ws://127.0.0.1:8788';
 const ORDER = `t${Date.now().toString(36)}`;
 const { subtle } = globalThis.crypto;
 let failed = 0;
+let passed = 0;
 const check = (ok, what, got) => {
 	console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}${ok || got === undefined ? '' : ` (got ${JSON.stringify(got).slice(0, 400)})`}`);
-	if (!ok) {
-		failed++;
-	}
+	if (ok) passed++;
+	else failed++;
 };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
@@ -48,8 +48,15 @@ async function connect(who, extra = {}) {
 	const sig = extra.badSig ? b64url(new Uint8Array(64)) : await sign(extra.signWith || who, `${hello.nonce}|void|${who.member}`);
 	ws.send(JSON.stringify({ t: 'auth', member: who.member, name: who.name, pub: (extra.signWith || who).pub, sig, ...extra.fields }));
 	await wait(300);
-	/** Sends a request and waits for its 'ok', 'error' or 'card' answer. */
+	/** Sends a request and waits for its 'ok', 'error', 'card' or 'roll' answer. */
+	c.sent = [];
 	c.req = async (x) => {
+		// The server allows 30 messages per connection in 10 s; a test pauses rather than run into that.
+		c.sent = c.sent.filter((t) => Date.now() - t < 10000);
+		if (c.sent.length >= 25) {
+			await wait(10100 - (Date.now() - c.sent[0]));
+		}
+		c.sent.push(Date.now());
 		const rid = ++c.rid;
 		ws.send(JSON.stringify({ ...x, rid }));
 		for (let i = 0; i < 100; i++) {
@@ -65,340 +72,385 @@ async function connect(who, extra = {}) {
 	c.close = () => ws.close();
 	return c;
 }
-const rankId = (c, name) => (c.state.ranks.find((r) => r.name === name) || {}).id;
 const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
+const placesOf = (c, n) => (listed(c, n) || { places: [] }).places.map((p) => `${p.b}${p.t}${p.c ? `:${p.c}` : ''}`).join(',');
+/** A member signs in and joins at once. */
+async function joined(member, name) {
+	const c = await connect(await makePeer(member, name));
+	const r = await c.req({ t: 'join', name });
+	return { c, r };
+}
 
 (async () => {
 	const ann = await makePeer(11, 'Ann');
-	const bea = await makePeer(12, 'Bea');
-	const cat = await makePeer(13, 'Cat');
-	const dan = await makePeer(14, 'Dan');
 
 	const forged = await connect(ann, { badSig: true });
 	check(forged.closed && forged.got.some((x) => x.why === 'bad signature'), 'a bad signature is turned away');
 
-	// Founding: only the FOUNDER number may.
-	const b = await connect(bea);
+	// An empty Order: founding by the app admin only, with the founding code.
+	const early = await connect(await makePeer(12, 'Bea'));
 	check(
-		b.state.status === 'guest' && !b.state.canFound && b.state.meta === null,
-		'before founding, others are guests who cannot found',
-		b.state,
+		early.state.status === 'guest' && !early.state.canFound && early.state.meta === null && early.state.structure.branches.length === 5,
+		'before founding, others are guests who cannot found; the structure is there already',
+		early.state,
 	);
-	check((await b.req({ t: 'found', name: 'Mine' })).why === 'only the founder can found the Order', 'someone else cannot found the Order');
+	check((await early.req({ t: 'found', name: 'Mine' })).why === 'only the app admin can found the Order', 'someone else cannot found');
+	check((await early.req({ t: 'join' })).why === 'the Order is not founded yet', 'nobody joins before the founding');
+	early.close();
 	const a = await connect(ann, { fields: { room: 'Void Hall' } });
-	check(a.state.canFound === true, 'the founder number may found the Order');
+	check(a.state.canFound === true, 'the app admin may found the Order');
 	check(
 		(await a.req({ t: 'found', name: 'The Void Order', code: 'guess', myName: 'Ann' })).why === 'wrong founding code',
 		'founding takes the founding code too',
 	);
 	const founded = await a.req({ t: 'found', name: 'The Void Order', about: 'We gaze back.', code: 'test-founding-code', myName: 'Ann' });
 	check(
-		founded.t === 'ok' && a.state.status === 'member' && a.state.ranks.map((r) => r.name).join() === 'Head,Member',
-		'founding makes Ann the founder at Head',
+		founded.t === 'ok' && a.state.status === 'member' && a.state.meta.founder === 11 && a.state.me.places.length === 0,
+		'founding makes Ann the Founder, with no branch',
 		a.state,
 	);
-	check(
-		a.state.me.power === -1 && a.state.me.perms.join() === 'approve,order,manage',
-		'the founder stands above every rank with every right',
-		a.state.me,
-	);
+	const pw = a.state.me.powers;
+	check(pw.founder && pw.admin && pw.appAdmin && pw.top, 'she is Founder and app admin', pw);
 	check((await a.req({ t: 'found', name: 'Again' })).why === 'unknown', 'the Order is founded once');
-	check(listed(a, 11).on === 1 && listed(a, 11).room === 'Void Hall', 'the member list shows who is online and their room', listed(a, 11));
+	check(listed(a, 11).on === 1 && listed(a, 11).room === 'Void Hall', 'the member list shows who is online and their room');
 
-	// What guests see.
+	// The structure the Order uses.
+	const st = a.state.structure;
+	const br = (id) => st.branches.find((b) => b.id === id);
+	check(
+		st.branches.map((b) => `${b.sym} ${b.name}`).join('|') === '☨✙☨ Priest|≈][≈ Inquisitor|✦⸸✦ Paladin|☿⸸☿ Mage|🧹 Maid' &&
+			br('priest').tiers[1].f === 'Priestess' &&
+			br('maid').tiers[4].m === 'Patron' &&
+			br('mage').tiers[0].n === 'Novitate' &&
+			br('mage').chapters.find((c) => c.id === 'thought-weavers').tiers[3].n === 'Mind Bender' &&
+			st.hybrids['inquisitor+paladin'].n === 'Commisar' &&
+			st.hybrids['maid+priest'].f === 'Altar Girl' &&
+			Object.keys(st.hybrids).length === 10 &&
+			st.monsignor.sym === '🎇',
+		'the default structure: five branches, gendered ranks, chapter rank names, ten hybrid titles, Monsignor',
+	);
+
+	// Joining: at once, with no place yet.
+	const { c: b, r: bj } = await joined(12, 'Bea');
+	check(bj.t === 'ok' && b.state.status === 'member' && b.state.me.places.length === 0, 'Bea joins at once, unplaced', b.state);
+	check(listed(a, 12) && listed(a, 12).places.length === 0, 'Ann sees Bea waiting for a place');
+	check((await b.req({ t: 'join' })).why === 'unknown', 'a member does not join twice');
+	check(!b.state.log && !b.state.me.powers.top && !b.state.me.powers.leads.length, 'Bea has no powers yet', b.state.me.powers);
+	const { c } = await joined(13, 'Cat');
+	const { c: d } = await joined(14, 'Dan');
+	check((await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 1 })).why, 'an unplaced member places nobody');
+
+	// The Founder places Bea as a Paladin rank 4: she leads the Paladins.
+	check((await a.req({ t: 'place', member: 12, branch: 'paladin', tier: 4 })).t === 'ok', 'Ann places Bea: Paladin rank 4');
+	check(placesOf(a, 12) === 'paladin4' && b.state.me.powers.leads.join() === 'paladin', 'Bea now leads the Paladins', b.state.me);
+	check((await a.req({ t: 'place', member: 12, branch: 'paladin', tier: 6 })).why === 'pick a branch and a rank', 'ranks go 1 to 5');
+	check((await a.req({ t: 'place', member: 12, branch: 'bard', tier: 1 })).why === 'pick a branch and a rank', 'only real branches');
+
+	// A branch leader places the unplaced into her branch, below her own rank.
+	check((await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 2 })).t === 'ok', 'Bea places Cat: Paladin rank 2');
+	check((await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 4 })).why, 'but not at her own rank');
+	check((await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 5 })).why, 'or above it');
+	check((await b.req({ t: 'place', member: 14, branch: 'priest', tier: 1 })).why, 'and not into a branch she does not lead');
+	check((await b.req({ t: 'place', member: 12, branch: 'paladin', tier: 5 })).why, 'she cannot promote herself');
+	check(
+		(await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 1, chapter: 'salvatoris' })).why === 'chapters are open from rank 2',
+		'chapters from rank 2',
+	);
+	check(
+		(await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 2, chapter: 'vox-nihil' })).why === 'no such chapter',
+		"only the branch's chapters",
+	);
+	check(
+		(await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 2, chapter: 'salvatoris' })).t === 'ok' &&
+			placesOf(a, 13) === 'paladin2:salvatoris',
+		'Bea puts Cat in the Salvatoris chapter',
+	);
+
+	// A leader can't touch Priests, or Paladins at or above her rank.
+	await a.req({ t: 'place', member: 14, branch: 'priest', tier: 3 });
+	check(placesOf(a, 14) === 'priest3', 'Ann places Dan: Priest rank 3');
+	check((await b.req({ t: 'place', member: 14, branch: 'priest', tier: 2 })).why, 'Bea cannot move a Priest');
+	check((await b.req({ t: 'place', member: 14, branch: 'paladin', tier: 1 })).why, 'or add a Priest to the Paladins');
+	check((await b.req({ t: 'unplace', member: 14, branch: 'priest' })).why, 'or take him out of his branch');
+	check((await b.req({ t: 'kick', member: 14 })).why, 'or remove him');
+	check((await b.req({ t: 'reset', member: 14 })).why === 'they are not below you', 'or make him a reset code');
+	const fay = await makePeer(15, 'Fay');
+	const added = await a.req({ t: 'add', people: [{ member: 15, name: 'Fay' }], branch: 'paladin', tier: 4 });
+	check(
+		added.t === 'ok' && added.codes.length === 1 && /^[A-Z2-9]{10}$/.test(added.codes[0].code),
+		'Ann brings Fay in as a Paladin rank 4',
+	);
+	const f = await connect(fay, { fields: { code: added.codes[0].code } });
+	check(f.state.status === 'member' && f.state.me.powers.leads.join() === 'paladin', 'Fay joins with her code, leading the Paladins too');
+	check((await b.req({ t: 'place', member: 15, branch: 'paladin', tier: 3 })).why, 'Bea cannot move Fay, at her own rank');
+	check((await b.req({ t: 'kick', member: 15 })).why, 'or remove her');
+	check((await f.req({ t: 'place', member: 12, branch: 'paladin', tier: 1 })).why, 'and Fay cannot move Bea');
+	check((await b.req({ t: 'place', member: 11, branch: 'paladin', tier: 1 })).why, 'nobody but the Founder acts on the Founder');
+
+	// Hybrids: a second branch; never a third.
+	check((await a.req({ t: 'place', member: 13, branch: 'mage', tier: 3 })).t === 'ok', 'Ann adds Cat to the Mages at rank 3');
+	check(placesOf(a, 13) === 'paladin2:salvatoris,mage3', 'Cat is a Paladin and a Mage: a hybrid');
+	check(
+		(await a.req({ t: 'place', member: 13, branch: 'maid', tier: 1 })).why === 'a member holds at most 2 branches',
+		'two branches at most',
+	);
+	check((await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 3 })).t === 'ok', 'Bea still promotes Cat in the Paladins');
+	check((await b.req({ t: 'kick', member: 13 })).why, 'but cannot remove her from the Order: she is a Mage too');
+	check((await b.req({ t: 'unplace', member: 13, branch: 'mage' })).why, 'or take her out of the Mages');
+	check((await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 2, chapter: 'salvatoris' })).t === 'ok', 'and back to rank 2');
+
+	// Your own card: the form of your rank names, and your element.
+	check((await c.req({ t: 'profile', form: 'x' })).why === 'bad form', 'forms are feminine, masculine or neutral');
+	check((await c.req({ t: 'profile', el: 'Lava' })).why === 'no such element', 'elements come from the list');
+	check((await c.req({ t: 'profile', form: 'f', el: 'Pyro', bio: 'Burns bright.' })).t === 'ok', 'Cat picks feminine and Pyro');
+	const card = await d.req({ t: 'card', member: 13 });
+	check(
+		card.card &&
+			card.card.form === 'f' &&
+			card.card.el === 'Pyro' &&
+			card.card.places.length === 2 &&
+			card.card.bio === 'Burns bright.' &&
+			!card.card.mon,
+		"Dan looks up Cat's ID card",
+		card,
+	);
+
+	// Monsignor: an honorary rank the Founder and admins give.
+	const { c: g } = await joined(16, 'Gus');
+	check((await b.req({ t: 'monsignor', member: 16, on: true })).why === 'not allowed', 'a leader cannot make a Monsignor');
+	check((await a.req({ t: 'monsignor', member: 16, on: true })).t === 'ok' && listed(a, 16).mon === 1, 'Ann makes Gus a Monsignor');
+	check(g.state.me.powers.leads.length === 0 && !g.state.me.powers.top, 'which gives him no powers');
+	check((await b.req({ t: 'place', member: 16, branch: 'paladin', tier: 1 })).why, 'a leader cannot place a Monsignor');
+	check((await b.req({ t: 'kick', member: 16 })).why, 'or remove him');
+	check((await a.req({ t: 'monsignor', member: 11, on: true })).t === 'ok' && listed(a, 11).mon === 1, 'Ann makes herself a Monsignor');
+
+	// Orders flow down: a leader to the members of her branch below her.
+	check((await c.req({ t: 'order', title: 'Up', to: { all: true } })).why === 'not allowed', 'a rank 2 Paladin gives no orders');
+	const o1 = await b.req({ t: 'order', title: 'Polish the shields', body: 'Before Friday.', to: { all: true } });
 	await wait(200);
 	check(
-		b.state.meta.name === 'The Void Order' && b.state.members.length === 1 && b.state.count === 1 && !b.state.apps,
-		'guests see the about page and the heads, not the whole list',
-		b.state,
+		o1.t === 'ok' && c.orders.has(o1.id) && !d.orders.has(o1.id) && !f.orders.has(o1.id) && !g.orders.has(o1.id),
+		"Bea's order to all reaches Cat, not Dan (Priest), Fay (Paladin 4) or Gus",
 	);
-
-	// The about page and joining questions.
+	check(a.orders.get(o1.id) && !!a.orders.get(o1.id).acks, 'Ann, over Bea, oversees it with its answers');
 	check(
-		(await a.req({ t: 'about', about: 'We gaze back.', questions: ['Why the Void?', '', 'Who sent you?'], open: true })).t === 'ok',
-		'the founder sets the joining questions',
-	);
-	check(b.state.meta.questions.join('|') === 'Why the Void?|Who sent you?', 'empty questions are dropped', b.state.meta);
-
-	// The rank ladder: the founder renames Head and adds Inquisitor and Paladin.
-	const head = rankId(a, 'Head');
-	const member = rankId(a, 'Member');
-	const ladder = [
-		{ id: head, name: 'Void Lord', sym: '⸸', color: '#9b59ff', perms: ['approve', 'order', 'manage'] },
-		{ id: '', name: 'Inquisitor', sym: '≈][≈', color: '#c0a0ff', perms: ['approve', 'order', 'manage'] },
-		{ id: '', name: 'Paladin', sym: '✦⸸✦', color: '#7fd4ff', perms: ['order'] },
-		{ id: member, name: 'Acolyte', sym: '', color: 'bad', perms: ['fly'] },
-	];
-	check((await a.req({ t: 'ranks', ranks: ladder, v: a.state.ranksV })).t === 'ok', 'the founder sets the rank ladder');
-	const inq = rankId(a, 'Inquisitor');
-	const pal = rankId(a, 'Paladin');
-	const aco = rankId(a, 'Acolyte');
-	check(
-		aco === member && /^[a-z0-9]{6}$/.test(inq) && a.state.ranks[3].color === '#8f86b8' && a.state.ranks[3].perms.length === 0,
-		'kept ranks keep their id, new ones get one, bad colours and rights are dropped',
-		a.state.ranks,
-	);
-
-	// Members the Order had before the add-on come in with join codes, no application.
-	const zoe = await makePeer(20, 'Zoe');
-	const since = Date.parse('2025-03-01');
-	check(
-		(await a.req({ t: 'add', people: [{ member: 11, name: 'Ann' }], rank: pal })).why === '#11 is already in the Order',
-		'someone already in the Order cannot be brought in again',
-	);
-	const added = await a.req({
-		t: 'add',
-		people: [
-			{ member: 20, name: 'Zoe', title: 'Keeper of Keys' },
-			{ member: 21, name: 'Yan' },
-		],
-		rank: pal,
-		since,
-	});
-	check(
-		added.t === 'ok' && added.codes.length === 2 && added.codes.every((c) => /^[A-Z2-9]{10}$/.test(c.code)) && added.days === 7,
-		'the founder brings in Zoe and Yan: one join code each, valid 7 days',
-		added,
+		(await b.req({ t: 'order', title: 'x', to: { groups: ['priest'] } })).why === 'orders only go to members below you',
+		'Bea cannot order the Priests',
 	);
 	check(
-		listed(a, 20) && listed(a, 20).invited === 1 && listed(a, 20).joined === since,
-		'they are listed as invited, in the Order since the date given',
+		(await b.req({ t: 'order', title: 'x', to: { groups: ['paladin/4'] } })).why === 'orders only go to members below you',
+		'or her own rank',
 	);
-	const zNo = await connect(zoe);
-	check(zNo.state.status === 'invited', 'Zoe, signing in without her code, is told she is invited');
-	check(/join code/.test((await zNo.req({ t: 'apply', answers: [] })).why), 'and is pointed to her join code instead of applying');
-	const zCode = added.codes.find((c) => c.n === 20).code;
-	const z = await connect(zoe, { fields: { code: zCode } });
-	check(
-		z.state.status === 'member' && z.state.me.rank === pal && z.state.me.title === 'Keeper of Keys',
-		'with the code she is in, at her rank and title',
-	);
-	check(!listed(a, 20).invited, 'and no longer listed as invited');
-	const zAgain = await connect(await makePeer(20, 'Zoe'), { fields: { code: zCode } });
-	check(zAgain.state.status === 'mismatch', 'a join code works once');
-	const yanCode = await a.req({ t: 'reset', member: 21 });
-	check(
-		/^[A-Z2-9]{10}$/.test(yanCode.code || '') && yanCode.hours === 168,
-		'a new join code for Yan, who has not joined yet, lasts 7 days',
-		yanCode,
-	);
-	for (const x of [zNo, z, zAgain]) x.close();
-
-	// Applying.
-	check(
-		(await b.req({ t: 'apply', name: 'Bea', answers: ['To serve.', 'Kikuri'] })).t === 'ok' && b.state.status === 'applied',
-		'Bea applies with her answers',
-	);
-	check(a.state.apps && a.state.apps[0].n === 12 && a.state.apps[0].answers[1] === 'Kikuri', 'the founder sees the application');
-	const c = await connect(cat);
-	check((await c.req({ t: 'approve', member: 12 })).why === 'not a member', 'a guest cannot approve');
-	check(
-		(await a.req({ t: 'approve', member: 12, rank: inq })).t === 'ok' && b.state.status === 'member' && listed(a, 12).rank === inq,
-		'the founder lets Bea in as Inquisitor',
-		b.state,
-	);
-	check(
-		b.state.me.perms.join() === 'approve,order,manage' && b.state.me.power === 1,
-		'Bea has the Inquisitor rights and place',
-		b.state.me,
-	);
-
-	// Cat applies; Bea approves, but only into ranks below her own.
-	await c.req({ t: 'apply', name: 'Cat', answers: ['Curious'] });
-	check(
-		(await b.req({ t: 'approve', member: 13, rank: head })).why === 'you can only give ranks below your own',
-		'Bea cannot let someone in above her',
-	);
-	check((await b.req({ t: 'approve', member: 13, rank: inq })).why === 'you can only give ranks below your own', 'or at her own rank');
-	check(
-		(await b.req({ t: 'approve', member: 13 })).t === 'ok' && listed(b, 13).rank === aco,
-		'with no rank picked, Cat joins at the lowest',
-	);
-
-	// Ranks: Bea changes only what is below her.
-	const bLadder = b.state.ranks.map((r) => ({ ...r }));
-	bLadder[0].name = 'Mine Now';
-	check(
-		(await b.req({ t: 'ranks', ranks: bLadder, v: b.state.ranksV })).why === 'you can only change ranks below your own',
-		'Bea cannot change ranks at or above hers',
-	);
-	const bLadder2 = b.state.ranks.map((r) => ({ ...r }));
-	bLadder2[2].name = 'Paladin of the Void';
-	const staleV = b.state.ranksV;
-	check(
-		(await b.req({ t: 'ranks', ranks: bLadder2, v: staleV })).t === 'ok' && rankId(a, 'Paladin of the Void') === pal,
-		'Bea renames Paladin, below her',
-	);
-	check(
-		/changed the ranks meanwhile/.test((await b.req({ t: 'ranks', ranks: bLadder2, v: staleV })).why),
-		'a save from a ladder someone has changed since is refused, not merged over',
-	);
-	check(
-		(await b.req({ t: 'ranks', ranks: bLadder2.filter((r) => r.id !== aco), v: b.state.ranksV })).why ===
-			'Cat still holds a rank you removed',
-		'a rank someone holds cannot be removed',
-	);
-
-	// Promotions, titles, and only on those below.
-	check((await b.req({ t: 'rank', member: 13, rank: pal })).t === 'ok' && c.state.me.rank === pal, 'Bea makes Cat a Paladin');
-	check(
-		(await b.req({ t: 'rank', member: 13, rank: inq })).why === 'you can only give ranks below your own',
-		'Bea cannot raise Cat to her own rank',
-	);
-	check((await b.req({ t: 'rank', member: 11, rank: aco })).why === 'they are not below you', 'Bea cannot touch the founder');
-	check((await c.req({ t: 'title', member: 13, title: 'Me' })).why === 'not allowed', 'a Paladin cannot give titles');
-	check(
-		(await b.req({ t: 'title', member: 13, title: 'Keeper of Cameras' })).t === 'ok' && listed(a, 13).title === 'Keeper of Cameras',
-		'Bea gives Cat a title',
-	);
-
-	// Orders go down the ladder.
-	check(
-		(await c.req({ t: 'order', title: 'Up the ladder', to: { members: [12] } })).why === 'orders only go to ranks and members below you',
-		'a Paladin cannot send an order to the Inquisitor above her',
-	);
-	check(
-		(await c.req({ t: 'order', title: 'Up the ladder', to: { ranks: [inq] } })).why === 'orders only go to ranks and members below you',
-		'or to a rank above her',
-	);
-	const o0 = await c.req({ t: 'order', title: 'Sweep the steps', to: { ranks: [aco] } });
-	check(o0.t === 'ok' && c.orders.has(o0.id) && a.orders.has(o0.id), 'a Paladin orders the Acolytes below; the founder above sees it');
-	const o1 = await b.req({ t: 'order', kind: 'order', title: 'Polish the altar', body: 'Before Friday.', to: { all: true } });
-	check(
-		o1.t === 'ok' && c.orders.has(o1.id) && a.orders.has(o1.id) && !!a.orders.get(o1.id).acks,
-		'Bea orders everyone below her: Cat gets it, and Ann above oversees it with its answers',
-		o1,
-	);
+	check((await b.req({ t: 'order', title: 'x', to: { members: [14] } })).why === 'orders only go to members below you', 'or Dan by name');
+	const o2 = await b.req({ t: 'order', kind: 'notice', title: 'Salvatoris meet', to: { groups: ['paladin:salvatoris'] } });
+	await wait(200);
+	check(o2.t === 'ok' && c.orders.has(o2.id), 'Bea sends a notice to the Salvatoris chapter: Cat gets it');
 	const when = Date.now() + 2 * 36e5;
-	const s1 = await a.req({ t: 'order', kind: 'session', title: 'Photo session', body: 'Club room, uniforms.', to: { ranks: [pal] }, when });
+	const s1 = await a.req({ t: 'order', kind: 'session', title: 'Photo session', to: { groups: ['priest/3', 'monsignor'] }, when });
+	await wait(200);
 	check(
-		s1.t === 'ok' && c.orders.get(s1.id) && c.orders.get(s1.id).when === when && !b.orders.has(s1.id),
-		'a session for Paladins reaches Cat, not Bea',
-		[...b.orders.keys()],
+		s1.t === 'ok' && d.orders.get(s1.id) && g.orders.get(s1.id) && !c.orders.has(s1.id) && d.orders.get(s1.id).when === when,
+		'a session for Priests of rank 3 and Monsignors reaches Dan and Gus, not Cat',
 	);
 	check(
 		(await a.req({ t: 'order', kind: 'session', title: 'No time', to: { all: true } })).why === 'a session needs a time',
 		'a session needs a time',
 	);
 	check((await a.req({ t: 'order', title: 'Nobody', to: {} })).why === 'pick who it is for', 'an order needs someone to go to');
+	check((await c.req({ t: 'ack', id: o1.id, a: 'yes' })).why === 'bad answer', 'an order is answered read or done');
+	check((await c.req({ t: 'ack', id: o1.id, a: 'done' })).t === 'ok', 'Cat answers done');
 	check(
-		(await a.req({ t: 'order', title: 'Ghost', to: { members: [999] } })).why === 'orders only go to ranks and members below you',
-		'and someone in the Order',
+		b.orders.get(o1.id).acks[13].a === 'done' && c.orders.get(o1.id).mine.a === 'done' && !c.orders.get(o1.id).acks,
+		'Bea sees every answer, Cat only hers',
 	);
-	check((await c.req({ t: 'ack', id: s1.id, a: 'done' })).why === 'bad answer', 'a session is answered yes, maybe or no');
-	check((await c.req({ t: 'ack', id: s1.id, a: 'yes' })).t === 'ok', 'Cat says yes to the session');
-	check(
-		a.orders.get(s1.id).acks[13].a === 'yes' && c.orders.get(s1.id).mine.a === 'yes' && !c.orders.get(s1.id).acks,
-		'the author sees every answer, Cat only her own',
-		c.orders.get(s1.id),
-	);
-	check((await b.req({ t: 'ack', id: s1.id, a: 'yes' })).why === 'no such order', 'Bea cannot answer a session not meant for her');
-	check((await a.req({ t: 'ack', id: o1.id, a: 'done' })).why === 'no such order', "Ann, above Bea, doesn't answer Bea's order");
-	await c.req({ t: 'ack', id: o1.id, a: 'done' });
-	check(b.orders.get(o1.id).acks[13].a === 'done', "Bea sees Cat's answer", b.orders.get(o1.id));
-	const dm = await b.req({ t: 'order', kind: 'notice', title: 'For Cat', to: { members: [13] } });
-	check(c.orders.has(dm.id) && a.orders.has(dm.id), 'a notice to one member reaches them, and the founder above sees it');
+	check((await d.req({ t: 'ack', id: o1.id, a: 'done' })).why === 'no such order', 'Dan cannot answer an order not meant for him');
+	check((await c.req({ t: 'unorder', id: o1.id })).why === 'not allowed', 'Cat cannot take an order down');
+	check((await f.req({ t: 'unorder', id: o1.id })).why === 'not allowed', 'nor can Fay, beside Bea');
 
-	// ID cards, for anyone signed in.
-	const d = await connect(dan);
-	check((await b.req({ t: 'profile', pic: 'data:text/html;base64,AAAA' })).why === 'bad picture', 'only image pictures');
-	check(
-		(await b.req({ t: 'profile', bio: 'Watcher.', pic: 'data:image/png;base64,iVBORw0KGgo=' })).t === 'ok',
-		'Bea sets her bio and picture',
-	);
-	const card = await d.req({ t: 'card', member: 12 });
-	check(
-		card.card &&
-			card.card.rank.name === 'Inquisitor' &&
-			card.card.rank.sym === '≈][≈' &&
-			card.card.pic.startsWith('data:image/png') &&
-			card.card.bio === 'Watcher.' &&
-			card.card.order === 'The Void Order',
-		'a guest looks up Bea’s ID card',
-		card,
-	);
-	check((await d.req({ t: 'card', member: 99 })).card === null, 'no card for a non-member');
-	check((await d.req({ t: 'orders' })).why === 'not a member', 'guests get no orders');
+	// A promotion changes who gets what at once.
+	await b.req({ t: 'place', member: 13, branch: 'paladin', tier: 3, chapter: 'salvatoris' });
+	const o3 = await b.req({ t: 'order', kind: 'notice', title: 'Rank 3 only', to: { groups: ['paladin/3'] } });
+	await wait(200);
+	check(o3.t === 'ok' && c.orders.has(o3.id), 'promoted to rank 3, Cat gets the notice for rank 3');
 
-	// Rooms: only members are listed online.
-	d.ws.send(JSON.stringify({ t: 'room', room: 'Lobby' }));
-	b.ws.send(JSON.stringify({ t: 'room', room: 'Shrine' }));
-	await wait(300);
-	check(listed(a, 12).room === 'Shrine' && !listed(a, 14), 'a member’s room shows; a guest is not listed', a.state.members);
-
-	// Lost key: a reset code from above moves the number to a new key.
+	// Reset codes and removing: a leader over the member.
 	const code = await b.req({ t: 'reset', member: 13 });
-	check(/^[A-Z2-9]{10}$/.test(code.code || ''), 'Bea makes a reset code for Cat', code);
+	check(/^[A-Z2-9]{10}$/.test(code.code || '') && code.hours === 48, 'Bea makes a reset code for Cat', code);
 	const cat2 = await makePeer(13, 'Cat');
 	const c2bad = await connect(cat2);
 	check(c2bad.state.status === 'mismatch', 'a new key without the code is not Cat');
-	check((await c2bad.req({ t: 'apply', answers: [] })).why === 'signed in with another key', 'and cannot apply over her');
+	check((await c2bad.req({ t: 'join' })).why === 'signed in with another key', 'and cannot join over her');
 	const c2 = await connect(cat2, { fields: { code: code.code } });
-	check(c2.state.status === 'member' && c2.orders.has(s1.id), 'with the code, the new key is Cat, orders and all');
-	const cOld = await connect(cat);
-	check(cOld.state.status === 'mismatch', 'the old key no longer is');
+	check(c2.state.status === 'member' && c2.orders.has(o1.id), 'with the code, the new key is Cat, orders and all');
 	const reuse = await connect(await makePeer(13, 'Cat'), { fields: { code: code.code } });
 	check(reuse.state.status === 'mismatch', 'a reset code works once');
+	const { c: e } = await joined(17, 'Eve');
+	check((await b.req({ t: 'kick', member: 17 })).t === 'ok' && e.state.status === 'guest', 'a leader removes an unplaced member');
+	// One address holds at most 12 connections.
+	for (const x of [c, c2bad, reuse, e]) x.close();
 
-	// Kicks and taking orders down.
-	check((await c2.req({ t: 'kick', member: 12 })).why === 'not allowed', 'a Paladin cannot kick');
-	const kicked = await b.req({ t: 'kick', member: 13 });
-	check(kicked.t === 'ok' && c2.state.status === 'guest' && !listed(a, 13), 'Bea removes Cat; Cat is a guest now', [
-		kicked,
-		c2.state.status,
-		listed(a, 13),
-	]);
-	check((await b.req({ t: 'unorder', id: s1.id })).why === 'not allowed', "Bea cannot take down the founder's session");
+	// Bringing people in: leaders into their branch, below their rank.
 	check(
-		(await a.req({ t: 'unorder', id: o0.id })).t === 'ok' && !a.orders.has(o0.id),
-		"the founder takes down departed Cat's order; it goes for everyone",
+		(await b.req({ t: 'add', people: [{ member: 30, name: 'Ivy' }], branch: 'paladin', tier: 4 })).why ===
+			'you can only bring people in below your own rank in a branch you lead',
+		'Bea cannot bring someone in at her own rank',
+	);
+	check((await b.req({ t: 'add', people: [{ member: 30, name: 'Ivy' }], branch: 'priest', tier: 1 })).why, 'or into the Priests');
+	check((await b.req({ t: 'add', people: [{ member: 30, name: 'Ivy' }] })).why, 'or with no place');
+	const ivy = await b.req({
+		t: 'add',
+		people: [
+			{ member: 30, name: 'Ivy' },
+			{ member: 31, name: 'Jo' },
+		],
+		branch: 'paladin',
+		tier: 1,
+		since: Date.parse('2025-03-01'),
+	});
+	check(ivy.t === 'ok' && ivy.codes.length === 2 && ivy.days === 7, 'Bea brings in Ivy and Jo as Squires');
+	check(
+		listed(a, 30).invited === 1 && placesOf(a, 30) === 'paladin1' && listed(a, 30).joined === Date.parse('2025-03-01'),
+		'listed as invited, placed, in since the date given',
+	);
+	const ivyNo = await connect(await makePeer(30, 'Ivy'));
+	check(
+		ivyNo.state.status === 'invited' && /join code/.test((await ivyNo.req({ t: 'join' })).why),
+		'Ivy without her code is pointed to it',
+	);
+	check(
+		(await a.req({ t: 'add', people: [{ member: 11, name: 'Ann' }] })).why === '#11 is already in the Order',
+		'nobody is brought in twice',
+	);
+	const yan = await a.req({ t: 'add', people: [{ member: 32, name: 'Yan' }], mon: true });
+	check(yan.t === 'ok' && listed(a, 32).mon === 1 && !listed(a, 32).places.length, 'Ann brings in Yan as a Monsignor with no branch');
+	check((await b.req({ t: 'reset', member: 32 })).why === 'they are not below you', 'Bea cannot touch Yan');
+	const yanCode = await a.req({ t: 'reset', member: 32 });
+	check(yanCode.hours === 168, 'a new join code lasts 7 days');
+
+	// The structure: names, symbols, chapters, hybrid titles, by the Founder and admins.
+	const edit = JSON.parse(JSON.stringify(a.state.structure));
+	edit.branches.find((x) => x.id === 'paladin').sym = '✦';
+	edit.branches.find((x) => x.id === 'paladin').chapters.push({ id: '', name: 'Order of Dawn', tiers: [] });
+	edit.hybrids['inquisitor+paladin'] = { f: 'Commissar', m: 'Commissar', n: 'Commissar' };
+	check((await b.req({ t: 'structure', s: edit, v: a.state.structureV })).why === 'not allowed', 'a leader cannot edit the structure');
+	const v0 = a.state.structureV;
+	check((await a.req({ t: 'structure', s: edit, v: v0 })).t === 'ok', 'Ann edits the structure');
+	const pal = a.state.structure.branches.find((x) => x.id === 'paladin');
+	check(
+		pal.sym === '✦' &&
+			pal.chapters.length === 4 &&
+			/^[a-z0-9]{6}$/.test(pal.chapters[3].id) &&
+			a.state.structure.hybrids['inquisitor+paladin'].n === 'Commissar',
+		'the new symbol, chapter and title are kept',
+		pal,
+	);
+	check(/changed the ranks meanwhile/.test((await a.req({ t: 'structure', s: edit, v: v0 })).why), 'a save from an older copy is refused');
+	const noSalv = JSON.parse(JSON.stringify(a.state.structure));
+	noSalv.branches.find((x) => x.id === 'paladin').chapters.splice(1, 1);
+	check(
+		(await a.req({ t: 'structure', s: noSalv, v: a.state.structureV })).why === 'Cat is still in a chapter you removed',
+		'a chapter someone is in cannot go',
+	);
+	const extra = JSON.parse(JSON.stringify(a.state.structure));
+	extra.branches.push({ id: 'bard', name: 'Bard', tiers: [] });
+	check(
+		(await a.req({ t: 'structure', s: extra, v: a.state.structureV })).why === 'the branches can be renamed, not added or removed',
+		'branches stay five',
+	);
+	const noTitle = JSON.parse(JSON.stringify(a.state.structure));
+	delete noTitle.hybrids['mage+maid'];
+	check(
+		(await a.req({ t: 'structure', s: noTitle, v: a.state.structureV })).why === 'every pair of branches needs a hybrid title',
+		'every pair keeps a title',
 	);
 
-	// Leaving, and the founder handing over.
-	check((await a.req({ t: 'leave' })).why === 'hand the Order to someone else first', 'the founder cannot just leave');
+	// The Founder's place goes to the Order's real founder; the app admin keeps every power.
+	const magIn = await a.req({ t: 'add', people: [{ member: 18, name: 'Mag' }] });
+	const m = await connect(await makePeer(18, 'Mag'), { fields: { code: magIn.codes[0].code } });
 	check(
-		(await a.req({ t: 'founder', member: 12 })).t === 'ok' && b.state.me.power === -1 && a.state.me.power === 0,
-		'the founder hands the Order to Bea; Ann stays at the top rank',
+		(await a.req({ t: 'founder', member: 18 })).t === 'ok' && m.state.me.powers.founder && m.state.meta.founder === 18,
+		'Ann hands the Founder place to Mag',
 	);
-	check((await b.req({ t: 'kick', member: 11 })).t === 'ok' && a.state.status === 'guest', 'the new founder outranks Ann');
+	check(a.state.me.powers.top && a.state.me.powers.admin && !a.state.me.powers.founder, 'Ann, the app admin, keeps every power');
+	check((await a.req({ t: 'place', member: 18, branch: 'priest', tier: 5 })).why, 'but cannot act on the Founder');
+	check((await a.req({ t: 'kick', member: 18 })).why, 'or remove her');
+	check((await b.req({ t: 'admin', member: 14, on: true })).why === 'only the Founder names admins', 'a leader names no admins');
+	check((await m.req({ t: 'admin', member: 14, on: true })).t === 'ok' && d.state.me.powers.admin, 'Mag makes Dan an admin');
+	check((await a.req({ t: 'place', member: 14, branch: 'priest', tier: 2 })).why, 'admins cannot act on each other');
+	check((await m.req({ t: 'place', member: 11, branch: 'priest', tier: 4 })).t === 'ok', 'the Founder acts on the app admin');
+	check((await m.req({ t: 'admin', member: 11, on: false })).why === 'they have every power already', 'the app admin stays an admin');
+	check((await d.req({ t: 'place', member: 13, branch: 'mage', tier: 4 })).t === 'ok', 'Dan, now an admin, places anyone else');
+	check((await m.req({ t: 'admin', member: 14, on: false })).t === 'ok' && !d.state.me.powers.admin, 'and Mag takes it back');
+	check((await m.req({ t: 'leave' })).why === 'hand the Order to someone else first', 'the Founder cannot just leave');
+
+	// The about page and closing the door.
+	check((await a.req({ t: 'about', about: 'We gaze back.', open: false })).t === 'ok' && !a.state.meta.open, 'Ann closes joining');
+	const late = await connect(await makePeer(40, 'Late'));
+	check((await late.req({ t: 'join' })).why === 'joining is closed right now', 'nobody joins while it is closed');
+	check(
+		late.state.members.some((x) => x.n === 18) && late.state.count >= 8 && !late.state.log,
+		'guests see the heads and a count, not the log',
+	);
+	await a.req({ t: 'about', open: true });
+
+	// Dice: the server rolls, keeps the roll, and others look it up by id.
+	check((await late.req({ t: 'roll', dice: [7] })).why === 'roll 1 to 10 dice: d4, d6, d8, d10, d12, d20, d100', 'only real dice');
+	check((await late.req({ t: 'roll', dice: Array(11).fill(6) })).why, 'at most 10 at once');
+	check((await late.req({ t: 'roll', dice: [20], mod: 100 })).why === 'the modifier goes from -99 to +99', 'modifiers up to 99');
+	const r1 = await late.req({ t: 'roll', dice: [6, 6, 20, 100], mod: -2 });
+	const okFaces = (r) =>
+		r.dice.every((x) => x.v >= 1 && x.v <= x.s && Number.isInteger(x.v)) && r.total === r.dice.reduce((s, x) => s + x.v, r.mod);
+	check(
+		r1.t === 'ok' && /^[a-z0-9]{12}$/.test(r1.roll.id) && r1.roll.by === 40 && okFaces(r1.roll) && !('who' in r1.roll),
+		'a guest rolls 2d6+d20+d100-2',
+		r1,
+	);
+	const seen = await c2.req({ t: 'getroll', id: r1.roll.id });
+	check(
+		JSON.stringify(seen.roll) === JSON.stringify(r1.roll) && seen.age >= 0 && seen.age < 5000 && seen.later === 0,
+		'another user fetches the same roll by its id, with its age',
+		seen,
+	);
+	await late.req({ t: 'roll', dice: [20] });
+	check((await c2.req({ t: 'getroll', id: r1.roll.id })).later === 1, 'and sees when the roller rolled again after it');
+	check((await c2.req({ t: 'getroll', id: 'nonexistent1' })).roll === null, 'an unknown id is no roll');
+	const tries = [];
+	for (let i = 0; i < 9; i++) {
+		tries.push(await b.req({ t: 'roll', dice: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6] }));
+	}
+	check(
+		tries.slice(0, 8).every((r) => r.t === 'ok' && okFaces(r.roll)) && tries[8].why === 'too many rolls, wait a moment',
+		'a member rolls 8 times a minute, then waits',
+	);
+	const fake = await connect(await makePeer(12, 'Not Bea'));
+	check((await fake.req({ t: 'roll', dice: [20] })).t === 'ok', "someone claiming Bea's number has their own count, not hers");
+	const faces = tries.slice(0, 8).flatMap((r) => r.roll.dice.map((x) => x.v));
+	check(new Set(faces).size === 6, 'eighty d6 show every face', [...new Set(faces)]);
 
 	// Everything is kept.
 	b.close();
-	const b2 = await connect(bea);
+	const b2 = await connect(await makePeer(12, 'Bea'));
+	check(b2.state.status === 'mismatch', 'another key is not Bea');
+	const bAgain = a.state.members.find((x) => x.n === 12);
+	check(bAgain && placesOf(a, 12) === 'paladin4', 'Bea is still a Paladin rank 4');
 	check(
-		b2.state.status === 'member' && b2.state.ranks.length === 4 && b2.state.meta.founder === 12 && b2.orders.has(s1.id),
-		'signing in again finds it all kept',
+		a.state.log && a.state.log.some((l) => /placed Cat \(13\): Paladin - Knight/.test(l.text)),
+		'the log names the rank: Paladin - Knight',
+		a.state.log.slice(-5),
 	);
-	check(b2.state.log && b2.state.log.some((l) => /let Bea \(12\) in/.test(l.text)), 'the log records who let whom in', b2.state.log);
-
-	// Going offline is noticed.
-	b2.ws.send(JSON.stringify({ t: 'room', room: 'Shrine' }));
-	const watcher = await connect(ann);
-	await watcher.req({ t: 'apply', answers: ['back'] });
-	await b2.req({ t: 'approve', member: 11 });
-	check(listed(watcher, 12) && listed(watcher, 12).on === 1, 'Ann sees Bea online');
-	// A promotion brings the orders meant for the new rank at once.
-	const s2 = await b2.req({ t: 'order', kind: 'notice', title: 'For Inquisitors', to: { ranks: [inq] } });
-	check(s2.t === 'ok' && !watcher.orders.has(s2.id), 'a notice for Inquisitors: Ann, a member again, is not one');
-	await b2.req({ t: 'rank', member: 11, rank: inq });
-	await wait(300);
-	check(watcher.orders.has(s2.id), 'made an Inquisitor, Ann gets it without signing in again');
-	b2.close();
-	await wait(600);
-	check(listed(watcher, 12) && !listed(watcher, 12).on, 'and offline once she goes', listed(watcher, 12));
 
 	// Too many messages at once.
-	for (let i = 0; i < 40; i++) d.ws.send(JSON.stringify({ t: 'card', member: 12 }));
+	for (let i = 0; i < 40; i++) late.ws.send(JSON.stringify({ t: 'card', member: 12 }));
 	await wait(500);
 	check(
-		d.got.some((x) => x.why === 'slow down'),
+		late.got.some((x) => x.why === 'slow down'),
 		'a flood is slowed down',
 	);
 
-	for (const x of [a, b, c, d, c2, c2bad, cOld, reuse, watcher, forged]) {
+	for (const x of [a, d, f, g, m, c2, late, fake, b2, forged]) {
 		try {
 			x.close();
-		} catch (e) {
+		} catch (err) {
 			/* closed */
 		}
 	}
@@ -408,11 +460,11 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 	const raw = () => new WebSocket(`${BASE}/ws?o=${ORDER}`, { headers: { Origin: 'https://www.bondageprojects.elementfx.com' } });
 	const idle = raw();
 	let idleTold = false;
-	idle.onmessage = (e) => {
-		idleTold = idleTold || JSON.parse(e.data).why === 'sign in first';
+	idle.onmessage = (ev) => {
+		idleTold = idleTold || JSON.parse(ev.data).why === 'sign in first';
 	};
 	await wait(11000);
-	const poke = await connect(await makePeer(40, 'Poke'));
+	const poke = await connect(await makePeer(41, 'Poke'));
 	await wait(300);
 	check(idleTold && idle.readyState >= 2, 'a connection that never signs in is closed after 10 seconds');
 	poke.close();
@@ -431,18 +483,13 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 	}
 	await wait(500);
 
-	// Applications: at most 5 new ones from one address an hour (Bea, Cat and Ann's came from here already).
-	const tries = [];
-	for (let i = 0; i < 4; i++) {
-		const x = await connect(await makePeer(50 + i, `Visitor ${i}`));
-		tries.push((await x.req({ t: 'apply', answers: ['hello'] })).why || 'ok');
-		x.close();
-	}
+	// Joining: at most 5 from one address an hour (Bea, Cat, Dan, Gus and Eve came from here).
+	const visitor = await connect(await makePeer(50, 'Visitor'));
 	check(
-		tries.join() === 'ok,ok,too many applications from here, try again in an hour,too many applications from here, try again in an hour',
-		'one address can only send a few applications an hour',
-		tries,
+		(await visitor.req({ t: 'join' })).why === 'too many joined from here, try again in an hour',
+		'one address can only join a few an hour',
 	);
-	console.log(failed ? `${failed} FAILED` : 'all passed');
+	visitor.close();
+	console.log(failed ? `${failed} FAILED, ${passed} passed` : `all ${passed} passed`);
 	process.exit(failed ? 1 : 0);
 })();

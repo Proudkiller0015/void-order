@@ -1,23 +1,24 @@
 /**
  * The Void Order server: a Cloudflare Worker with one Durable Object holding the whole Order.
  *
- * Storage: 'meta' { name, about, questions, open, founded, founder }, 'ranks' (top to bottom, see Rank),
- * 'm:<member number>' members, 'a:<member number>' applications, 'pic:<member number>' pictures,
- * 'o:<id>' orders (the newest LIMITS.orders kept), 'log' (the newest LIMITS.log changes), 'seq', 'ranksV' (bumped on
- * every change to the ranks, so an editor working from an older ladder is refused) and 'applied' (when each address
- * sent new applications in the last hour).
+ * Storage: 'meta' { name, about, open, founded, founder, admins }, 'structure' (branches, their ranks and chapters,
+ * hybrid titles, Monsignor; see DEFAULT_STRUCTURE) with 'structureV' (bumped on every change, so an editor working
+ * from an older copy is refused), 'm:<member number>' members (see Member), 'pic:<member number>' pictures,
+ * 'o:<id>' orders (the newest LIMITS.orders kept), 'seq', 'log' (the newest LIMITS.log changes), 'joins' (when each
+ * address joined in the last hour) and 'r:<id>' dice rolls (kept LIMITS.rollMinutes).
  *
- * Clients sign in by signing a one-time nonce with their P-256 key. A member number is bound to the key it
- * applied with. A member who lost their key gets a reset code from someone above them, and the next key that
- * signs in with that code takes the number over. Members of an Order that existed before the add-on are brought in by
- * someone who manages: each gets a join code the same way, and the first key that signs in with it becomes theirs. A member number is whatever the client says it is (the game
- * can't vouch for it to an outside server), so founding takes the FOUND_CODE secret as well as env.FOUNDER, and
- * whoever lets applicants in is told to check them in the game first.
+ * Clients sign in by signing a one-time nonce with their P-256 key. A member number is bound to the key it joined
+ * with. A member who lost their key gets a reset code from someone over them, and the next key that signs in with
+ * that code takes the number over. Members brought in by the hierarchy get a join code the same way. A member number
+ * is whatever the client says it is (the game can't vouch for it to an outside server), so founding takes the
+ * FOUND_CODE secret as well as env.ADMIN.
  *
- * The hierarchy: ranks go top to bottom, and the founder stands above every rank. You only act on members
- * strictly below you, give ranks strictly below your own, and send orders only down the ladder. What a rank may do
- * is its `perms`: approve (applications), order (post orders, sessions and notices) and manage (ranks, titles,
- * kicks, reset codes, the about page).
+ * The hierarchy: five branches, each with five ranks (1 at the bottom, 5 at the top) and chapters open from rank 2.
+ * A member holds up to two branches (two make them a hybrid, with the title for that pair), and may be a Monsignor,
+ * an honorary rank with no powers. Powers: the Founder (one member) and the app admins (env.ADMIN always, and whoever
+ * the Founder or env.ADMIN names) do everything; nobody acts on them but the Founder. A member at rank 4 or 5 of a
+ * branch leads it: they place, move, give orders to and remove that branch's members whose rank in it is below
+ * theirs, and place members who have no place yet.
  *
  * Free-plan limits: sockets hibernate and keep-alive pings get an auto-response without waking the object.
  */
@@ -25,30 +26,28 @@
 import { DurableObject } from 'cloudflare:workers';
 
 const LIMITS = {
-	/** Longest Order, member or rank name. */
+	/** Longest Order, member, branch, rank or chapter name. */
 	name: 40,
-	/** Longest rank symbol. */
+	/** Longest symbol, like ≈][≈. */
 	sym: 12,
-	/** Longest title a member is given. */
-	title: 40,
+	/** Longest motto and branch description. */
+	motto: 60,
+	desc: 200,
+	/** Most chapters in a branch, most elements to pick from, and the longest element. */
+	chapters: 8,
+	elements: 12,
+	element: 12,
 	/** Longest bio. */
 	bio: 300,
 	/** Longest about text. */
 	about: 2000,
-	/** Most joining questions, the longest question and the longest answer. */
-	questions: 8,
-	question: 200,
-	answer: 500,
-	/** Most ranks. */
-	ranks: 20,
-	/** Most members, and most applications waiting. */
+	/** Most members. */
 	members: 500,
-	apps: 100,
 	/** Longest order title and text, and orders kept. */
 	orderTitle: 80,
 	orderText: 1500,
 	orders: 300,
-	/** Most member numbers or ranks one order goes to. */
+	/** Most groups or member numbers one order goes to. */
 	orderTo: 50,
 	/** Changes kept in the log. */
 	log: 200,
@@ -62,15 +61,28 @@ const LIMITS = {
 	sockets: 400,
 	socketsPerIp: 12,
 	signIn: 10000,
-	/** Most new applications from one address per hour. */
-	appsPerIp: 5,
+	/** Most members joining from one address per hour. */
+	joinsPerIp: 5,
 	/** Hours a reset code stays valid, and days a join code does. */
 	resetHours: 48,
 	joinDays: 7,
 	/** Most members brought in at once. */
 	addAtOnce: 50,
+	/** Most dice in one roll, the largest modifier, rolls per member a minute, minutes a roll is kept, rolls kept. */
+	dice: 10,
+	mod: 99,
+	rollsPerMinute: 8,
+	rollMinutes: 10,
+	rolls: 1000,
 };
-const PERMS = ['approve', 'order', 'manage'];
+/** Ranks in a branch, and the lowest rank that joins a chapter and that leads the branch. */
+const TIERS = 5;
+const CHAPTER_FROM = 2;
+const LEADS_FROM = 4;
+/** Most branches one member holds. */
+const PLACES = 2;
+const FORMS = ['f', 'm', 'n'];
+const DICE = [4, 6, 8, 10, 12, 20, 100];
 const KINDS = ['order', 'session', 'notice'];
 /** What an order can be answered with, by kind. */
 const ACKS = { order: ['read', 'done'], session: ['yes', 'maybe', 'no'], notice: ['read'] };
@@ -80,6 +92,7 @@ const PIC_RE = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+=*$/;
 const B64URL = /^[A-Za-z0-9_-]{16,128}$/;
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const CODE_RE = /^[A-Z2-9]{10}$/;
+const ROLL_RE = /^[a-z0-9]{12}$/;
 /**
  * Page origins allowed to connect: the game's sites and their subdomains (the European mirror is spelt both with and
  * without the hyphen), and localhost for tests.
@@ -94,13 +107,121 @@ const ORIGINS = [
 ];
 
 /**
- * @typedef {object} Rank
- * @property {string} id
- * @property {string} name
- * @property {string} sym shown either side of the name, like ≈][≈
- * @property {string} color
- * @property {string[]} perms
+ * @typedef {{ f: string, m: string, n: string }} Forms a rank name: feminine, masculine and neutral. A '*' stands for
+ *   the member's element ("*mancer": Pyromancer).
+ * @typedef {{ id: string, name: string, tiers: (Forms | null)[] }} Chapter `tiers`: the chapter's own rank names,
+ *   replacing the branch's where set.
+ * @typedef {{ id: string, name: string, sym: string, color: string, about: string, tiers: Forms[], chapters: Chapter[],
+ *   elements: string[] }} Branch
+ * @typedef {{ b: string, t: number, c: string }} Place a branch, the rank in it (1-5) and the chapter ('' for none).
+ * @typedef {{ n: number, name: string, pub: { x: string, y: string } | null, joined: number, bio: string,
+ *   form: string, el: string, places: Place[], mon: boolean, reset?: { code: string, exp: number } }} Member
+ *   `places`: the first is their main branch. `mon`: a Monsignor. `pub` is null until a member brought in joins.
  */
+
+/** A rank name with the same word in every form. */
+const forms = (f, m = f, n = m) => ({ f, m, n });
+const chapter = (id, name, tiers = []) => ({ id, name, tiers: Array.from({ length: TIERS }, (_, i) => tiers[i] || null) });
+/** The Order's structure as its Discord has it; the Founder and admins edit it in the app. */
+const DEFAULT_STRUCTURE = {
+	motto: 'Praise the Void! 𓁹‿𓁹',
+	founder: { name: 'Founder', sym: '𓁹‿𓁹', color: '#ffe3a3' },
+	monsignor: {
+		name: 'Monsignor',
+		sym: '🎇',
+		color: '#ffb36b',
+		about: 'Celebrities within BC. Full members of the Void Order, who outside of it are well known to whole BC community.',
+	},
+	branches: [
+		{
+			id: 'priest',
+			name: 'Priest',
+			sym: '☨✙☨',
+			color: '#f0d08a',
+			about: 'Leaders of spiritual and religious matters.',
+			tiers: [
+				forms('Scholar'),
+				forms('Priestess', 'Priest', 'Priest / Priestess'),
+				forms('High Priestess', 'High Priest', 'High Priest / High Priestess'),
+				forms('Bishop'),
+				forms('Archbishop'),
+			],
+			chapters: [chapter('lore-custos', 'Lore Custos'), chapter('vox-nihil', 'Vox Nihil'), chapter('redemptio', 'Redemptio per dolorem')],
+			elements: [],
+		},
+		{
+			id: 'inquisitor',
+			name: 'Inquisitor',
+			sym: '≈][≈',
+			color: '#ff7a8c',
+			about: 'Judicial enforcers of law and order.',
+			tiers: [forms('Investigator'), forms('Inquisitor'), forms('Enforcer'), forms('Judge'), forms('Arch Judge')],
+			chapters: [
+				chapter('ordo-hereticus', 'Ordo Hereticus'),
+				chapter('ordo-arbitrorum', 'Ordo Arbitrorum'),
+				chapter('ordo-guardiani', 'Ordo Guardiani'),
+			],
+			elements: [],
+		},
+		{
+			id: 'paladin',
+			name: 'Paladin',
+			sym: '✦⸸✦',
+			color: '#8fd3ff',
+			about: 'The stalwart defenders and knights of the realm.',
+			tiers: [forms('Squire'), forms('Knight'), forms('Paladin'), forms('Crusader'), forms('Champion')],
+			chapters: [chapter('bellator', 'Division Bellator'), chapter('salvatoris', 'Salvatoris'), chapter('ranger', 'Ranger')],
+			elements: [],
+		},
+		{
+			id: 'mage',
+			name: 'Mage',
+			sym: '☿⸸☿',
+			color: '#c49bff',
+			about: 'Masters of mental powers and psychic abilities.',
+			tiers: [forms('Novitate'), forms('Primary'), forms('*mancer'), forms('Sage'), forms('Grand Sage')],
+			chapters: [
+				chapter('conjurers', 'Conjurers', [null, null, forms('Spellblade'), forms('Arcane Fencer'), forms('Sword Sage')]),
+				chapter('thought-weavers', 'Thought-Weavers', [null, null, forms('Cerebralist'), forms('Mind Bender'), forms('Psionic Sage')]),
+				chapter('spell-shapers', 'Spell-Shapers', [null, null, forms('Shaper'), forms('Arcane Fabricator'), forms('Magitech Sage')]),
+			],
+			elements: ['Geo', 'Pyro', 'Hydro', 'Aero'],
+		},
+		{
+			id: 'maid',
+			name: 'Maid',
+			sym: '🧹',
+			color: '#f5a8d6',
+			about: 'The noble caretakers and household leaders.',
+			tiers: [
+				forms('Attendant'),
+				forms('Senior Attendant'),
+				forms('Maid', 'Butler', 'Maid / Butler'),
+				forms('Head Maid', 'Head Butler', 'Head Maid / Head Butler'),
+				forms('Matron', 'Patron', 'Matron / Patron'),
+			],
+			chapters: [
+				chapter('hospitii', 'House of Hospitii Ars Amandi'),
+				chapter('alimentum', 'Alimentum Armatura'),
+				chapter('animalus', 'Animalus Custodian'),
+			],
+			elements: [],
+		},
+	],
+	/** The title of a member in two branches, by the two branch ids in alphabetical order. */
+	hybrids: {
+		'mage+priest': forms('Tomekeeper'),
+		'paladin+priest': forms('Cleric'),
+		'inquisitor+priest': forms('Chaplain'),
+		'maid+priest': forms('Altar Girl', 'Altar Boy', 'Altar Boy / Altar Girl'),
+		'inquisitor+paladin': forms('Commisar'),
+		'inquisitor+mage': forms('Warlock'),
+		'inquisitor+maid': forms('Inspector'),
+		'maid+paladin': forms('Battle Maid', 'Battle Butler', 'Battle Maid / Battle Butler'),
+		'mage+paladin': forms('Warmage'),
+		'mage+maid': forms('Caretaker'),
+	},
+};
 
 /** A plausible member number. */
 const isNum = (n) => Number.isInteger(n) && n > 0 && n < 1e9;
@@ -113,15 +234,27 @@ const clean = (x, max) =>
 				.trim()
 				.slice(0, max)
 		: '';
-/** A random string from `abc`. */
+/** A random string from `abc`, without the bias of a plain modulo. */
 const randomOf = (abc, len) => {
-	const a = new Uint8Array(len);
-	crypto.getRandomValues(a);
-	return [...a].map((x) => abc[x % abc.length]).join('');
+	let out = '';
+	while (out.length < len) {
+		const v = randInt(abc.length);
+		out += abc[v - 1];
+	}
+	return out;
 };
+/** A uniformly random whole number from 1 to `max`, from the crypto source. */
+function randInt(max) {
+	const limit = Math.floor(0x100000000 / max) * max;
+	const a = new Uint32Array(1);
+	do {
+		crypto.getRandomValues(a);
+	} while (a[0] >= limit);
+	return (a[0] % max) + 1;
+}
 /** A reset code: 10 characters with no look-alike letters. */
 const newCode = () => randomOf('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 10);
-const newRankId = () => randomOf('abcdefghijklmnopqrstuvwxyz0123456789', 6);
+const newId = (len) => randomOf('abcdefghijklmnopqrstuvwxyz0123456789', len);
 const b64url = (buf) =>
 	btoa(String.fromCharCode(...new Uint8Array(buf)))
 		.replace(/\+/g, '-')
@@ -135,6 +268,8 @@ const samePub = (a, b) => !!a && !!b && a.x === b.x && a.y === b.y;
 const ridOf = (p) => (p && typeof p.rid === 'number' ? { rid: p.rid } : {});
 /** The storage key of an order: padded so they list in order. */
 const orderKey = (id) => `o:${String(id).padStart(10, '0')}`;
+/** The key of a hybrid title: the two branch ids in alphabetical order. */
+const pairKey = (a, b) => [a, b].sort().join('+');
 
 /** Verifies an ECDSA P-256 / SHA-256 signature (base64url r||s) of `text`. */
 async function verify(pub, sig, text) {
@@ -166,10 +301,93 @@ async function isOperator(req, env) {
 	return crypto.subtle.timingSafeEqual(await hash(key), await hash(got));
 }
 
+/** A rank name's forms from an editor, or null if it has no name at all. */
+function cleanForms(x) {
+	if (!x || typeof x !== 'object') {
+		return null;
+	}
+	const f = clean(x.f, LIMITS.name);
+	const m = clean(x.m, LIMITS.name);
+	const n = clean(x.n, LIMITS.name);
+	const any = f || m || n;
+	return any ? { f: f || any, m: m || any, n: n || any } : null;
+}
+
+/**
+ * The structure from an editor, checked against the current one: the same branches (by id), every rank and hybrid
+ * title named, chapters kept by id or made new. Returns the clean structure or why it can't be used.
+ * @returns {{ s?: any, why?: string }}
+ */
+function cleanStructure(x, old) {
+	if (!x || typeof x !== 'object' || !Array.isArray(x.branches)) {
+		return { why: 'bad structure' };
+	}
+	const ids = old.branches.map((b) => b.id);
+	const given = x.branches.map((b) => b && b.id);
+	if (given.length !== ids.length || !ids.every((id) => given.includes(id))) {
+		return { why: 'the branches can be renamed, not added or removed' };
+	}
+	const titled = (y, dflt) => ({
+		name: clean(y && y.name, LIMITS.name) || dflt.name,
+		sym: clean(y && y.sym, LIMITS.sym),
+		color: y && COLOR_RE.test(y.color || '') ? y.color : dflt.color,
+	});
+	const s = {
+		motto: clean(x.motto, LIMITS.motto),
+		founder: titled(x.founder, old.founder),
+		monsignor: { ...titled(x.monsignor, old.monsignor), about: clean(x.monsignor && x.monsignor.about, LIMITS.desc) },
+		branches: [],
+		hybrids: {},
+	};
+	for (const y of x.branches) {
+		const was = old.branches.find((b) => b.id === y.id);
+		const tiers = Array.isArray(y.tiers) ? y.tiers.slice(0, TIERS).map(cleanForms) : [];
+		if (tiers.length !== TIERS || tiers.some((t) => !t)) {
+			return { why: `every rank of ${was.name} needs a name` };
+		}
+		if (!Array.isArray(y.chapters) || y.chapters.length > LIMITS.chapters) {
+			return { why: `at most ${LIMITS.chapters} chapters in a branch` };
+		}
+		const chapters = [];
+		for (const c of y.chapters) {
+			const name = clean(c && c.name, LIMITS.name);
+			if (!name) {
+				return { why: 'every chapter needs a name' };
+			}
+			const id = c && typeof c.id === 'string' && was.chapters.some((k) => k.id === c.id) ? c.id : newId(6);
+			const own = Array.isArray(c.tiers) ? c.tiers : [];
+			chapters.push({ id, name, tiers: Array.from({ length: TIERS }, (_, i) => cleanForms(own[i])) });
+		}
+		if (new Set(chapters.map((c) => c.id)).size !== chapters.length) {
+			return { why: 'a chapter is listed twice' };
+		}
+		const elements = Array.isArray(y.elements) ? y.elements.map((e) => clean(e, LIMITS.element)).filter(Boolean) : [];
+		s.branches.push({
+			id: was.id,
+			...titled(y, was),
+			about: clean(y.about, LIMITS.desc),
+			tiers,
+			chapters,
+			elements: [...new Set(elements)].slice(0, LIMITS.elements),
+		});
+	}
+	for (const [i, a] of ids.entries()) {
+		for (const b of ids.slice(i + 1)) {
+			const key = pairKey(a, b);
+			const t = cleanForms(x.hybrids && x.hybrids[key]);
+			if (!t) {
+				return { why: 'every pair of branches needs a hybrid title' };
+			}
+			s.hybrids[key] = t;
+		}
+	}
+	return { s };
+}
+
 export default {
 	/**
 	 * Checks the origin and hands the WebSocket (/ws) to the Order. Also takes the operator's POST /op/reset
-	 * { member }: a reset code for a member who lost their key when nobody above them can make one (the founder).
+	 * { member }: a reset code for a member who lost their key when nobody over them can make one.
 	 */
 	async fetch(req, env) {
 		const url = new URL(req.url);
@@ -214,68 +432,142 @@ export class Order extends DurableObject {
 		ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}', '{"t":"pong"}'));
 		ctx.blockConcurrencyWhile(async () => {
 			this.meta = (await ctx.storage.get('meta')) || null;
-			/** @type {Rank[]} */
-			this.ranks = (await ctx.storage.get('ranks')) || [];
+			this.structure = (await ctx.storage.get('structure')) || DEFAULT_STRUCTURE;
+			this.structureV = (await ctx.storage.get('structureV')) || 0;
+			/** @type {Record<number, Member>} */
 			this.members = {};
 			for (const m of (await ctx.storage.list({ prefix: 'm:' })).values()) {
 				this.members[m.n] = m;
-			}
-			this.apps = {};
-			for (const a of (await ctx.storage.list({ prefix: 'a:' })).values()) {
-				this.apps[a.n] = a;
 			}
 			this.orders = new Map();
 			for (const o of (await ctx.storage.list({ prefix: 'o:' })).values()) {
 				this.orders.set(o.id, o);
 			}
+			/** @type {Map<string, any>} */
+			this.rolls = new Map();
+			for (const r of (await ctx.storage.list({ prefix: 'r:' })).values()) {
+				this.rolls.set(r.id, r);
+			}
 			this.seq = (await ctx.storage.get('seq')) || 0;
-			this.ranksV = (await ctx.storage.get('ranksV')) || 0;
 			this.log = (await ctx.storage.get('log')) || [];
 		});
 	}
 
-	/** The member number allowed to found the Order. */
-	get founderNumber() {
-		return Number(this.env.FOUNDER) || 0;
+	/** The app admin's member number: founds the Order and always has every power. */
+	get appAdmin() {
+		return Number(this.env.ADMIN) || 0;
 	}
 
 	// ---- The hierarchy
-	/** A member's place: -1 for the founder, else their rank's index (0 at the top); Infinity for non-members. */
-	power(n) {
-		const m = this.members[n];
-		if (!m) {
-			return Infinity;
-		}
-		if (this.meta && this.meta.founder === n) {
-			return -1;
-		}
-		const i = this.ranks.findIndex((r) => r.id === m.rank);
-		return i < 0 ? this.ranks.length : i;
+	isFounder(n) {
+		return !!this.meta && this.meta.founder === n && !!this.members[n];
 	}
-	/** Whether member `n` may do `perm` (the founder may do everything). */
-	may(n, perm) {
+	isAdmin(n) {
+		return !!this.members[n] && (n === this.appAdmin || (!!this.meta && this.meta.admins.includes(n)));
+	}
+	/** The Founder or an admin: every power, everywhere. */
+	isTop(n) {
+		return this.isFounder(n) || this.isAdmin(n);
+	}
+	/** Member n's rank in branch b (1-5), or 0. */
+	tierIn(n, b) {
 		const m = this.members[n];
-		if (!m) {
-			return false;
-		}
-		if (this.meta && this.meta.founder === n) {
+		const p = m && m.places.find((x) => x.b === b);
+		return p ? p.t : 0;
+	}
+	/** Whether member n leads branch b (rank 4 or 5 in it). */
+	leads(n, b) {
+		return this.tierIn(n, b) >= LEADS_FROM;
+	}
+	leadsAny(n) {
+		const m = this.members[n];
+		return !!m && m.places.some((p) => p.t >= LEADS_FROM);
+	}
+	/** Whether `by` acts on member n with the Founder's or an admin's powers: nobody acts on them but the Founder. */
+	topOver(by, n) {
+		return this.isFounder(by) || (this.isAdmin(by) && !this.isFounder(n) && (n === by || !this.isAdmin(n)));
+	}
+	/** Whether `by`, leading branch b, outranks member n in it (n holds it, below `by`). */
+	leaderOver(by, n, b) {
+		const t = this.tierIn(n, b);
+		return !this.isTop(n) && t > 0 && t < this.tierIn(by, b) && this.leads(by, b);
+	}
+	/** Whether `by` stands over member n: orders go down to them, and `by` sees the answers to n's orders. */
+	commands(by, n) {
+		const m = this.members[n];
+		return !!m && by !== n && (this.topOver(by, n) || m.places.some((p) => this.leaderOver(by, n, p.b)));
+	}
+	/** Whether member n has no place yet (no branch and not a Monsignor) and `by` may place them. */
+	placesNew(by, n) {
+		const m = this.members[n];
+		return !!m && !m.places.length && !m.mon && !this.isTop(n) && this.leadsAny(by);
+	}
+	/**
+	 * Whether `by` may give member n rank t (1-5) in branch b: the Founder and admins any; a leader of b only a rank
+	 * below their own, to someone below them in b or new to it.
+	 */
+	mayPlace(by, n, b, t) {
+		if (this.topOver(by, n)) {
 			return true;
 		}
-		const r = this.ranks.find((x) => x.id === m.rank);
-		return !!r && r.perms.includes(perm);
+		const m = this.members[n];
+		const mine = this.tierIn(by, b);
+		if (!this.leads(by, b) || this.isTop(n) || t >= mine) {
+			return false;
+		}
+		if (this.tierIn(n, b) > 0) {
+			return this.leaderOver(by, n, b);
+		}
+		// Adding a branch: only to someone the leader stands over in every branch they hold, or who has no place yet.
+		return m.places.length ? m.places.every((p) => this.leaderOver(by, n, p.b)) : this.placesNew(by, n);
 	}
-	/** Whether `by` stands strictly above member `n`. */
-	above(by, n) {
-		return this.power(by) < this.power(n);
+	/** Whether `by` may take member n out of the Order: leaders only those under them in every branch they hold. */
+	mayRemove(by, n) {
+		const m = this.members[n];
+		if (!m || by === n) {
+			return false;
+		}
+		if (this.topOver(by, n)) {
+			return true;
+		}
+		return !m.mon && (this.placesNew(by, n) || (m.places.length > 0 && m.places.every((p) => this.leaderOver(by, n, p.b))));
 	}
-	/** Whether `by` may give rank `id`: one strictly below their own (the founder gives any). */
-	mayGive(by, id) {
-		const i = this.ranks.findIndex((r) => r.id === id);
-		return i >= 0 && i > this.power(by);
+	/** Whether `by` may make member n a reset or join code: someone over them. */
+	mayReset(by, n) {
+		return this.commands(by, n) || this.placesNew(by, n);
 	}
-	/** The lowest rank, which new members get unless the approver picks another. */
-	get lowest() {
-		return this.ranks[this.ranks.length - 1];
+	/** Whether member n may post orders: the Founder, admins and branch leaders. */
+	mayOrder(n) {
+		return this.isTop(n) || this.leadsAny(n);
+	}
+	/** What member n may do, for their client. */
+	powersOf(n) {
+		return {
+			founder: this.isFounder(n),
+			admin: this.isAdmin(n),
+			appAdmin: n === this.appAdmin,
+			top: this.isTop(n),
+			leads: this.structure.branches.filter((b) => this.leads(n, b.id)).map((b) => b.id),
+		};
+	}
+	branch(id) {
+		return this.structure.branches.find((b) => b.id === id) || null;
+	}
+	/** A member's rank name in a place, in their form ("Pyromancer", "High Priestess"). */
+	rankName(p, m) {
+		const b = this.branch(p.b);
+		if (!b) {
+			return '';
+		}
+		const ch = b.chapters.find((c) => c.id === p.c);
+		const tier = (ch && ch.tiers[p.t - 1]) || b.tiers[p.t - 1];
+		const word = (tier[m.form] || tier.n).replace('*', m.el || '');
+		return word.charAt(0).toUpperCase() + word.slice(1);
+	}
+	/** "Paladin - Knight" for the log. */
+	placeName(p, m) {
+		const b = this.branch(p.b);
+		return b ? `${b.name} - ${this.rankName(p, m)}` : '';
 	}
 
 	// ---- Saving
@@ -287,14 +579,7 @@ export class Order extends DurableObject {
 			await this.ctx.storage.delete([`m:${n}`, `pic:${n}`]);
 		}
 	}
-	async putApp(n) {
-		if (this.apps[n]) {
-			await this.ctx.storage.put(`a:${n}`, this.apps[n]);
-		} else {
-			await this.ctx.storage.delete(`a:${n}`);
-		}
-	}
-	/** Adds a line to the log (kept for those who manage). */
+	/** Adds a line to the log (kept for the Founder and admins). */
 	async note(by, text) {
 		this.log.push({ at: Date.now(), by, text });
 		if (this.log.length > LIMITS.log) {
@@ -304,13 +589,17 @@ export class Order extends DurableObject {
 	}
 	/** A member's name for the log. */
 	nameOf(n) {
-		const m = this.members[n] || this.apps[n];
+		const m = this.members[n];
 		return m ? `${m.name} (${n})` : `#${n}`;
+	}
+	/** A new member record. */
+	newMember(n, name, pub, extra = {}) {
+		return { n, name, pub, joined: Date.now(), bio: '', form: 'n', el: '', places: [], mon: false, ...extra };
 	}
 
 	/**
-	 * A reset code for a member, made by the operator (see the Worker's fetch): for the founder, who has nobody
-	 * above them to make one.
+	 * A reset code for a member, made by the operator (see the Worker's fetch): for the Founder, who has nobody over
+	 * them to make one.
 	 * @returns {Promise<Response>}
 	 */
 	async opReset(member) {
@@ -347,7 +636,7 @@ export class Order extends DurableObject {
 		const [client, server] = Object.values(new WebSocketPair());
 		this.ctx.acceptWebSocket(server);
 		const nonce = b64url(crypto.getRandomValues(new Uint8Array(18)));
-		server.serializeAttachment({ nonce, member: 0, pub: null, hits: [], room: '', ip, at: now });
+		server.serializeAttachment({ nonce, member: 0, name: '', pub: null, hits: [], room: '', ip, at: now });
 		server.send(JSON.stringify({ t: 'hello', nonce }));
 		return new Response(null, { status: 101, webSocket: client });
 	}
@@ -385,22 +674,18 @@ export class Order extends DurableObject {
 	}
 
 	/**
-	 * What a connection is to the Order: 'member', 'applied' (an application with this key is waiting), 'invited' (brought
-	 * in, waiting for their join code), 'mismatch' (the number is a member or applicant with another key) or 'guest'.
+	 * What a connection is to the Order: 'member', 'invited' (brought in, waiting for their join code), 'mismatch'
+	 * (the number is a member with another key) or 'guest'.
 	 */
 	statusOf(a) {
 		const m = this.members[a.member];
-		if (m && !m.pub) {
+		if (!m) {
+			return 'guest';
+		}
+		if (!m.pub) {
 			return 'invited';
 		}
-		if (m) {
-			return samePub(m.pub, a.pub) ? 'member' : 'mismatch';
-		}
-		const app = this.apps[a.member];
-		if (app) {
-			return samePub(app.pub, a.pub) ? 'applied' : 'mismatch';
-		}
-		return 'guest';
+		return samePub(m.pub, a.pub) ? 'member' : 'mismatch';
 	}
 
 	/** Who is online: member number -> the room they show (or ''). */
@@ -415,31 +700,27 @@ export class Order extends DurableObject {
 		return on;
 	}
 
-	/** A member as others see them in the list (no picture: cards carry that). */
+	/** A member as others see them in the list (no picture or bio: cards carry those). */
 	listed(m, on) {
 		return {
 			n: m.n,
 			name: m.name,
-			rank: m.rank,
-			title: m.title || '',
 			joined: m.joined,
+			form: m.form,
+			el: m.el,
+			places: m.places,
+			...(m.mon ? { mon: 1 } : {}),
+			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
 			...(m.n in on ? { on: 1, room: on[m.n] } : {}),
 		};
 	}
 
-	/** The state one connection sees: everything for members, the about page and the heads for everyone else. */
+	/** The state one connection sees: everything for members; the about page and who leads for everyone else. */
 	stateFor(a, on = this.online()) {
 		const status = this.statusOf(a);
 		const meta = this.meta
-			? {
-					name: this.meta.name,
-					about: this.meta.about,
-					questions: this.meta.questions,
-					open: this.meta.open,
-					founded: this.meta.founded,
-					founder: this.meta.founder,
-				}
+			? { name: this.meta.name, about: this.meta.about, open: this.meta.open, founded: this.meta.founded, founder: this.meta.founder }
 			: null;
 		/** @type {Record<string, any>} */
 		const s = {
@@ -447,30 +728,23 @@ export class Order extends DurableObject {
 			status,
 			member: a.member,
 			meta,
-			ranks: this.ranks,
-			ranksV: this.ranksV,
-			canFound: !this.meta && a.member === this.founderNumber,
+			structure: this.structure,
+			structureV: this.structureV,
+			appAdmin: this.appAdmin,
+			canFound: !this.meta && a.member === this.appAdmin,
 		};
 		const all = Object.values(this.members);
 		if (status === 'member') {
 			const me = this.members[a.member];
-			s.me = { ...this.listed(me, on), bio: me.bio || '', power: this.power(a.member), perms: PERMS.filter((p) => this.may(a.member, p)) };
+			s.me = { ...this.listed(me, on), bio: me.bio, powers: this.powersOf(a.member) };
 			s.members = all.map((m) => this.listed(m, on));
-			if (this.may(a.member, 'approve')) {
-				s.apps = Object.values(this.apps).map((x) => ({ n: x.n, name: x.name, answers: x.answers, at: x.at }));
-			}
-			if (this.may(a.member, 'manage')) {
+			if (this.isTop(a.member)) {
 				s.log = this.log.slice(-50);
 			}
 		} else {
-			// Guests see who leads: the founder and the top rank.
-			const top = this.ranks[0] && this.ranks[0].id;
-			s.members = all.filter((m) => this.meta && (m.n === this.meta.founder || m.rank === top)).map((m) => this.listed(m, {}));
+			// Everyone else sees who leads: the Founder, the Monsignors and the branch leaders.
+			s.members = all.filter((m) => this.isFounder(m.n) || m.mon || m.places.some((p) => p.t >= LEADS_FROM)).map((m) => this.listed(m, {}));
 			s.count = all.length;
-			if (status === 'applied') {
-				const app = this.apps[a.member];
-				s.app = { answers: app.answers, at: app.at };
-			}
 		}
 		return s;
 	}
@@ -484,16 +758,48 @@ export class Order extends DurableObject {
 	}
 
 	// ---- Orders
-	/** Whether member `n` is one an order goes to: everyone below its author, or the ranks and members it names. */
+	/**
+	 * Whether member n is in an order's group: 'priest' (the branch), 'priest/3' (one rank of it), 'priest:vox-nihil'
+	 * (a chapter), 'monsignor' or 'unplaced'.
+	 */
+	inGroup(g, n) {
+		const m = this.members[n];
+		if (g === 'monsignor') {
+			return m.mon;
+		}
+		if (g === 'unplaced') {
+			return !m.places.length && !m.mon;
+		}
+		const [, b, sep, rest] = /^([a-z0-9-]+)(?:([/:])([a-z0-9-]+))?$/.exec(g) || [];
+		const p = m.places.find((x) => x.b === b);
+		return !!p && (!sep || (sep === '/' ? p.t === Number(rest) : p.c === rest));
+	}
+	/** Whether `by` may send an order to group g: the Founder and admins to any, leaders only inside their branch. */
+	mayAddress(by, g) {
+		const [, b, sep, rest] = /^([a-z0-9-]+)(?:([/:])([a-z0-9-]+))?$/.exec(g) || [];
+		const br = this.branch(b);
+		const valid =
+			g === 'monsignor' ||
+			g === 'unplaced' ||
+			(!!br && (!sep || (sep === '/' ? Number(rest) >= 1 && Number(rest) <= TIERS : br.chapters.some((c) => c.id === rest))));
+		if (!valid) {
+			return false;
+		}
+		if (this.isTop(by)) {
+			return true;
+		}
+		return !!br && this.leads(by, b) && (sep !== '/' || Number(rest) < this.tierIn(by, b));
+	}
+	/** Whether member n is one an order goes to: under its author, and everyone, or in a group or named. */
 	isFor(o, n) {
 		const m = this.members[n];
 		if (!m || n === o.by) {
 			return false;
 		}
-		const below = this.members[o.by] ? this.above(o.by, n) : true;
-		return (o.to.all === true && below) || (o.to.ranks || []).includes(m.rank) || (o.to.members || []).includes(n);
+		const under = this.members[o.by] ? this.commands(o.by, n) : true;
+		return under && (o.to.all === true || (o.to.groups || []).some((g) => this.inGroup(g, n)) || (o.to.members || []).includes(n));
 	}
-	/** Sends every member connection the orders it sees now (after the ranks change who sees what). */
+	/** Sends every member connection the orders it sees now (after a change to who stands where). */
 	pushAllOrders() {
 		for (const { ws, a } of this.sockets()) {
 			if (this.statusOf(a) === 'member') {
@@ -501,15 +807,15 @@ export class Order extends DurableObject {
 			}
 		}
 	}
-	/** Whether member `n` oversees an order: they stand above its author (or manage, once its author is gone). */
+	/** Whether member n oversees an order: they stand over its author (or are the Founder or an admin, once it is gone). */
 	oversees(o, n) {
-		return this.members[o.by] ? this.above(n, o.by) : this.may(n, 'manage');
+		return this.members[o.by] ? this.commands(n, o.by) : this.isTop(n);
 	}
-	/** Whether member `n` sees an order: it goes to them, they wrote it, or they oversee it. */
+	/** Whether member n sees an order: it goes to them, they wrote it, or they oversee it. */
 	sees(o, n) {
 		return !!this.members[n] && (o.by === n || this.isFor(o, n) || this.oversees(o, n));
 	}
-	/** An order as member `n` sees it: everyone's answers only for its author and those who oversee it. */
+	/** An order as member n sees it: everyone's answers only for its author and those who oversee it. */
 	orderFor(o, n) {
 		const full = o.by === n || this.oversees(o, n);
 		const { acks, ...rest } = o;
@@ -523,7 +829,7 @@ export class Order extends DurableObject {
 			}
 		}
 	}
-	/** The orders member `n` sees, newest first. */
+	/** The orders member n sees, newest first. */
 	ordersOf(n) {
 		return [...this.orders.values()]
 			.filter((o) => this.sees(o, n))
@@ -532,16 +838,16 @@ export class Order extends DurableObject {
 	}
 
 	/**
-	 * A client message (JSON with `t`). Before sign-in only 'auth'. Members: 'profile', 'card', 'orders', 'ack',
-	 * 'room', 'leave', and with rights 'approve', 'reject', 'rank', 'title', 'kick', 'reset', 'about', 'ranks',
-	 * 'order', 'unorder', 'founder'. Guests: 'card', 'apply', 'withdraw', 'room', and 'found' for the founder.
-	 * A request may carry a number `rid`, sent back with its 'ok' or 'error'.
+	 * A client message (JSON with `t`). Before sign-in only 'auth'. Anyone signed in: 'card', 'room', 'roll',
+	 * 'getroll'. Guests: 'join', and 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave', and with
+	 * the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add', 'about', 'structure',
+	 * 'order', 'unorder', 'founder'. A request may carry a number `rid`, sent back with its 'ok' or 'error'.
 	 */
 	async webSocketMessage(ws, raw) {
 		const a = ws.deserializeAttachment();
 		let p = {};
 		try {
-			if (typeof raw !== 'string' || raw.length > 20000) {
+			if (typeof raw !== 'string' || raw.length > 30000) {
 				return this.fail(ws, 'too big');
 			}
 			const now = Date.now();
@@ -564,21 +870,22 @@ export class Order extends DurableObject {
 			}
 			const status = this.statusOf(a);
 			const me = a.member;
-			// Anyone signed in.
 			switch (p.t) {
 				case 'card':
-					return this.card(ws, p);
+					return await this.card(ws, p);
 				case 'room':
 					return this.setRoom(ws, a, p);
+				case 'roll':
+					return await this.roll(ws, a, p);
+				case 'getroll':
+					return this.getRoll(ws, p);
 			}
 			if (status !== 'member') {
 				switch (p.t) {
 					case 'found':
 						return await this.found(ws, a, p);
-					case 'apply':
-						return await this.apply(ws, a, p);
-					case 'withdraw':
-						return await this.withdraw(ws, a, p);
+					case 'join':
+						return await this.join(ws, a, p);
 					default:
 						return this.no(ws, status === 'mismatch' ? 'signed in with another key' : 'not a member', p);
 				}
@@ -592,14 +899,14 @@ export class Order extends DurableObject {
 					return await this.ack(ws, me, p);
 				case 'leave':
 					return await this.leave(ws, me, p);
-				case 'approve':
-					return await this.approve(ws, me, p);
-				case 'reject':
-					return await this.reject(ws, me, p);
-				case 'rank':
-					return await this.setRank(ws, me, p);
-				case 'title':
-					return await this.setTitle(ws, me, p);
+				case 'place':
+					return await this.place(ws, me, p);
+				case 'unplace':
+					return await this.unplace(ws, me, p);
+				case 'monsignor':
+					return await this.setMonsignor(ws, me, p);
+				case 'admin':
+					return await this.setAdmin(ws, me, p);
 				case 'kick':
 					return await this.kick(ws, me, p);
 				case 'reset':
@@ -608,8 +915,8 @@ export class Order extends DurableObject {
 					return await this.addMembers(ws, me, p);
 				case 'about':
 					return await this.setAbout(ws, me, p);
-				case 'ranks':
-					return await this.setRanks(ws, me, p);
+				case 'structure':
+					return await this.setStructure(ws, me, p);
 				case 'order':
 					return await this.addOrder(ws, me, p);
 				case 'unorder':
@@ -648,7 +955,7 @@ export class Order extends DurableObject {
 		}
 	}
 
-	/** Sign-in: checks the signature, takes a reset code if one is sent, and answers with the state. */
+	/** Sign-in: checks the signature, takes a reset or join code if one is sent, and answers with the state. */
 	async auth(ws, a, p) {
 		const member = p.member;
 		if (!isNum(member) || !p.pub || !B64URL.test(p.pub.x || '') || !B64URL.test(p.pub.y || '') || !B64URL.test(p.sig || '')) {
@@ -658,7 +965,9 @@ export class Order extends DurableObject {
 		if (!(await verify(pub, p.sig, `${a.nonce}|void|${member}`))) {
 			return this.fail(ws, 'bad signature');
 		}
+		const name = clean(p.name, LIMITS.name);
 		a.member = member;
+		a.name = name || `#${member}`;
 		a.pub = pub;
 		a.room = clean(p.room, LIMITS.room);
 		ws.serializeAttachment(a);
@@ -675,7 +984,6 @@ export class Order extends DurableObject {
 			);
 			changed = true;
 		}
-		const name = clean(p.name, LIMITS.name);
 		if (m && samePub(m.pub, pub) && name && name !== m.name) {
 			m.name = name;
 			changed = true;
@@ -694,15 +1002,15 @@ export class Order extends DurableObject {
 	}
 
 	/**
-	 * Founds the Order: only env.FOUNDER with the FOUND_CODE secret, once. Two ranks to start with, renamed and added
-	 * to in the app.
+	 * Founds the Order: only the app admin with the FOUND_CODE secret, once. They are its Founder until they hand that
+	 * over (to the Order's real founder, once she has joined).
 	 */
 	async found(ws, a, p) {
 		if (this.meta) {
 			return this.no(ws, 'already founded', p);
 		}
-		if (a.member !== this.founderNumber) {
-			return this.no(ws, 'only the founder can found the Order', p);
+		if (a.member !== this.appAdmin) {
+			return this.no(ws, 'only the app admin can found the Order', p);
 		}
 		// Trimmed both sides: a secret set from the command line can carry a line break.
 		const code = typeof this.env.FOUND_CODE === 'string' ? this.env.FOUND_CODE.trim() : '';
@@ -712,42 +1020,24 @@ export class Order extends DurableObject {
 		this.meta = {
 			name: clean(p.name, LIMITS.name) || 'The Void Order',
 			about: clean(p.about, LIMITS.about),
-			questions: [],
 			open: true,
 			founded: Date.now(),
 			founder: a.member,
+			admins: [],
 		};
-		this.ranks = [
-			{ id: newRankId(), name: 'Head', sym: '', color: '#b48cff', perms: [...PERMS] },
-			{ id: newRankId(), name: 'Member', sym: '', color: '#8f86b8', perms: [] },
-		];
-		this.members[a.member] = {
-			n: a.member,
-			name: clean(p.myName, LIMITS.name) || `#${a.member}`,
-			pub: a.pub,
-			rank: this.ranks[0].id,
-			title: '',
-			bio: '',
-			joined: Date.now(),
-		};
-		delete this.apps[a.member];
-		this.ranksV++;
-		await this.ctx.storage.put({ meta: this.meta, ranks: this.ranks, ranksV: this.ranksV });
+		this.members[a.member] = this.newMember(a.member, clean(p.myName, LIMITS.name) || a.name, a.pub);
+		await this.ctx.storage.put({ meta: this.meta, structure: this.structure, structureV: this.structureV });
 		await this.putMember(a.member);
-		await this.putApp(a.member);
 		await this.note(a.member, `${this.nameOf(a.member)} founded ${this.meta.name}`);
 		this.ok(ws, p);
 		this.broadcast();
 		this.send(ws, { t: 'orders', orders: [] });
 	}
 
-	/** An application: the answers to the joining questions, bound to the key it is sent with. */
-	async apply(ws, a, p) {
+	/** Joins the Order at once, with no place yet: a leader or admin places them. At most a few per address an hour. */
+	async join(ws, a, p) {
 		if (!this.meta) {
 			return this.no(ws, 'the Order is not founded yet', p);
-		}
-		if (!this.meta.open) {
-			return this.no(ws, 'applications are closed', p);
 		}
 		const status = this.statusOf(a);
 		if (status === 'mismatch') {
@@ -756,139 +1046,157 @@ export class Order extends DurableObject {
 		if (status === 'invited') {
 			return this.no(ws, 'you are already in the Order: enter the join code you were sent', p);
 		}
-		if (status === 'guest') {
-			if (Object.keys(this.apps).length >= LIMITS.apps) {
-				return this.no(ws, 'too many applications are waiting, try again later', p);
-			}
-			// New applications per address in the last hour, kept in storage (the object sleeps between visitors).
-			const now = Date.now();
-			const applied = (await this.ctx.storage.get('applied')) || {};
-			for (const [ip, times] of Object.entries(applied)) {
-				applied[ip] = times.filter((t) => now - t < 36e5);
-				if (!applied[ip].length) {
-					delete applied[ip];
-				}
-			}
-			const mine = applied[a.ip] || [];
-			if (mine.length >= LIMITS.appsPerIp) {
-				return this.no(ws, 'too many applications from here, try again in an hour', p);
-			}
-			applied[a.ip] = [...mine, now];
-			await this.ctx.storage.put('applied', applied);
+		if (!this.meta.open) {
+			return this.no(ws, 'joining is closed right now', p);
 		}
 		if (Object.keys(this.members).length >= LIMITS.members) {
 			return this.no(ws, 'the Order is full', p);
 		}
-		const answers = Array.isArray(p.answers) ? p.answers.slice(0, LIMITS.questions).map((x) => clean(x, LIMITS.answer)) : [];
-		this.apps[a.member] = { n: a.member, name: clean(p.name, LIMITS.name) || `#${a.member}`, pub: a.pub, answers, at: Date.now() };
-		await this.putApp(a.member);
-		this.ok(ws, p);
-		this.broadcast();
-	}
-	async withdraw(ws, a, p) {
-		if (this.statusOf(a) !== 'applied') {
-			return this.no(ws, 'no application', p);
-		}
-		delete this.apps[a.member];
-		await this.putApp(a.member);
-		this.ok(ws, p);
-		this.broadcast();
-	}
-
-	/** Approves an application: the applicant joins with the rank picked (one below the approver), else the lowest. */
-	async approve(ws, me, p) {
-		if (!this.may(me, 'approve')) {
-			return this.no(ws, 'not allowed', p);
-		}
-		const app = this.apps[p.member];
-		if (!app) {
-			return this.no(ws, 'no such application', p);
-		}
-		if (Object.keys(this.members).length >= LIMITS.members) {
-			return this.no(ws, 'the Order is full', p);
-		}
-		const rank = p.rank || this.lowest.id;
-		if (!this.mayGive(me, rank)) {
-			return this.no(ws, 'you can only give ranks below your own', p);
-		}
-		this.members[app.n] = { n: app.n, name: app.name, pub: app.pub, rank, title: '', bio: '', joined: Date.now() };
-		delete this.apps[app.n];
-		await this.putMember(app.n);
-		await this.putApp(app.n);
-		await this.note(me, `${this.nameOf(me)} let ${this.nameOf(app.n)} in`);
-		this.ok(ws, p);
-		this.broadcast();
-		for (const { ws: w, a } of this.sockets()) {
-			if (a.member === app.n) {
-				this.send(w, { t: 'orders', orders: this.ordersOf(app.n) });
+		// Joins per address in the last hour, kept in storage (the object sleeps between visitors).
+		const now = Date.now();
+		const joins = (await this.ctx.storage.get('joins')) || {};
+		for (const [ip, times] of Object.entries(joins)) {
+			joins[ip] = times.filter((t) => now - t < 36e5);
+			if (!joins[ip].length) {
+				delete joins[ip];
 			}
 		}
-	}
-	async reject(ws, me, p) {
-		if (!this.may(me, 'approve')) {
-			return this.no(ws, 'not allowed', p);
+		const mine = joins[a.ip] || [];
+		if (mine.length >= LIMITS.joinsPerIp) {
+			return this.no(ws, 'too many joined from here, try again in an hour', p);
 		}
-		const app = this.apps[p.member];
-		if (!app) {
-			return this.no(ws, 'no such application', p);
-		}
-		await this.note(me, `${this.nameOf(me)} turned down ${this.nameOf(app.n)}`);
-		delete this.apps[app.n];
-		await this.putApp(app.n);
+		joins[a.ip] = [...mine, now];
+		await this.ctx.storage.put('joins', joins);
+		this.members[a.member] = this.newMember(a.member, clean(p.name, LIMITS.name) || a.name, a.pub);
+		await this.putMember(a.member);
+		await this.note(a.member, `${this.nameOf(a.member)} joined`);
 		this.ok(ws, p);
 		this.broadcast();
+		this.send(ws, { t: 'orders', orders: this.ordersOf(a.member) });
 	}
 
-	/** Checks that `me` manages and stands above member p.member; answers the error otherwise. */
-	managed(ws, me, p) {
-		if (!this.may(me, 'manage')) {
-			this.no(ws, 'not allowed', p);
-			return null;
-		}
-		const m = this.members[p.member];
+	/** The member p.member, answering the error if there is none. */
+	target(ws, p) {
+		const m = isNum(p.member) ? this.members[p.member] : null;
 		if (!m) {
 			this.no(ws, 'no such member', p);
-			return null;
-		}
-		if (!this.above(me, m.n)) {
-			this.no(ws, 'they are not below you', p);
-			return null;
 		}
 		return m;
 	}
-	async setRank(ws, me, p) {
-		const m = this.managed(ws, me, p);
+	/**
+	 * Places a member in a branch, or moves them in it: { member, branch, tier, chapter }. A new branch is added as
+	 * their second (a hybrid) if they have one already. Chapters only from rank 2.
+	 */
+	async place(ws, me, p) {
+		const m = this.target(ws, p);
 		if (!m) {
 			return;
 		}
-		if (!this.mayGive(me, p.rank)) {
-			return this.no(ws, 'you can only give ranks below your own', p);
+		const b = this.branch(p.branch);
+		const t = Number(p.tier);
+		if (!b || !Number.isInteger(t) || t < 1 || t > TIERS) {
+			return this.no(ws, 'pick a branch and a rank', p);
 		}
-		m.rank = p.rank;
+		const c = typeof p.chapter === 'string' ? p.chapter : '';
+		if (c && !b.chapters.some((x) => x.id === c)) {
+			return this.no(ws, 'no such chapter', p);
+		}
+		if (c && t < CHAPTER_FROM) {
+			return this.no(ws, `chapters are open from rank ${CHAPTER_FROM}`, p);
+		}
+		const held = m.places.find((x) => x.b === b.id);
+		if (!held && m.places.length >= PLACES) {
+			return this.no(ws, `a member holds at most ${PLACES} branches`, p);
+		}
+		if (!this.mayPlace(me, m.n, b.id, t)) {
+			return this.no(ws, 'you can only place members below your own rank in a branch you lead', p);
+		}
+		if (held) {
+			held.t = t;
+			held.c = c;
+		} else {
+			m.places.push({ b: b.id, t, c });
+		}
 		await this.putMember(m.n);
-		await this.note(me, `${this.nameOf(me)} made ${this.nameOf(m.n)} ${this.ranks.find((r) => r.id === p.rank).name}`);
+		await this.note(me, `${this.nameOf(me)} placed ${this.nameOf(m.n)}: ${this.placeName({ b: b.id, t, c }, m)}`);
 		this.ok(ws, p);
 		this.broadcast();
 		this.pushAllOrders();
 	}
-	async setTitle(ws, me, p) {
-		const m = this.managed(ws, me, p);
+	/** Takes a member out of one branch: { member, branch }. */
+	async unplace(ws, me, p) {
+		const m = this.target(ws, p);
 		if (!m) {
 			return;
 		}
-		m.title = clean(p.title, LIMITS.title);
+		if (!m.places.some((x) => x.b === p.branch)) {
+			return this.no(ws, 'they are not in that branch', p);
+		}
+		if (!this.topOver(me, m.n) && !this.leaderOver(me, m.n, p.branch)) {
+			return this.no(ws, 'you can only move members below your own rank in a branch you lead', p);
+		}
+		m.places = m.places.filter((x) => x.b !== p.branch);
 		await this.putMember(m.n);
-		await this.note(me, `${this.nameOf(me)} gave ${this.nameOf(m.n)} the title "${m.title}"`);
+		await this.note(me, `${this.nameOf(me)} took ${this.nameOf(m.n)} out of ${this.branch(p.branch).name}`);
 		this.ok(ws, p);
 		this.broadcast();
+		this.pushAllOrders();
 	}
-	async kick(ws, me, p) {
-		const m = this.managed(ws, me, p);
+	/** Makes a member a Monsignor, or not: { member, on }. The Founder and admins only. */
+	async setMonsignor(ws, me, p) {
+		const m = this.target(ws, p);
 		if (!m) {
 			return;
+		}
+		if (!this.topOver(me, m.n)) {
+			return this.no(ws, 'not allowed', p);
+		}
+		m.mon = p.on === true;
+		await this.putMember(m.n);
+		const what = m.mon
+			? `made ${this.nameOf(m.n)} a ${this.structure.monsignor.name}`
+			: `took ${this.nameOf(m.n)}'s ${this.structure.monsignor.name} rank away`;
+		await this.note(me, `${this.nameOf(me)} ${what}`);
+		this.ok(ws, p);
+		this.broadcast();
+		this.pushAllOrders();
+	}
+	/** Names an app admin, or takes it back: { member, on }. The Founder and the app admin only. */
+	async setAdmin(ws, me, p) {
+		const m = this.target(ws, p);
+		if (!m) {
+			return;
+		}
+		if (!this.isFounder(me) && me !== this.appAdmin) {
+			return this.no(ws, 'only the Founder names admins', p);
+		}
+		if (m.n === this.appAdmin || this.isFounder(m.n)) {
+			return this.no(ws, 'they have every power already', p);
+		}
+		if (!m.pub) {
+			return this.no(ws, "they haven't joined with their join code yet", p);
+		}
+		const admins = this.meta.admins.filter((n) => n !== m.n);
+		this.meta.admins = p.on === true ? [...admins, m.n] : admins;
+		await this.ctx.storage.put('meta', this.meta);
+		const what = p.on === true ? `made ${this.nameOf(m.n)} an admin` : `took ${this.nameOf(m.n)}'s admin powers away`;
+		await this.note(me, `${this.nameOf(me)} ${what}`);
+		this.ok(ws, p);
+		this.broadcast();
+		this.pushAllOrders();
+	}
+	async kick(ws, me, p) {
+		const m = this.target(ws, p);
+		if (!m) {
+			return;
+		}
+		if (!this.mayRemove(me, m.n)) {
+			return this.no(ws, 'you can only remove members below you in every branch they hold', p);
 		}
 		await this.note(me, `${this.nameOf(me)} removed ${this.nameOf(m.n)}`);
 		delete this.members[m.n];
+		this.meta.admins = this.meta.admins.filter((n) => n !== m.n);
+		await this.ctx.storage.put('meta', this.meta);
 		await this.putMember(m.n);
 		this.ok(ws, p);
 		this.broadcast();
@@ -898,9 +1206,12 @@ export class Order extends DurableObject {
 	 * they sign in with it from their key.
 	 */
 	async reset(ws, me, p) {
-		const m = this.managed(ws, me, p);
+		const m = this.target(ws, p);
 		if (!m) {
 			return;
+		}
+		if (!this.mayReset(me, m.n)) {
+			return this.no(ws, 'they are not below you', p);
 		}
 		const hours = m.pub ? LIMITS.resetHours : LIMITS.joinDays * 24;
 		m.reset = { code: newCode(), exp: Date.now() + hours * 36e5 };
@@ -909,20 +1220,28 @@ export class Order extends DurableObject {
 		this.ok(ws, p, { code: m.reset.code, hours });
 	}
 	/**
-	 * Brings in members of an Order that existed before the add-on, without applications: their rank (below yours),
-	 * titles and "member since" date now, and each a join code that makes their number theirs when they first sign in
+	 * Brings in members the Order had before the add-on, at a set place: { people: [{ member, name }], branch, tier,
+	 * chapter, mon, since }. Leaders bring people into their branch below their own rank; the Founder and admins also
+	 * with no branch, or as Monsignors. Each gets a join code that makes their number theirs when they first sign in
 	 * with it.
 	 */
 	async addMembers(ws, me, p) {
-		if (!this.may(me, 'manage')) {
-			return this.no(ws, 'not allowed', p);
-		}
 		const list = Array.isArray(p.people) ? p.people : [];
 		if (!list.length || list.length > LIMITS.addAtOnce) {
 			return this.no(ws, `between 1 and ${LIMITS.addAtOnce} people at once`, p);
 		}
-		if (!this.mayGive(me, p.rank)) {
-			return this.no(ws, 'you can only give ranks below your own', p);
+		const top = this.isTop(me);
+		const b = p.branch ? this.branch(p.branch) : null;
+		const t = Number(p.tier);
+		const c = typeof p.chapter === 'string' ? p.chapter : '';
+		if (p.branch && (!b || !Number.isInteger(t) || t < 1 || t > TIERS)) {
+			return this.no(ws, 'pick a branch and a rank', p);
+		}
+		if (c && (!b || !b.chapters.some((x) => x.id === c) || t < CHAPTER_FROM)) {
+			return this.no(ws, `chapters are open from rank ${CHAPTER_FROM}`, p);
+		}
+		if (!top && !(b && this.leads(me, b.id) && t < this.tierIn(me, b.id) && p.mon !== true)) {
+			return this.no(ws, 'you can only bring people in below your own rank in a branch you lead', p);
 		}
 		if (Object.keys(this.members).length + list.length > LIMITS.members) {
 			return this.no(ws, 'the Order would be full', p);
@@ -937,7 +1256,7 @@ export class Order extends DurableObject {
 			if (this.members[n]) {
 				return this.no(ws, `#${n} is already in the Order`, p);
 			}
-			people.push({ n, name, title: clean(x.title, LIMITS.title) });
+			people.push({ n, name });
 		}
 		if (new Set(people.map((x) => x.n)).size !== people.length) {
 			return this.no(ws, 'a member number is listed twice', p);
@@ -947,19 +1266,13 @@ export class Order extends DurableObject {
 		const codes = [];
 		for (const x of people) {
 			const code = newCode();
-			this.members[x.n] = {
-				n: x.n,
-				name: x.name,
-				pub: null,
-				rank: p.rank,
-				title: x.title,
-				bio: '',
+			this.members[x.n] = this.newMember(x.n, x.name, null, {
 				joined,
+				places: b ? [{ b: b.id, t, c }] : [],
+				mon: p.mon === true,
 				reset: { code, exp: Date.now() + LIMITS.joinDays * 864e5 },
-			};
-			delete this.apps[x.n];
+			});
 			await this.putMember(x.n);
-			await this.putApp(x.n);
 			codes.push({ n: x.n, name: x.name, code });
 		}
 		await this.note(me, `${this.nameOf(me)} brought in ${people.map((x) => this.nameOf(x.n)).join(', ')}`);
@@ -967,19 +1280,21 @@ export class Order extends DurableObject {
 		this.broadcast();
 	}
 	async leave(ws, me, p) {
-		if (this.meta.founder === me) {
+		if (this.isFounder(me)) {
 			return this.no(ws, 'hand the Order to someone else first', p);
 		}
 		await this.note(me, `${this.nameOf(me)} left`);
 		delete this.members[me];
+		this.meta.admins = this.meta.admins.filter((n) => n !== me);
+		await this.ctx.storage.put('meta', this.meta);
 		await this.putMember(me);
 		this.ok(ws, p);
 		this.broadcast();
 	}
-	/** Hands the Order to another member: they become the founder, at the top rank; the old founder keeps theirs. */
+	/** Hands the Founder's place to another member who has joined; the old Founder keeps their places. */
 	async setFounder(ws, me, p) {
-		if (this.meta.founder !== me) {
-			return this.no(ws, 'only the founder can do that', p);
+		if (!this.isFounder(me)) {
+			return this.no(ws, 'only the Founder can do that', p);
 		}
 		const m = this.members[p.member];
 		if (!m || m.n === me) {
@@ -989,18 +1304,30 @@ export class Order extends DurableObject {
 			return this.no(ws, "they haven't joined with their join code yet", p);
 		}
 		this.meta.founder = m.n;
-		m.rank = this.ranks[0].id;
+		this.meta.admins = this.meta.admins.filter((n) => n !== m.n);
 		await this.ctx.storage.put('meta', this.meta);
-		await this.putMember(m.n);
-		await this.note(me, `${this.nameOf(me)} handed the Order to ${this.nameOf(m.n)}`);
+		await this.note(me, `${this.nameOf(me)} handed the Founder's place to ${this.nameOf(m.n)}`);
 		this.ok(ws, p);
 		this.broadcast();
 		this.pushAllOrders();
 	}
 
-	/** Your own card: bio and picture ('' removes it). */
+	/** Your own card: bio, picture ('' removes it), the form of your rank names and your element. */
 	async profile(ws, me, p) {
 		const m = this.members[me];
+		if (typeof p.form === 'string') {
+			if (!FORMS.includes(p.form)) {
+				return this.no(ws, 'bad form', p);
+			}
+			m.form = p.form;
+		}
+		if (typeof p.el === 'string') {
+			const el = clean(p.el, LIMITS.element);
+			if (el && !this.structure.branches.some((b) => b.elements.includes(el))) {
+				return this.no(ws, 'no such element', p);
+			}
+			m.el = el;
+		}
 		if (typeof p.bio === 'string') {
 			m.bio = clean(p.bio, LIMITS.bio);
 		}
@@ -1025,7 +1352,6 @@ export class Order extends DurableObject {
 			return this.send(ws, { t: 'card', member: p.member, card: null, ...ridOf(p) });
 		}
 		const pic = (await this.ctx.storage.get(`pic:${m.n}`)) || '';
-		const rank = this.ranks.find((r) => r.id === m.rank) || null;
 		this.send(ws, {
 			t: 'card',
 			member: m.n,
@@ -1033,10 +1359,12 @@ export class Order extends DurableObject {
 			card: {
 				n: m.n,
 				name: m.name,
-				rank,
-				founder: this.meta && this.meta.founder === m.n,
-				title: m.title || '',
-				bio: m.bio || '',
+				form: m.form,
+				el: m.el,
+				places: m.places,
+				mon: m.mon,
+				founder: this.isFounder(m.n),
+				bio: m.bio,
 				joined: m.joined,
 				pic,
 				order: this.meta ? this.meta.name : '',
@@ -1056,9 +1384,9 @@ export class Order extends DurableObject {
 		}
 	}
 
-	/** The about page, the joining questions and whether applications are open. */
+	/** The Order's name, the about page and whether joining is open. The Founder and admins. */
 	async setAbout(ws, me, p) {
-		if (!this.may(me, 'manage')) {
+		if (!this.isTop(me)) {
 			return this.no(ws, 'not allowed', p);
 		}
 		if (typeof p.name === 'string' && clean(p.name, LIMITS.name)) {
@@ -1066,12 +1394,6 @@ export class Order extends DurableObject {
 		}
 		if (typeof p.about === 'string') {
 			this.meta.about = clean(p.about, LIMITS.about);
-		}
-		if (Array.isArray(p.questions)) {
-			this.meta.questions = p.questions
-				.slice(0, LIMITS.questions)
-				.map((q) => clean(q, LIMITS.question))
-				.filter(Boolean);
 		}
 		if (typeof p.open === 'boolean') {
 			this.meta.open = p.open;
@@ -1081,77 +1403,41 @@ export class Order extends DurableObject {
 		this.ok(ws, p);
 		this.broadcast();
 	}
-
 	/**
-	 * The whole rank ladder, top to bottom. Ranks at or above your own must come back unchanged and in place; you
-	 * add, change, move and remove only the ones below (the founder changes all). A rank someone holds can't go.
+	 * The branches' names, symbols, ranks, chapters and elements, the hybrid titles, Monsignor and the motto: { s, v }.
+	 * The Founder and admins. A chapter someone is in can't go.
 	 */
-	async setRanks(ws, me, p) {
-		if (!this.may(me, 'manage')) {
+	async setStructure(ws, me, p) {
+		if (!this.isTop(me)) {
 			return this.no(ws, 'not allowed', p);
 		}
-		if (p.v !== this.ranksV) {
+		if (p.v !== this.structureV) {
 			return this.no(ws, 'someone changed the ranks meanwhile: look at them again and redo your changes', p);
 		}
-		if (!Array.isArray(p.ranks) || p.ranks.length < 1 || p.ranks.length > LIMITS.ranks) {
-			return this.no(ws, `between 1 and ${LIMITS.ranks} ranks`, p);
+		const { s, why } = cleanStructure(p.s, this.structure);
+		if (!s) {
+			return this.no(ws, why, p);
 		}
-		const old = new Map(this.ranks.map((r) => [r.id, r]));
-		/** @type {Rank[]} */
-		const next = [];
-		for (const x of p.ranks) {
-			if (!x || typeof x !== 'object') {
-				return this.no(ws, 'bad rank', p);
-			}
-			const id = typeof x.id === 'string' && old.has(x.id) ? x.id : newRankId();
-			const name = clean(x.name, LIMITS.name);
-			if (!name) {
-				return this.no(ws, 'every rank needs a name', p);
-			}
-			next.push({
-				id,
-				name,
-				sym: clean(x.sym, LIMITS.sym),
-				color: COLOR_RE.test(x.color || '') ? x.color : '#8f86b8',
-				perms: PERMS.filter((q) => Array.isArray(x.perms) && x.perms.includes(q)),
-			});
-		}
-		if (new Set(next.map((r) => r.id)).size !== next.length) {
-			return this.no(ws, 'a rank is listed twice', p);
-		}
-		const mine = this.power(me);
-		if (mine >= 0) {
-			// Not the founder: everything down to your own rank stays exactly as it was.
-			const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-			if (!same(next.slice(0, mine + 1), this.ranks.slice(0, mine + 1))) {
-				return this.no(ws, 'you can only change ranks below your own', p);
+		for (const m of Object.values(this.members)) {
+			const lost = m.places.find((x) => x.c && !s.branches.find((b) => b.id === x.b).chapters.some((c) => c.id === x.c));
+			if (lost) {
+				return this.no(ws, `${m.name} is still in a chapter you removed`, p);
 			}
 		}
-		const kept = new Set(next.map((r) => r.id));
-		const held = Object.values(this.members).find((m) => !kept.has(m.rank));
-		if (held) {
-			return this.no(ws, `${held.name} still holds a rank you removed`, p);
-		}
-		// The founder holds the top rank.
-		if (this.meta.founder && this.members[this.meta.founder] && this.members[this.meta.founder].rank !== next[0].id) {
-			this.members[this.meta.founder].rank = next[0].id;
-			await this.putMember(this.meta.founder);
-		}
-		this.ranks = next;
-		this.ranksV++;
-		await this.ctx.storage.put({ ranks: this.ranks, ranksV: this.ranksV });
+		this.structure = s;
+		this.structureV++;
+		await this.ctx.storage.put({ structure: s, structureV: this.structureV });
 		await this.note(me, `${this.nameOf(me)} changed the ranks`);
 		this.ok(ws, p);
 		this.broadcast();
-		this.pushAllOrders();
 	}
 
 	/**
-	 * A new order, photo session or notice, to everyone below you, or to ranks and members below you. A session has a
-	 * time (`when`) for the reminders.
+	 * A new order, photo session or notice: { kind, title, body, to, when }. `to` is { all: true } (everyone under
+	 * you) or { groups, members }; a session has a time (`when`) for the reminders.
 	 */
 	async addOrder(ws, me, p) {
-		if (!this.may(me, 'order')) {
+		if (!this.mayOrder(me)) {
 			return this.no(ws, 'not allowed', p);
 		}
 		const kind = KINDS.includes(p.kind) ? p.kind : 'order';
@@ -1160,24 +1446,27 @@ export class Order extends DurableObject {
 			return this.no(ws, 'an order needs a title', p);
 		}
 		const to = p.to && typeof p.to === 'object' ? p.to : {};
-		/** @type {{ all?: true, ranks?: string[], members?: number[] }} */
+		/** @type {{ all?: true, groups?: string[], members?: number[] }} */
 		const dest = {};
 		if (to.all === true) {
 			dest.all = true;
 		} else {
-			const ranks = Array.isArray(to.ranks) ? [...new Set(to.ranks)] : [];
+			const groups = Array.isArray(to.groups) ? [...new Set(to.groups)] : [];
 			const members = Array.isArray(to.members) ? [...new Set(to.members)] : [];
-			if (ranks.length > LIMITS.orderTo || members.length > LIMITS.orderTo) {
-				return this.no(ws, `at most ${LIMITS.orderTo} ranks and ${LIMITS.orderTo} members`, p);
+			if (groups.length > LIMITS.orderTo || members.length > LIMITS.orderTo) {
+				return this.no(ws, `at most ${LIMITS.orderTo} groups and ${LIMITS.orderTo} members`, p);
 			}
-			if (!ranks.every((id) => this.mayGive(me, id)) || !members.every((n) => isNum(n) && this.members[n] && this.above(me, n))) {
-				return this.no(ws, 'orders only go to ranks and members below you', p);
+			if (
+				!groups.every((g) => typeof g === 'string' && this.mayAddress(me, g)) ||
+				!members.every((n) => isNum(n) && this.commands(me, n))
+			) {
+				return this.no(ws, 'orders only go to members below you', p);
 			}
-			if (!ranks.length && !members.length) {
+			if (!groups.length && !members.length) {
 				return this.no(ws, 'pick who it is for', p);
 			}
-			if (ranks.length) {
-				dest.ranks = ranks;
+			if (groups.length) {
+				dest.groups = groups;
 			}
 			if (members.length) {
 				dest.members = members;
@@ -1227,13 +1516,13 @@ export class Order extends DurableObject {
 		this.ok(ws, p);
 		this.pushOrder(o);
 	}
-	/** Takes an order down: its author, or someone who oversees it and may post orders. */
+	/** Takes an order down: its author, or someone who oversees it. */
 	async unorder(ws, me, p) {
 		const o = this.orders.get(p.id);
 		if (!o) {
 			return this.no(ws, 'no such order', p);
 		}
-		if (o.by !== me && !(this.may(me, 'order') && this.oversees(o, me))) {
+		if (o.by !== me && !this.oversees(o, me)) {
 			return this.no(ws, 'not allowed', p);
 		}
 		const seen = this.sockets().filter(({ a }) => this.statusOf(a) === 'member' && this.sees(o, a.member));
@@ -1243,5 +1532,68 @@ export class Order extends DurableObject {
 		for (const { ws: w } of seen) {
 			this.send(w, { t: 'unorder', id: o.id });
 		}
+	}
+
+	// ---- Dice
+	/**
+	 * Rolls dice for anyone signed in: { dice: [sides…], mod }. The server rolls, so nobody can fake a result; the roll
+	 * is kept LIMITS.rollMinutes under an id that others in the room look it up by. Members get LIMITS.rollsPerMinute
+	 * rolls a minute; anyone else is counted by number and key, so they can't use up a member's rolls.
+	 */
+	async roll(ws, a, p) {
+		const dice = Array.isArray(p.dice) ? p.dice : [];
+		if (!dice.length || dice.length > LIMITS.dice || !dice.every((s) => DICE.includes(s))) {
+			return this.no(ws, `roll 1 to ${LIMITS.dice} dice: d${DICE.join(', d')}`, p);
+		}
+		const mod = p.mod === undefined ? 0 : Number(p.mod);
+		if (!Number.isInteger(mod) || Math.abs(mod) > LIMITS.mod) {
+			return this.no(ws, `the modifier goes from -${LIMITS.mod} to +${LIMITS.mod}`, p);
+		}
+		const now = Date.now();
+		const gone = [...this.rolls.values()].filter((r, i, all) => now - r.at > LIMITS.rollMinutes * 60000 || all.length - i >= LIMITS.rolls);
+		if (gone.length) {
+			for (const r of gone) {
+				this.rolls.delete(r.id);
+			}
+			await this.ctx.storage.delete(gone.map((r) => `r:${r.id}`));
+		}
+		const who = this.statusOf(a) === 'member' ? `m${a.member}` : `g${a.member}:${a.pub.x}`;
+		const recent = [...this.rolls.values()].filter((r) => r.who === who && now - r.at < 60000).length;
+		if (recent >= LIMITS.rollsPerMinute) {
+			return this.no(ws, 'too many rolls, wait a moment', p);
+		}
+		const faces = dice.map((s) => ({ s, v: randInt(s) }));
+		const r = {
+			id: newId(12),
+			who,
+			by: a.member,
+			name: a.name,
+			dice: faces,
+			mod,
+			total: faces.reduce((sum, d) => sum + d.v, mod),
+			at: now,
+		};
+		this.rolls.set(r.id, r);
+		await this.ctx.storage.put(`r:${r.id}`, r);
+		this.ok(ws, p, { roll: this.rollOut(r) });
+	}
+	/**
+	 * A roll by its id, for anyone signed in: { roll, age, later }. `age` (ms) and `later` (rolls the same roller made
+	 * after it) let others see an old roll shown again, or one picked out of several.
+	 */
+	getRoll(ws, p) {
+		const r = ROLL_RE.test(p.id || '') ? this.rolls.get(p.id) : null;
+		if (!r) {
+			return this.send(ws, { t: 'roll', ...ridOf(p), roll: null });
+		}
+		const later = [...this.rolls.values()].filter((x) => x.who === r.who && x.at > r.at).length;
+		this.send(ws, { t: 'roll', ...ridOf(p), roll: this.rollOut(r), age: Date.now() - r.at, later });
+	}
+	/** A roll as others see it: without who it was counted against. */
+	rollOut(r) {
+		if (!r) {
+			return null;
+		}
+		return { id: r.id, by: r.by, name: r.name, dice: r.dice, mod: r.mod, total: r.total, at: r.at };
 	}
 }
