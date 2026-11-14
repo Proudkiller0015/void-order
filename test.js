@@ -1185,6 +1185,29 @@ const openCardOf = async (page, name) => {
 		await click(fay.page, '⚙ Settings');
 		const fayProblems = await panelText(fay.page);
 		check('⚙ Settings lists the problem', /problems/i.test(fayProblems) && /Test feature switched off/.test(fayProblems), fayProblems);
+		// Personal badges: Ann gives Fay one in Manage; it shows on Fay's ID card.
+		await click(page, 'Manage');
+		await page
+			.waitForFunction(
+				() => [...document.querySelectorAll('#void-panel select option')].some((o) => o.textContent === 'Badge: Slime Queen'),
+				{ timeout: 5000 },
+			)
+			.catch(() => {});
+		const gave = await page.evaluate(() => {
+			const box = [...document.querySelectorAll('#void-panel .box')].find((b) => /^Fay #15/.test(b.innerText));
+			const sel = box && [...box.querySelectorAll('select')].find((x) => [...x.options].some((o) => o.value === 'slime-queen'));
+			if (!sel) return false;
+			sel.value = 'slime-queen';
+			sel.dispatchEvent(new Event('change'));
+			return true;
+		});
+		check('an admin has a badge picker on a member', gave);
+		await wait(800);
+		await slash(page, 'card 15');
+		await page.waitForSelector('#void-card', { timeout: 5000 }).catch(() => {});
+		const badgeSrc = await page.evaluate(() => document.querySelector('#void-card img.badge')?.getAttribute('src') || '');
+		check("Fay's ID card shows her badge", /\/void-assets\/badges\/slime-queen-160\.png$/.test(badgeSrc), badgeSrc);
+		await page.evaluate(() => document.getElementById('void-card')?.remove());
 		check('no page errors', errors.length === 0 && fay.errors.length === 0 && second.errors.length === 0, [
 			...errors,
 			...fay.errors,

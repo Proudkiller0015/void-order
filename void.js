@@ -647,6 +647,7 @@
 		#void-card { position: fixed; z-index: 2147483002; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(400px, 94vw); max-height: 94vh; overflow: auto; padding: 18px 18px 16px; border-radius: 18px;
 			border: 1px solid #7a52c4; background: radial-gradient(140% 90% at 50% 0%, #3a1d66 0%, #12091f 60%, #08040f 100%); box-shadow: 0 20px 60px #000e, 0 0 60px #8a4dff44; text-align: center; }
 		#void-card .x { position: absolute; top: 8px; right: 10px; border: 0; background: none; color: var(--v-dim); font-size: 18px; cursor: pointer; }
+		#void-card .badge { position: absolute; top: 10px; left: 10px; width: 64px; height: 64px; }
 		#void-card .org { font: 600 12px Georgia, serif; letter-spacing: 4px; text-transform: uppercase; color: var(--v-dim); }
 		#void-card .pic { width: 120px; height: 120px; margin: 12px auto 10px; border-radius: 50%; border: 2px solid #9b6bff; background: #05020a center/cover no-repeat;
 			display: flex; align-items: center; justify-content: center; font-size: 48px; color: #6a4aa0; box-shadow: 0 0 30px #8a4dff55; }
@@ -935,6 +936,13 @@
 			}
 			id.append(ln);
 		}
+		if (c.badge && /^[a-z0-9-]{1,40}$/.test(c.badge)) {
+			const b = make('img', 'badge');
+			b.src = `${ASSETS}badges/${c.badge}-160.png`;
+			b.alt = '';
+			b.addEventListener('error', () => b.remove());
+			card.append(b);
+		}
 		card.append(
 			x,
 			make('div', 'org', c.order || 'The Void Order'),
@@ -1102,6 +1110,41 @@
 		const m = memberOf(n);
 		return m && !m.invited && (n === w.Player.MemberNumber || roomVoid.has(n)) ? m : null;
 	}
+	// ---- Personal badges (assets/badges/): a member's own picture instead of the plain mark.
+	/** @type {{ id: string, name: string }[] | null} The badges there are (assets/badges/index.json). */
+	let badges = null;
+	let badgesLoading = false;
+	function loadBadges() {
+		if (badges || badgesLoading) {
+			return;
+		}
+		badgesLoading = true;
+		fetch(`${ASSETS}badges/index.json?v=${encodeURIComponent(VERSION)}`)
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+			.then((list) => {
+				badges = Array.isArray(list) ? list : [];
+				render();
+			})
+			.catch((e) => report(e, undefined, 'Badges'))
+			.finally(() => (badgesLoading = false));
+	}
+	/** @type {Map<string, HTMLImageElement>} */
+	const badgeImages = new Map();
+	/** A badge's picture (48 or 160 px), once loaded; null while loading or if it can't be reached. */
+	function badgeImage(/** @type {string} */ id, /** @type {number} */ size) {
+		if (!/^[a-z0-9-]{1,40}$/.test(id || '')) {
+			return null;
+		}
+		const k = `${id}-${size}`;
+		let img = badgeImages.get(k);
+		if (!img) {
+			img = new Image();
+			img.onerror = () => report(new Error(`badge picture ${k}.png could not be loaded`), undefined, 'Badges');
+			img.src = `${ASSETS}badges/${k}.png`;
+			badgeImages.set(k, img);
+		}
+		return img.complete && img.naturalWidth ? img : null;
+	}
 	/** @type {Map<string, HTMLCanvasElement>} Drawn marks, by symbol and colour. */
 	const markImages = new Map();
 	/** A mark: the symbol in a dark violet disc with a glowing ring in the branch's colour. */
@@ -1157,7 +1200,15 @@
 			return;
 		}
 		const { sym, color } = markOf(m);
-		g.drawImage(markImage(sym, color), x + MARK.x * zoom, y + MARK.y * zoom, MARK.size * zoom, MARK.size * zoom);
+		const badge = m.badge ? badgeImage(m.badge, 48) : null;
+		if (badge) {
+			// A little larger than the mark: the badge's scythe reaches past its disc.
+			const s = MARK.size * 1.3;
+			const d = (s - MARK.size) / 2;
+			g.drawImage(badge, x + (MARK.x - d) * zoom, y + (MARK.y - d) * zoom, s * zoom, s * zoom);
+		} else {
+			g.drawImage(markImage(sym, color), x + MARK.x * zoom, y + MARK.y * zoom, MARK.size * zoom, MARK.size * zoom);
+		}
 		if (onMark(x, y, zoom) && typeof w.DrawTextFit === 'function') {
 			w.DrawTextFit(placeSummary(m), x + 250 * zoom, y + (MARK.y + MARK.size / 2) * zoom, 150 * zoom, color, 'black');
 		}
@@ -3256,6 +3307,11 @@
 		}
 		if (topOver(me, m)) {
 			head.append(check(` ${structure().monsignor.name}`, !!m.mon, (on) => act({ t: 'monsignor', member: m.n, on })));
+			loadBadges();
+			if (badges && badges.length) {
+				const opts = /** @type {[string, string][]} */ ([['', 'No badge'], ...badges.map((b) => [b.id, `Badge: ${b.name}`])]);
+				head.append(select(opts, m.badge || '', (v) => act({ t: 'badge', member: m.n, badge: v })));
+			}
 		}
 		if ((me.n === founderN() || me.n === state.appAdmin) && m.n !== state.appAdmin && m.n !== founderN() && !m.invited) {
 			head.append(check(' Admin', !!m.admin, (on) => act({ t: 'admin', member: m.n, on })));

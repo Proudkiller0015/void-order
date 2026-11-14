@@ -31,6 +31,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { HUNT_BOARD_URL, huntBoardPages, parseHuntBoard } from './hunt-board.js';
 import { addReport, clearReports, listReports } from './reports.js';
+import { badgeOf, setBadge } from './badges.js';
 import WEAPONS from '../../assets/weapons/index.json';
 
 const LIMITS = {
@@ -647,6 +648,7 @@ export class Order extends DurableObject {
 			places: m.places,
 			weapons: this.weaponsOf(m.n),
 			carry: m.carry || 0,
+			badge: badgeOf(m),
 			...(m.mon ? { mon: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
@@ -878,6 +880,8 @@ export class Order extends DurableObject {
 					return await this.issue(ws, me, p);
 				case 'carry':
 					return await this.carry(ws, me, p);
+				case 'badge':
+					return await setBadge(this, ws, me, p);
 				default:
 					return this.no(ws, 'unknown', p);
 			}
@@ -1337,6 +1341,7 @@ export class Order extends DurableObject {
 				medals: m.medals || [],
 				weapons: this.weaponsOf(m.n),
 				carry: m.carry || 0,
+				badge: badgeOf(m),
 				pic,
 				order: this.meta ? this.meta.name : '',
 			},

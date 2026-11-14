@@ -1,4 +1,4 @@
-// Bug reports against the server: npm run dev:test first (ADMIN 11), then node test-reports.js.
+// Bug reports and personal badges against the server: npm run dev:test first (ADMIN 11), then node test-reports.js.
 // A fresh Order each run (?o=); every connection comes from one address, so the address limit is what stops the sixth.
 const BASE = process.env.SERVER || 'ws://127.0.0.1:8788';
 const ORDER = `r${Date.now().toString(36)}`;
@@ -115,6 +115,31 @@ const report = (feature, error, extra = {}) => ({
 	check(clear.t === 'ok', 'the app admin clears every report');
 	const empty = await admin.req({ t: 'reports' });
 	check(Array.isArray(empty.reports) && empty.reports.length === 0, 'none are left after clearing', empty.reports);
+
+	// Personal badges: the index's member has theirs from the start; the Founder and admins give and take them.
+	const queen = await connect(await makePeer(255659, 'Samantha'));
+	check((await queen.req({ t: 'join', name: 'Samantha' })).t === 'ok', 'the badge owner joins');
+	await wait(300);
+	const listed = (c, n) => (c.state || {}).members && c.state.members.find((m) => m.n === n);
+	const lastState = (c) => [...c.got].reverse().find((x) => x.t === 'state');
+	admin.state = lastState(admin);
+	check(listed(admin, 255659)?.badge === 'slime-queen', 'the index member shows their badge from the start', listed(admin, 255659));
+	const joiner = await connect(await makePeer(63, 'Joiner'));
+	check((await joiner.req({ t: 'join', name: 'Joiner' })).t === 'ok', 'a member joins');
+	check((await admin.req({ t: 'badge', member: 63, badge: 'slime-queen' })).t === 'ok', 'an admin gives a member a badge');
+	await wait(300);
+	admin.state = lastState(admin);
+	check(listed(admin, 63)?.badge === 'slime-queen', 'the member list shows it', listed(admin, 63));
+	const card = await admin.req({ t: 'card', member: 63 });
+	check(card.card && card.card.badge === 'slime-queen', 'their ID card carries it', card.card);
+	const notTop = await joiner.req({ t: 'badge', member: 11, badge: '' });
+	check(notTop.t === 'error', 'a member without the powers gives no badges', notTop);
+	const unknown = await admin.req({ t: 'badge', member: 63, badge: 'nope' });
+	check(unknown.t === 'error' && unknown.why === 'no such badge', 'an unknown badge is refused', unknown);
+	check((await admin.req({ t: 'badge', member: 255659, badge: '' })).t === 'ok', 'an admin takes the default badge away');
+	await wait(300);
+	admin.state = lastState(admin);
+	check(listed(admin, 255659)?.badge === '', 'taken away, it stays off', listed(admin, 255659));
 
 	console.log(failed ? `${failed} FAILED, ${passed} passed` : `all ${passed} passed`);
 	process.exit(failed ? 1 : 0);
