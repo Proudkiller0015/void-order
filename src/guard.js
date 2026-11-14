@@ -83,6 +83,8 @@
 					}
 					let called = false;
 					let result;
+					/** Whether the game's function threw on arguments the feature changed. */
+					let changedArgs = false;
 					const once = (/** @type {any[]} */ a) => {
 						called = true;
 						try {
@@ -91,6 +93,7 @@
 							if (e && typeof e === 'object') {
 								gameErrors.add(e);
 							}
+							changedArgs = a !== args;
 							throw e;
 						}
 						return result;
@@ -99,7 +102,13 @@
 						return body(args, once);
 					} catch (e) {
 						if (e && typeof e === 'object' && gameErrors.has(e)) {
-							throw e;
+							if (!changedArgs) {
+								throw e;
+							}
+							// The game's function threw on what the feature handed it: the feature goes, and the game
+							// runs on its own arguments (if it throws on those too, that error is the game's own).
+							problem(feature, e);
+							return next(args);
 						}
 						problem(feature, e);
 						return called ? result : next(args);
