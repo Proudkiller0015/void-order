@@ -4151,6 +4151,11 @@
 		style,
 		/** Rolls Void dice everyone in the room sees: (dice sides, modifier) → '' or why it didn't. */
 		roll: (/** @type {number[]} */ dice, /** @type {number} */ mod) => roll(dice, mod),
+		/** The same, answering { why, roll } with the roll itself (its total) when it went through. */
+		rollFull: async (/** @type {number[]} */ dice, /** @type {number} */ mod) => {
+			const why = await roll(dice, mod);
+			return { why, roll: why ? null : recentRolls[0] || null };
+		},
 		early,
 		report: (/** @type {string} */ feature, /** @type {any} */ error) => {
 			console.warn(`[Oculus Nihili] ${feature}:`, error);

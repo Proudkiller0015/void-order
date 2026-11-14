@@ -1569,6 +1569,91 @@ const openCardOf = async (page, name) => {
 		);
 		check('a vanilla crop still offers its own activities', crop.length > 0, crop);
 		await hold(ap, 'VoidSwords', { w: 0, Position: 1 });
+		// Breaking free: a blade cuts a rope away (never a locked one, never someone who doesn't allow it); a gun shoots
+		// a lock off as the lock's kind allows, keeping the item.
+		const offeredOn = (group) => ap.evaluate((g) => ActivityAllowedForGroup(ChatRoomCharacter[1], g).map((a) => a.Activity.Name), group);
+		const lineText = () =>
+			ap.evaluate(() =>
+				window.sent
+					.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action' && d.Content === 'Beep')
+					.map(([, d]) => d.Dictionary[0].Text),
+			);
+		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
+		await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			bea.AllowedInteractions = 0;
+			InventoryWear(bea, 'HempRope', 'ItemArms');
+			CharacterRefresh(bea, false);
+		});
+		check('a blade can cut a rope on the arms', (await offeredOn('ItemArms')).includes('VoidCutFree'));
+		await ap.evaluate(() => (ChatRoomCharacter[1].AllowedInteractions = 4));
+		check('but not on someone who doesn’t allow your items', !(await offeredOn('ItemArms')).includes('VoidCutFree'));
+		await ap.evaluate(() => (ChatRoomCharacter[1].AllowedInteractions = 0));
+		await runOn(ap, 'ItemArms', 'VoidCutFree');
+		await wait(600);
+		const cut = await ap.evaluate(() => ({ arms: InventoryGet(ChatRoomCharacter[1], 'ItemArms')?.Asset.Name || '' }));
+		const cutLines = await lineText();
+		check('cutting removes the rope', cut.arms === '', cut);
+		check(
+			'and says so in a line everyone reads',
+			cutLines.some((t) => /^Ann slices through the .+ binding Bea's arms\.$/.test(t)),
+			cutLines,
+		);
+		await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			InventoryWear(bea, 'SturdyLeatherBelts', 'ItemLegs');
+			InventoryLock(bea, 'ItemLegs', 'MetalPadlock', Player);
+			CharacterRefresh(bea, false);
+		});
+		check(
+			'a locked strap is not cut',
+			!(await offeredOn('ItemLegs')).includes('VoidCutFree'),
+			await ap.evaluate(() => {
+				const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+				return { name: it?.Asset.Name, prop: it?.Property, allow: it && InventoryDoesItemAllowLock(it) };
+			}),
+		);
+		await hold(ap, 'VoidRifles', { w: 0, Position: 0 });
+		check('a gun can shoot a metal padlock', (await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		await runOn(ap, 'ItemLegs', 'VoidShootLock');
+		await wait(800);
+		const shotOff = await ap.evaluate(() => {
+			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+			return { item: it?.Asset.Name || '', lock: it?.Property?.LockedBy || '' };
+		});
+		const shotLines = await lineText();
+		check('the shot takes the lock off and keeps the item', shotOff.item === 'SturdyLeatherBelts' && shotOff.lock === '', shotOff);
+		check(
+			'with its line',
+			shotLines.some((t) => /^Ann shoots the .+ off Bea's .+\.$/.test(t)),
+			shotLines,
+		);
+		await ap.evaluate(() => {
+			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+			it.Property = { ...(it.Property || {}), LockedBy: 'OwnerPadlock', Effect: [...((it.Property && it.Property.Effect) || []), 'Lock'] };
+		});
+		check('an owner lock is never offered', !(await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		await ap.evaluate(() => {
+			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+			it.Property.LockedBy = 'HighSecurityPadlock';
+		});
+		check('a high-security lock is offered (it takes a roll)', (await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		await runOn(ap, 'ItemLegs', 'VoidShootLock');
+		await wait(1500);
+		const lockRoll = await ap.evaluate(() => ({
+			lock: InventoryGet(ChatRoomCharacter[1], 'ItemLegs')?.Property?.LockedBy || '',
+			hidden: window.sent.some(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Hidden'),
+		}));
+		const rolledLines = await lineText();
+		const missed = rolledLines.some((t) => /ricochets off the/.test(t));
+		check('the roll is a Void roll everyone sees', lockRoll.hidden, lockRoll);
+		check(
+			'a hit takes the lock off; a miss leaves it and it can’t be shot again for a minute',
+			missed ? lockRoll.lock === 'HighSecurityPadlock' && !(await offeredOn('ItemLegs')).includes('VoidShootLock') : lockRoll.lock === '',
+			{ lockRoll, rolledLines },
+		);
+		await ap.evaluate(() => ['ItemArms', 'ItemLegs'].forEach((g) => InventoryRemove(ChatRoomCharacter[1], g)));
+		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
 		await ap.evaluate(() => (window.local = []));
 		await ap.evaluate(() => Commands.find((c) => c.Tag === 'void').Action('diag', '/void diag', []));
 		const diagText = await ap.evaluate(() => window.local.join('\n'));
