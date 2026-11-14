@@ -580,7 +580,9 @@ const openCardOf = async (page, name) => {
 				wrath: box(100)?.innerText,
 				wrathKind: box(100)?.previousElementSibling?.textContent,
 				wabbajackStats: !!box(98)?.querySelector('.stats'),
-				wabbajackPlain: !!box(98)?.querySelector('.void-sprite.none'),
+				wabbajackPicture: !!box(98)?.querySelector('.void-sprite img'),
+				// The one weapon whose art isn't finished yet (#47) shows a plain mark.
+				unfinishedPlain: !!box(47)?.querySelector('.void-sprite.none'),
 				shotgun: box(1)?.innerText,
 				shotgunPicture: box(1)?.querySelector('.void-sprite img')?.getAttribute('src'),
 			};
@@ -591,7 +593,8 @@ const openCardOf = async (page, name) => {
 				/Queen's Wrath[\s\S]*Legendary[\s\S]*Void Order[\s\S]*Slime’s signature[\s\S]*2 tons[\s\S]*Held by Ann/.test(arms.wrath) &&
 				/^Scythes · 1$/.test(arms.wrathKind || '') &&
 				!arms.wabbajackStats &&
-				arms.wabbajackPlain &&
+				arms.wabbajackPicture &&
+				arms.unfinishedPlain &&
 				/Old sawed-off shotgun[\s\S]*Common[\s\S]*\+3 Base damage · \+1 Speed/.test(arms.shotgun) &&
 				/\/void-assets\/weapons\/1\.png$/.test(arms.shotgunPicture || ''),
 			arms,
@@ -1369,6 +1372,9 @@ const openCardOf = async (page, name) => {
 			['VoidSwords', 'ItemArms', 'VoidSlash'],
 			['VoidGlowingBlades', 'ItemTorso', 'VoidStab'],
 			['VoidShortBlades', 'ItemNeck', 'VoidNeck'],
+			['VoidBlunt', 'ItemTorso', 'VoidStrike'],
+			['VoidStaffs', 'ItemArms', 'VoidStrike'],
+			['VoidStaffs', 'ItemHead', 'VoidCast'],
 		];
 		const missing = [];
 		for (const [item, group, act] of kinds) {
@@ -1376,6 +1382,9 @@ const openCardOf = async (page, name) => {
 			if (!(await menuOn(ap, group)).includes(`${act}:${item}`)) missing.push(`${item} ${act}`);
 		}
 		check('each kind of weapon puts its actions in the activity menu, with the weapon', missing.length === 0, missing);
+		await hold(ap, 'VoidStaffs');
+		const staffHands = await ap.evaluate(() => ActivityAllowedForGroup(Player, 'ItemHands').map((a) => a.Activity.Name));
+		check('a staff can ask the Void for help', staffHands.includes('VoidAskVoid'), staffHands);
 		await hold(ap, 'VoidSwords', { w: 0 });
 		check('the menu labels them', (await ap.evaluate(() => ActivityDictionaryText('Label-ChatOther-ItemArms-VoidSlash'))) === 'Slash');
 		const pic = await ap.evaluate(async () => {

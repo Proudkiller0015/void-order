@@ -1,6 +1,6 @@
 {
 	"group": "ItemHandheld",
-	"source": "dd9f9b198",
+	"source": "0a8b93bdd",
 	"items": [
 		{
 			"name": "VoidPistols",
@@ -6746,8 +6746,18 @@
 					{
 						"Name": "MirandusMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 202,
-						"Top": 140,
+						"Left": 201,
+						"Top": 137,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "MirandusGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 201,
+						"Top": 137,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -6756,8 +6766,19 @@
 					{
 						"Name": "MirandusOnBackMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 122,
-						"Top": 206,
+						"Left": 121,
+						"Top": 204,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "MirandusOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 121,
+						"Top": 204,
 						"Priority": 6,
 						"AllowTypes": {
 							"w": 2,
@@ -6893,8 +6914,8 @@
 					{
 						"Name": "VoidUnblessedSwordMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 201,
-						"Top": 146,
+						"Left": 202,
+						"Top": 138,
 						"AllowTypes": {
 							"w": 6,
 							"Position": 0
@@ -6903,8 +6924,8 @@
 					{
 						"Name": "VoidUnblessedSwordGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 201,
-						"Top": 146,
+						"Left": 202,
+						"Top": 138,
 						"AllowTypes": {
 							"w": 6,
 							"Position": 0
@@ -6913,8 +6934,8 @@
 					{
 						"Name": "VoidUnblessedSwordGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 201,
-						"Top": 146,
+						"Left": 202,
+						"Top": 138,
 						"AllowTypes": {
 							"w": 6,
 							"Position": 0
@@ -6923,7 +6944,7 @@
 					{
 						"Name": "VoidUnblessedSwordOnBackMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 125,
+						"Left": 123,
 						"Top": 205,
 						"Priority": 6,
 						"AllowTypes": {
@@ -6934,7 +6955,7 @@
 					{
 						"Name": "VoidUnblessedSwordOnBackGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 125,
+						"Left": 123,
 						"Top": 205,
 						"Priority": 6,
 						"AllowTypes": {
@@ -6945,7 +6966,7 @@
 					{
 						"Name": "VoidUnblessedSwordOnBackGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 125,
+						"Left": 123,
 						"Top": 205,
 						"Priority": 6,
 						"AllowTypes": {
@@ -7355,8 +7376,18 @@
 					{
 						"Name": "DominatorMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 196,
-						"Top": 150,
+						"Left": 202,
+						"Top": 142,
+						"AllowTypes": {
+							"w": 16,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "DominatorGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 202,
+						"Top": 142,
 						"AllowTypes": {
 							"w": 16,
 							"Position": 0
@@ -7365,8 +7396,19 @@
 					{
 						"Name": "DominatorOnBackMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 123,
-						"Top": 205,
+						"Left": 124,
+						"Top": 204,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 16,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "DominatorOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 124,
+						"Top": 204,
 						"Priority": 6,
 						"AllowTypes": {
 							"w": 16,
@@ -7376,8 +7418,28 @@
 					{
 						"Name": "BlessingOfSinMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 194,
-						"Top": 148,
+						"Left": 204,
+						"Top": 134,
+						"AllowTypes": {
+							"w": 17,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "BlessingOfSinGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 204,
+						"Top": 134,
+						"AllowTypes": {
+							"w": 17,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "BlessingOfSinGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 204,
+						"Top": 134,
 						"AllowTypes": {
 							"w": 17,
 							"Position": 0
@@ -7387,7 +7449,29 @@
 						"Name": "BlessingOfSinOnBackMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 122,
-						"Top": 205,
+						"Top": 206,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 17,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "BlessingOfSinOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 122,
+						"Top": 206,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 17,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "BlessingOfSinOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 122,
+						"Top": 206,
 						"Priority": 6,
 						"AllowTypes": {
 							"w": 17,
@@ -7720,8 +7804,8 @@
 							{
 								"Property": {
 									"DefaultColor": [
-										"#82817F",
-										"Default",
+										"#7F7E7D",
+										"#2B2A2A",
 										"Default"
 									]
 								}
@@ -7756,8 +7840,8 @@
 							{
 								"Property": {
 									"DefaultColor": [
-										"#1A1A1C",
-										"#272726",
+										"#1E1E1F",
+										"#090909",
 										"#2A3CFF"
 									]
 								}
@@ -7846,8 +7930,8 @@
 							{
 								"Property": {
 									"DefaultColor": [
-										"#C4C3C1",
-										"Default",
+										"#C6C5C4",
+										"#1B1B1A",
 										"Default"
 									]
 								}
@@ -7855,9 +7939,9 @@
 							{
 								"Property": {
 									"DefaultColor": [
-										"#B1AEAA",
-										"Default",
-										"Default"
+										"#A4A2A0",
+										"#DCD5CC",
+										"#E61A36"
 									]
 								}
 							},
@@ -8112,6 +8196,11 @@
 					"key": "IraBaccae",
 					"name": "Ira Baccae",
 					"cat": "GlowingBlades"
+				},
+				{
+					"key": "UnguisNihilis",
+					"name": "Unguis Nihilis",
+					"cat": "GlowingBlades"
 				}
 			],
 			"carries": [
@@ -8216,8 +8305,8 @@
 					{
 						"Name": "ExcellentiaNihiliMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 202,
-						"Top": 145,
+						"Left": 195,
+						"Top": 151,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -8226,8 +8315,8 @@
 					{
 						"Name": "ExcellentiaNihiliGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 202,
-						"Top": 145,
+						"Left": 195,
+						"Top": 151,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -8236,8 +8325,8 @@
 					{
 						"Name": "ExcellentiaNihiliGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 202,
-						"Top": 145,
+						"Left": 195,
+						"Top": 151,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -8246,7 +8335,7 @@
 					{
 						"Name": "ExcellentiaNihiliOnBackMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 126,
+						"Left": 123,
 						"Top": 204,
 						"Priority": 6,
 						"AllowTypes": {
@@ -8257,7 +8346,7 @@
 					{
 						"Name": "ExcellentiaNihiliOnBackGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 126,
+						"Left": 123,
 						"Top": 204,
 						"Priority": 6,
 						"AllowTypes": {
@@ -8268,7 +8357,7 @@
 					{
 						"Name": "ExcellentiaNihiliOnBackGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 126,
+						"Left": 123,
 						"Top": 204,
 						"Priority": 6,
 						"AllowTypes": {
@@ -8657,8 +8746,8 @@
 					{
 						"Name": "SihilisManmMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 201,
-						"Top": 137,
+						"Left": 198,
+						"Top": 146,
 						"AllowTypes": {
 							"w": 8,
 							"Position": 0
@@ -8667,8 +8756,8 @@
 					{
 						"Name": "SihilisManmGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 201,
-						"Top": 137,
+						"Left": 198,
+						"Top": 146,
 						"AllowTypes": {
 							"w": 8,
 							"Position": 0
@@ -8677,8 +8766,8 @@
 					{
 						"Name": "SihilisManmGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 201,
-						"Top": 137,
+						"Left": 198,
+						"Top": 146,
 						"AllowTypes": {
 							"w": 8,
 							"Position": 0
@@ -8687,8 +8776,8 @@
 					{
 						"Name": "SihilisManmOnBackMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 123,
-						"Top": 204,
+						"Left": 122,
+						"Top": 206,
 						"Priority": 6,
 						"AllowTypes": {
 							"w": 8,
@@ -8698,8 +8787,8 @@
 					{
 						"Name": "SihilisManmOnBackGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 123,
-						"Top": 204,
+						"Left": 122,
+						"Top": 206,
 						"Priority": 6,
 						"AllowTypes": {
 							"w": 8,
@@ -8709,8 +8798,8 @@
 					{
 						"Name": "SihilisManmOnBackGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 123,
-						"Top": 204,
+						"Left": 122,
+						"Top": 206,
 						"Priority": 6,
 						"AllowTypes": {
 							"w": 8,
@@ -8777,6 +8866,69 @@
 						"Priority": 6,
 						"AllowTypes": {
 							"w": 9,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "UnguisNihilisMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 191,
+						"Top": 156,
+						"AllowTypes": {
+							"w": 11,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "UnguisNihilisGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 191,
+						"Top": 156,
+						"AllowTypes": {
+							"w": 11,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "UnguisNihilisGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 191,
+						"Top": 156,
+						"AllowTypes": {
+							"w": 11,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "UnguisNihilisOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 123,
+						"Top": 206,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 11,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "UnguisNihilisOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 123,
+						"Top": 206,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 11,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "UnguisNihilisOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 123,
+						"Top": 206,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 11,
 							"Position": 1
 						}
 					},
@@ -8868,7 +9020,7 @@
 									"DefaultColor": [
 										"#B8BCC8",
 										"#202024",
-										"#D2D1D5"
+										"#4060FF"
 									]
 								}
 							},
@@ -8930,7 +9082,7 @@
 								"Property": {
 									"DefaultColor": [
 										"#6A6C78",
-										"#15141B",
+										"#13121A",
 										"#3A40FF"
 									]
 								}
@@ -8950,6 +9102,15 @@
 										"#868595",
 										"#141313",
 										"#4E4AE6"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#8D8D8C",
+										"#2A2A2E",
+										"#5A6BFF"
 									]
 								}
 							}
@@ -8988,6 +9149,9 @@
 								},
 								{
 									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/IraBaccae.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/UnguisNihilis.png"
 								}
 							]
 						}
@@ -9028,6 +9192,8 @@
 				"ItemHandheldVoidGlowingBladesSetw9": "SourceCharacter puts the Gloria Nihil in DestinationCharacter hands.",
 				"ItemHandheldVoidGlowingBladesOptionw10": "Ira Baccae",
 				"ItemHandheldVoidGlowingBladesSetw10": "SourceCharacter puts the Ira Baccae in DestinationCharacter hands.",
+				"ItemHandheldVoidGlowingBladesOptionw11": "Unguis Nihilis",
+				"ItemHandheldVoidGlowingBladesSetw11": "SourceCharacter puts the Unguis Nihilis in DestinationCharacter hands.",
 				"ItemHandheldVoidGlowingBladesModulePosition": "Carry",
 				"ItemHandheldVoidGlowingBladesSelectPosition": "How to carry it:",
 				"ItemHandheldVoidGlowingBladesOptionPosition0": "Held",
@@ -9245,6 +9411,1011 @@
 				"ItemHandheldVoidShortBladesMetal": "Metal",
 				"ItemHandheldVoidShortBladesGrip": "Grip and stock",
 				"ItemHandheldVoidShortBladesGlow": "Glow"
+			}
+		},
+		{
+			"name": "VoidBlunt",
+			"description": "Void blunt weapon",
+			"weapons": [
+				{
+					"key": "Macuahuitl",
+					"name": "Macuahuitl",
+					"cat": "Blunt"
+				},
+				{
+					"key": "OldMace",
+					"name": "Old Mace",
+					"cat": "Blunt"
+				},
+				{
+					"key": "BattleHammer",
+					"name": "Battle hammer",
+					"cat": "Blunt"
+				},
+				{
+					"key": "PoleHammer",
+					"name": "Pole hammer",
+					"cat": "Blunt"
+				},
+				{
+					"key": "TheSprinkler",
+					"name": "The Sprinkler",
+					"cat": "Blunt"
+				},
+				{
+					"key": "TheBraverySimbol",
+					"name": "The Bravery Simbol",
+					"cat": "Blunt"
+				}
+			],
+			"carries": [
+				"held",
+				"back"
+			],
+			"source": "Weapons",
+			"def": {
+				"Name": "VoidBlunt",
+				"Value": 0,
+				"Priority": 56,
+				"ParentGroup": "",
+				"Attribute": [
+					"HandheldItem"
+				],
+				"IsRestraint": false,
+				"Random": false,
+				"Extended": true,
+				"Fetish": [
+					"Sadism"
+				],
+				"PoseMapping": {
+					"__poseMapping": "ItemHandheld",
+					"TapedHands": "Hide"
+				},
+				"Layer": [
+					{
+						"Name": "Metal",
+						"HasImage": false
+					},
+					{
+						"Name": "Grip",
+						"HasImage": false
+					},
+					{
+						"Name": "Glow",
+						"HasImage": false
+					},
+					{
+						"Name": "MacuahuitlMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 197,
+						"Top": 213,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "MacuahuitlGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 197,
+						"Top": 213,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "MacuahuitlOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 142,
+						"Top": 171,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "MacuahuitlOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 142,
+						"Top": 171,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "OldMaceMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 203,
+						"Top": 216,
+						"AllowTypes": {
+							"w": 1,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "OldMaceGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 203,
+						"Top": 216,
+						"AllowTypes": {
+							"w": 1,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "OldMaceOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 145,
+						"Top": 173,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 1,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "OldMaceOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 145,
+						"Top": 173,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 1,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "BattleHammerMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 201,
+						"Top": 218,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "BattleHammerGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 201,
+						"Top": 218,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "BattleHammerOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 145,
+						"Top": 175,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "BattleHammerOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 145,
+						"Top": 175,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "PoleHammerMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 186,
+						"Top": 122,
+						"AllowTypes": {
+							"w": 3,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "PoleHammerGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 186,
+						"Top": 122,
+						"AllowTypes": {
+							"w": 3,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "PoleHammerOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 112,
+						"Top": 117,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 3,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "PoleHammerOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 112,
+						"Top": 117,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 3,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheSprinklerMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 197,
+						"Top": 195,
+						"AllowTypes": {
+							"w": 4,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheSprinklerGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 197,
+						"Top": 195,
+						"AllowTypes": {
+							"w": 4,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheSprinklerOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 135,
+						"Top": 160,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 4,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheSprinklerOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 135,
+						"Top": 160,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 4,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheBraverySimbolMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 200,
+						"Top": 182,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheBraverySimbolGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 200,
+						"Top": 182,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheBraverySimbolGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 200,
+						"Top": 182,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheBraverySimbolOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 120,
+						"Top": 145,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheBraverySimbolOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 120,
+						"Top": 145,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheBraverySimbolOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 120,
+						"Top": 145,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 1
+						}
+					}
+				]
+			},
+			"extended": {
+				"Archetype": "modular",
+				"DrawImages": false,
+				"Modules": [
+					{
+						"Name": "Weapon",
+						"Key": "w",
+						"DrawImages": true,
+						"Options": [
+							{
+								"Property": {
+									"DefaultColor": [
+										"#21211F",
+										"#65432D",
+										"Default"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#11100E",
+										"#2E1E18",
+										"Default"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#C2C2C3",
+										"#3B2A24",
+										"Default"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#77777A",
+										"#B38A5C",
+										"Default"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#8A8A89",
+										"#522C23",
+										"Default"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#1F1814",
+										"#4E2A21",
+										"#F3DCA3"
+									]
+								}
+							}
+						],
+						"DrawData": {
+							"elementData": [
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/Macuahuitl.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/OldMace.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/BattleHammer.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/PoleHammer.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/TheSprinkler.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/TheBraverySimbol.png"
+								}
+							]
+						}
+					},
+					{
+						"Name": "Position",
+						"Key": "Position",
+						"Options": [
+							{},
+							{}
+						]
+					}
+				]
+			},
+			"texts": {
+				"ItemHandheldVoidBluntSelectBase": "Select a weapon:",
+				"ItemHandheldVoidBluntModuleWeapon": "Weapon",
+				"ItemHandheldVoidBluntSelectWeapon": "Select a mace or hammer:",
+				"ItemHandheldVoidBluntOptionw0": "Macuahuitl",
+				"ItemHandheldVoidBluntSetw0": "SourceCharacter puts the Macuahuitl in DestinationCharacter hands.",
+				"ItemHandheldVoidBluntOptionw1": "Old Mace",
+				"ItemHandheldVoidBluntSetw1": "SourceCharacter puts the Old Mace in DestinationCharacter hands.",
+				"ItemHandheldVoidBluntOptionw2": "Battle hammer",
+				"ItemHandheldVoidBluntSetw2": "SourceCharacter puts the Battle hammer in DestinationCharacter hands.",
+				"ItemHandheldVoidBluntOptionw3": "Pole hammer",
+				"ItemHandheldVoidBluntSetw3": "SourceCharacter puts the Pole hammer in DestinationCharacter hands.",
+				"ItemHandheldVoidBluntOptionw4": "The Sprinkler",
+				"ItemHandheldVoidBluntSetw4": "SourceCharacter puts the The Sprinkler in DestinationCharacter hands.",
+				"ItemHandheldVoidBluntOptionw5": "The Bravery Simbol",
+				"ItemHandheldVoidBluntSetw5": "SourceCharacter puts the The Bravery Simbol in DestinationCharacter hands.",
+				"ItemHandheldVoidBluntModulePosition": "Carry",
+				"ItemHandheldVoidBluntSelectPosition": "How to carry it:",
+				"ItemHandheldVoidBluntOptionPosition0": "Held",
+				"ItemHandheldVoidBluntSetPosition0": "SourceCharacter puts DestinationCharacter finger on the trigger.",
+				"ItemHandheldVoidBluntOptionPosition1": "On the back",
+				"ItemHandheldVoidBluntSetPosition1": "SourceCharacter slings the weapon across DestinationCharacter back."
+			},
+			"layerNames": {
+				"ItemHandheldVoidBluntMetal": "Metal",
+				"ItemHandheldVoidBluntGrip": "Grip and stock",
+				"ItemHandheldVoidBluntGlow": "Glow"
+			}
+		},
+		{
+			"name": "VoidStaffs",
+			"description": "Void staff",
+			"weapons": [
+				{
+					"key": "TheRoot",
+					"name": "The Root",
+					"cat": "Staffs"
+				},
+				{
+					"key": "FalseFlame",
+					"name": "False Flame",
+					"cat": "Staffs"
+				},
+				{
+					"key": "BoneFinger",
+					"name": "Bone finger",
+					"cat": "Staffs"
+				},
+				{
+					"key": "TheVoidCrosier",
+					"name": "The Void Crosier",
+					"cat": "Staffs"
+				},
+				{
+					"key": "ShiningCrystal",
+					"name": "Shining crystal",
+					"cat": "Staffs"
+				},
+				{
+					"key": "Wabbajack",
+					"name": "Wabbajack",
+					"cat": "Staffs"
+				},
+				{
+					"key": "SerpensAesulapius",
+					"name": "Serpens Aesulapius",
+					"cat": "Staffs"
+				}
+			],
+			"carries": [
+				"held",
+				"back"
+			],
+			"source": "Weapons",
+			"def": {
+				"Name": "VoidStaffs",
+				"Value": 0,
+				"Priority": 56,
+				"ParentGroup": "",
+				"Attribute": [
+					"HandheldItem"
+				],
+				"IsRestraint": false,
+				"Random": false,
+				"Extended": true,
+				"Fetish": [
+					"Sadism"
+				],
+				"PoseMapping": {
+					"__poseMapping": "ItemHandheld",
+					"TapedHands": "Hide"
+				},
+				"Layer": [
+					{
+						"Name": "Metal",
+						"HasImage": false
+					},
+					{
+						"Name": "Grip",
+						"HasImage": false
+					},
+					{
+						"Name": "Glow",
+						"HasImage": false
+					},
+					{
+						"Name": "TheRootMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 186,
+						"Top": 130,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheRootGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 186,
+						"Top": 130,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheRootGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 186,
+						"Top": 130,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheRootOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 90,
+						"Top": 168,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheRootOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 90,
+						"Top": 168,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheRootOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 90,
+						"Top": 168,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 0,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "FalseFlameMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 187,
+						"Top": 138,
+						"AllowTypes": {
+							"w": 1,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "FalseFlameGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 187,
+						"Top": 138,
+						"AllowTypes": {
+							"w": 1,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "FalseFlameOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 105,
+						"Top": 181,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 1,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "FalseFlameOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 105,
+						"Top": 181,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 1,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "BoneFingerMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 217,
+						"Top": 150,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "BoneFingerGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 217,
+						"Top": 150,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "BoneFingerOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 114,
+						"Top": 169,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "BoneFingerOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 114,
+						"Top": 169,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 2,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheVoidCrosierMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 181,
+						"Top": 140,
+						"AllowTypes": {
+							"w": 3,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheVoidCrosierGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 181,
+						"Top": 140,
+						"AllowTypes": {
+							"w": 3,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "TheVoidCrosierOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 93,
+						"Top": 176,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 3,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "TheVoidCrosierOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 93,
+						"Top": 176,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 3,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "ShiningCrystalMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 182,
+						"Top": 142,
+						"AllowTypes": {
+							"w": 4,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "ShiningCrystalGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 182,
+						"Top": 142,
+						"AllowTypes": {
+							"w": 4,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "ShiningCrystalOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 99,
+						"Top": 181,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 4,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "ShiningCrystalOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 99,
+						"Top": 181,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 4,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "WabbajackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 183,
+						"Top": 138,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "WabbajackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 183,
+						"Top": 138,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "WabbajackOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 104,
+						"Top": 180,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "WabbajackOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 104,
+						"Top": 180,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 5,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "SerpensAesulapiusMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 190,
+						"Top": 140,
+						"AllowTypes": {
+							"w": 6,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "SerpensAesulapiusGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 190,
+						"Top": 140,
+						"AllowTypes": {
+							"w": 6,
+							"Position": 0
+						}
+					},
+					{
+						"Name": "SerpensAesulapiusOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 113,
+						"Top": 185,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 6,
+							"Position": 1
+						}
+					},
+					{
+						"Name": "SerpensAesulapiusOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 113,
+						"Top": 185,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 6,
+							"Position": 1
+						}
+					}
+				]
+			},
+			"extended": {
+				"Archetype": "modular",
+				"DrawImages": false,
+				"Modules": [
+					{
+						"Name": "Weapon",
+						"Key": "w",
+						"DrawImages": true,
+						"Options": [
+							{
+								"Property": {
+									"DefaultColor": [
+										"#60652D",
+										"#72532A",
+										"#C3F895"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#5A5856",
+										"Default",
+										"#E53B31"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#1B1B17",
+										"Default",
+										"#BDEEA9"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#05050A",
+										"Default",
+										"#383BD0"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#59095A",
+										"Default",
+										"#CF31C1"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#22211D",
+										"#272623",
+										"Default"
+									]
+								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#CDBE92",
+										"#9A4A28",
+										"Default"
+									]
+								}
+							}
+						],
+						"DrawData": {
+							"elementData": [
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/TheRoot.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/FalseFlame.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/BoneFinger.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/TheVoidCrosier.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/ShiningCrystal.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/Wabbajack.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/SerpensAesulapius.png"
+								}
+							]
+						}
+					},
+					{
+						"Name": "Position",
+						"Key": "Position",
+						"Options": [
+							{},
+							{}
+						]
+					}
+				]
+			},
+			"texts": {
+				"ItemHandheldVoidStaffsSelectBase": "Select a weapon:",
+				"ItemHandheldVoidStaffsModuleWeapon": "Weapon",
+				"ItemHandheldVoidStaffsSelectWeapon": "Select a staff:",
+				"ItemHandheldVoidStaffsOptionw0": "The Root",
+				"ItemHandheldVoidStaffsSetw0": "SourceCharacter puts the The Root in DestinationCharacter hands.",
+				"ItemHandheldVoidStaffsOptionw1": "False Flame",
+				"ItemHandheldVoidStaffsSetw1": "SourceCharacter puts the False Flame in DestinationCharacter hands.",
+				"ItemHandheldVoidStaffsOptionw2": "Bone finger",
+				"ItemHandheldVoidStaffsSetw2": "SourceCharacter puts the Bone finger in DestinationCharacter hands.",
+				"ItemHandheldVoidStaffsOptionw3": "The Void Crosier",
+				"ItemHandheldVoidStaffsSetw3": "SourceCharacter puts the The Void Crosier in DestinationCharacter hands.",
+				"ItemHandheldVoidStaffsOptionw4": "Shining crystal",
+				"ItemHandheldVoidStaffsSetw4": "SourceCharacter puts the Shining crystal in DestinationCharacter hands.",
+				"ItemHandheldVoidStaffsOptionw5": "Wabbajack",
+				"ItemHandheldVoidStaffsSetw5": "SourceCharacter puts the Wabbajack in DestinationCharacter hands.",
+				"ItemHandheldVoidStaffsOptionw6": "Serpens Aesulapius",
+				"ItemHandheldVoidStaffsSetw6": "SourceCharacter puts the Serpens Aesulapius in DestinationCharacter hands.",
+				"ItemHandheldVoidStaffsModulePosition": "Carry",
+				"ItemHandheldVoidStaffsSelectPosition": "How to carry it:",
+				"ItemHandheldVoidStaffsOptionPosition0": "Held",
+				"ItemHandheldVoidStaffsSetPosition0": "SourceCharacter puts DestinationCharacter finger on the trigger.",
+				"ItemHandheldVoidStaffsOptionPosition1": "On the back",
+				"ItemHandheldVoidStaffsSetPosition1": "SourceCharacter slings the weapon across DestinationCharacter back."
+			},
+			"layerNames": {
+				"ItemHandheldVoidStaffsMetal": "Metal",
+				"ItemHandheldVoidStaffsGrip": "Grip and stock",
+				"ItemHandheldVoidStaffsGlow": "Glow"
 			}
 		},
 		{
@@ -9709,11 +10880,19 @@
 		"img/Weapons_BasicalMetal.png",
 		"img/Weapons_BasicalOnBackGrip.png",
 		"img/Weapons_BasicalOnBackMetal.png",
+		"img/Weapons_BattleHammerGrip.png",
+		"img/Weapons_BattleHammerMetal.png",
+		"img/Weapons_BattleHammerOnBackGrip.png",
+		"img/Weapons_BattleHammerOnBackMetal.png",
 		"img/Weapons_BidenhanderGrip.png",
 		"img/Weapons_BidenhanderMetal.png",
 		"img/Weapons_BidenhanderOnBackGrip.png",
 		"img/Weapons_BidenhanderOnBackMetal.png",
+		"img/Weapons_BlessingOfSinGlow.png",
+		"img/Weapons_BlessingOfSinGrip.png",
 		"img/Weapons_BlessingOfSinMetal.png",
+		"img/Weapons_BlessingOfSinOnBackGlow.png",
+		"img/Weapons_BlessingOfSinOnBackGrip.png",
 		"img/Weapons_BlessingOfSinOnBackMetal.png",
 		"img/Weapons_BloodshotMosinRifleGlow.png",
 		"img/Weapons_BloodshotMosinRifleGrip.png",
@@ -9730,6 +10909,10 @@
 		"img/Weapons_BloodshotMosinRifleShoulderGlow.png",
 		"img/Weapons_BloodshotMosinRifleShoulderGrip.png",
 		"img/Weapons_BloodshotMosinRifleShoulderMetal.png",
+		"img/Weapons_BoneFingerGlow.png",
+		"img/Weapons_BoneFingerMetal.png",
+		"img/Weapons_BoneFingerOnBackGlow.png",
+		"img/Weapons_BoneFingerOnBackMetal.png",
 		"img/Weapons_BuckyGrip.png",
 		"img/Weapons_BuckyMetal.png",
 		"img/Weapons_BuckyPortArmsGrip.png",
@@ -9778,7 +10961,9 @@
 		"img/Weapons_DesertEaglePistolPortArmsMetal.png",
 		"img/Weapons_DesertEaglePistolShoulderGrip.png",
 		"img/Weapons_DesertEaglePistolShoulderMetal.png",
+		"img/Weapons_DominatorGrip.png",
 		"img/Weapons_DominatorMetal.png",
+		"img/Weapons_DominatorOnBackGrip.png",
 		"img/Weapons_DominatorOnBackMetal.png",
 		"img/Weapons_DragonsBaneGlow.png",
 		"img/Weapons_DragonsBaneGrip.png",
@@ -9808,6 +10993,10 @@
 		"img/Weapons_FN57PistolPortArmsMetal.png",
 		"img/Weapons_FN57PistolShoulderGrip.png",
 		"img/Weapons_FN57PistolShoulderMetal.png",
+		"img/Weapons_FalseFlameGlow.png",
+		"img/Weapons_FalseFlameMetal.png",
+		"img/Weapons_FalseFlameOnBackGlow.png",
+		"img/Weapons_FalseFlameOnBackMetal.png",
 		"img/Weapons_FlintaGlow.png",
 		"img/Weapons_FlintaGrip.png",
 		"img/Weapons_FlintaMetal.png",
@@ -9918,7 +11107,13 @@
 		"img/Weapons_M60ShoulderBackMetal.png",
 		"img/Weapons_M60ShoulderGrip.png",
 		"img/Weapons_M60ShoulderMetal.png",
+		"img/Weapons_MacuahuitlGrip.png",
+		"img/Weapons_MacuahuitlMetal.png",
+		"img/Weapons_MacuahuitlOnBackGrip.png",
+		"img/Weapons_MacuahuitlOnBackMetal.png",
+		"img/Weapons_MirandusGrip.png",
 		"img/Weapons_MirandusMetal.png",
+		"img/Weapons_MirandusOnBackGrip.png",
 		"img/Weapons_MirandusOnBackMetal.png",
 		"img/Weapons_MiseryKS23ShotgunGrip.png",
 		"img/Weapons_MiseryKS23ShotgunMetal.png",
@@ -9990,6 +11185,10 @@
 		"img/Weapons_OldHuntingRifleShoulderBackMetal.png",
 		"img/Weapons_OldHuntingRifleShoulderGrip.png",
 		"img/Weapons_OldHuntingRifleShoulderMetal.png",
+		"img/Weapons_OldMaceGrip.png",
+		"img/Weapons_OldMaceMetal.png",
+		"img/Weapons_OldMaceOnBackGrip.png",
+		"img/Weapons_OldMaceOnBackMetal.png",
 		"img/Weapons_OldSawedOffShotgunGrip.png",
 		"img/Weapons_OldSawedOffShotgunMetal.png",
 		"img/Weapons_OldSawedOffShotgunOnBackGrip.png",
@@ -10042,6 +11241,10 @@
 		"img/Weapons_PaladinVoidKnifeGlow.png",
 		"img/Weapons_PaladinVoidKnifeGrip.png",
 		"img/Weapons_PaladinVoidKnifeMetal.png",
+		"img/Weapons_PoleHammerGrip.png",
+		"img/Weapons_PoleHammerMetal.png",
+		"img/Weapons_PoleHammerOnBackGrip.png",
+		"img/Weapons_PoleHammerOnBackMetal.png",
 		"img/Weapons_PrototypeV02RifleGrip.png",
 		"img/Weapons_PrototypeV02RifleMetal.png",
 		"img/Weapons_PrototypeV02RifleOnBackGrip.png",
@@ -10102,6 +11305,10 @@
 		"img/Weapons_SanguisugaTheBloodsuckerOnBackGlow.png",
 		"img/Weapons_SanguisugaTheBloodsuckerOnBackGrip.png",
 		"img/Weapons_SanguisugaTheBloodsuckerOnBackMetal.png",
+		"img/Weapons_SerpensAesulapiusGrip.png",
+		"img/Weapons_SerpensAesulapiusMetal.png",
+		"img/Weapons_SerpensAesulapiusOnBackGrip.png",
+		"img/Weapons_SerpensAesulapiusOnBackMetal.png",
 		"img/Weapons_SerpensPalustrisGlow.png",
 		"img/Weapons_SerpensPalustrisGrip.png",
 		"img/Weapons_SerpensPalustrisMetal.png",
@@ -10112,6 +11319,10 @@
 		"img/Weapons_ShamshirMetal.png",
 		"img/Weapons_ShamshirOnBackGrip.png",
 		"img/Weapons_ShamshirOnBackMetal.png",
+		"img/Weapons_ShiningCrystalGlow.png",
+		"img/Weapons_ShiningCrystalMetal.png",
+		"img/Weapons_ShiningCrystalOnBackGlow.png",
+		"img/Weapons_ShiningCrystalOnBackMetal.png",
 		"img/Weapons_SignariGrip.png",
 		"img/Weapons_SignariMetal.png",
 		"img/Weapons_SignariOnBackGrip.png",
@@ -10164,19 +11375,45 @@
 		"img/Weapons_TacticalAKRifleShoulderBackMetal.png",
 		"img/Weapons_TacticalAKRifleShoulderGrip.png",
 		"img/Weapons_TacticalAKRifleShoulderMetal.png",
+		"img/Weapons_TheBraverySimbolGlow.png",
+		"img/Weapons_TheBraverySimbolGrip.png",
+		"img/Weapons_TheBraverySimbolMetal.png",
+		"img/Weapons_TheBraverySimbolOnBackGlow.png",
+		"img/Weapons_TheBraverySimbolOnBackGrip.png",
+		"img/Weapons_TheBraverySimbolOnBackMetal.png",
 		"img/Weapons_ThePaladinVoidBladeGlow.png",
 		"img/Weapons_ThePaladinVoidBladeGrip.png",
 		"img/Weapons_ThePaladinVoidBladeMetal.png",
+		"img/Weapons_TheRootGlow.png",
+		"img/Weapons_TheRootGrip.png",
+		"img/Weapons_TheRootMetal.png",
+		"img/Weapons_TheRootOnBackGlow.png",
+		"img/Weapons_TheRootOnBackGrip.png",
+		"img/Weapons_TheRootOnBackMetal.png",
 		"img/Weapons_TheSneakiValoreGrip.png",
 		"img/Weapons_TheSneakiValoreMetal.png",
 		"img/Weapons_TheSneakiValoreOnBackGrip.png",
 		"img/Weapons_TheSneakiValoreOnBackMetal.png",
+		"img/Weapons_TheSprinklerGrip.png",
+		"img/Weapons_TheSprinklerMetal.png",
+		"img/Weapons_TheSprinklerOnBackGrip.png",
+		"img/Weapons_TheSprinklerOnBackMetal.png",
+		"img/Weapons_TheVoidCrosierGlow.png",
+		"img/Weapons_TheVoidCrosierMetal.png",
+		"img/Weapons_TheVoidCrosierOnBackGlow.png",
+		"img/Weapons_TheVoidCrosierOnBackMetal.png",
 		"img/Weapons_TriquetraGlow.png",
 		"img/Weapons_TriquetraGrip.png",
 		"img/Weapons_TriquetraMetal.png",
 		"img/Weapons_TriquetraOnBackGlow.png",
 		"img/Weapons_TriquetraOnBackGrip.png",
 		"img/Weapons_TriquetraOnBackMetal.png",
+		"img/Weapons_UnguisNihilisGlow.png",
+		"img/Weapons_UnguisNihilisGrip.png",
+		"img/Weapons_UnguisNihilisMetal.png",
+		"img/Weapons_UnguisNihilisOnBackGlow.png",
+		"img/Weapons_UnguisNihilisOnBackGrip.png",
+		"img/Weapons_UnguisNihilisOnBackMetal.png",
 		"img/Weapons_UpgradedAKRifleGrip.png",
 		"img/Weapons_UpgradedAKRifleMetal.png",
 		"img/Weapons_UpgradedAKRifleOnBackGrip.png",
@@ -10343,6 +11580,10 @@
 		"img/Weapons_VoidUnblessedSwordOnBackGlow.png",
 		"img/Weapons_VoidUnblessedSwordOnBackGrip.png",
 		"img/Weapons_VoidUnblessedSwordOnBackMetal.png",
+		"img/Weapons_WabbajackGrip.png",
+		"img/Weapons_WabbajackMetal.png",
+		"img/Weapons_WabbajackOnBackGrip.png",
+		"img/Weapons_WabbajackOnBackMetal.png",
 		"img/Weapons_ZmoraGrip.png",
 		"img/Weapons_ZmoraMetal.png",
 		"img/Weapons_ZmoraOnBackGrip.png",
@@ -10351,9 +11592,11 @@
 		"options/Antecessor.png",
 		"options/Bandzior.png",
 		"options/Basical.png",
+		"options/BattleHammer.png",
 		"options/Bidenhander.png",
 		"options/BlessingOfSin.png",
 		"options/BloodshotMosinRifle.png",
+		"options/BoneFinger.png",
 		"options/Bucky.png",
 		"options/BuryBrzetysaw.png",
 		"options/CommandoAKSU.png",
@@ -10366,6 +11609,7 @@
 		"options/ExcellentiaNihili.png",
 		"options/ExperimentalAKRifle.png",
 		"options/FN57Pistol.png",
+		"options/FalseFlame.png",
 		"options/Flinta.png",
 		"options/Glock.png",
 		"options/GloriaNihil.png",
@@ -10381,6 +11625,7 @@
 		"options/KugarinnTheOpressor.png",
 		"options/Lovebite.png",
 		"options/M60.png",
+		"options/Macuahuitl.png",
 		"options/Mirandus.png",
 		"options/MiseryKS23Shotgun.png",
 		"options/MistElegance.png",
@@ -10390,12 +11635,14 @@
 		"options/Nidilus.png",
 		"options/OldAK.png",
 		"options/OldHuntingRifle.png",
+		"options/OldMace.png",
 		"options/OldSawedOffShotgun.png",
 		"options/OverupgradedM4.png",
 		"options/P100SMG.png",
 		"options/PKM.png",
 		"options/PL15Pistol.png",
 		"options/PaladinVoidKnife.png",
+		"options/PoleHammer.png",
 		"options/PrototypeV02Rifle.png",
 		"options/PumpActionShotgun.png",
 		"options/R700.png",
@@ -10403,8 +11650,10 @@
 		"options/SVDS.png",
 		"options/SaigaShotgun.png",
 		"options/SanguisugaTheBloodsucker.png",
+		"options/SerpensAesulapius.png",
 		"options/SerpensPalustris.png",
 		"options/Shamshir.png",
+		"options/ShiningCrystal.png",
 		"options/Signari.png",
 		"options/SihilisManm.png",
 		"options/Silverwing.png",
@@ -10413,9 +11662,14 @@
 		"options/SmallCrossbow.png",
 		"options/StGeorgeSword.png",
 		"options/TacticalAKRifle.png",
+		"options/TheBraverySimbol.png",
 		"options/ThePaladinVoidBlade.png",
+		"options/TheRoot.png",
 		"options/TheSneakiValore.png",
+		"options/TheSprinkler.png",
+		"options/TheVoidCrosier.png",
 		"options/Triquetra.png",
+		"options/UnguisNihilis.png",
 		"options/UpgradedAKRifle.png",
 		"options/UpgradedMiniUzi.png",
 		"options/VectorSMG.png",
@@ -10430,8 +11684,10 @@
 		"options/VoidNTW20.png",
 		"options/VoidPaladinEliteHK416.png",
 		"options/VoidUnblessedSword.png",
+		"options/Wabbajack.png",
 		"options/Zmora.png",
 		"preview/QueensWrath.png",
+		"preview/VoidBlunt.png",
 		"preview/VoidCrossbows.png",
 		"preview/VoidGlowingBlades.png",
 		"preview/VoidPistols.png",
@@ -10440,6 +11696,7 @@
 		"preview/VoidShortBlades.png",
 		"preview/VoidShotguns.png",
 		"preview/VoidSniperRifles.png",
+		"preview/VoidStaffs.png",
 		"preview/VoidSwords.png"
 	]
 }

@@ -21,8 +21,8 @@ const PAGES = 'https://proudkiller0015.github.io/void-order/assets/items';
 const GROUP = 'ItemHandheld';
 /** The checkout's carry options (the Weapons item's Position module), by number: what each is, for the add-on's lines. */
 const CARRY_IDS = ['trigger', 'portarms', 'shoulder', 'back'];
-/** Blades say "Held" where guns say "Hand on the trigger". */
-const BLADE_KINDS = ['Swords', 'GlowingBlades', 'ShortBlades'];
+/** Blades, maces and staffs say "Held" where guns say "Hand on the trigger". */
+const BLADE_KINDS = ['Swords', 'GlowingBlades', 'ShortBlades', 'Blunt', 'Staffs'];
 /** Queen's Wrath's carry options, by number. */
 const WRATH_CARRY_IDS = ['held', 'front', 'back'];
 /** Each kind's item name, as it reads after the game's "a" ("swaps a void sword for a void rifle"). */
@@ -36,6 +36,8 @@ const DESCRIPTIONS = {
 	Swords: 'Void sword',
 	GlowingBlades: 'Void glowing blade',
 	ShortBlades: 'Void short blade',
+	Blunt: 'Void blunt weapon',
+	Staffs: 'Void staff',
 };
 /** Where a category goes when it has too few weapons to be an item of its own. */
 const MERGE_INTO = {

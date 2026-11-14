@@ -94,11 +94,29 @@
 		"SerpensPalustris",
 		"SihilisManm",
 		"GloriaNihil",
-		"IraBaccae"
+		"IraBaccae",
+		"UnguisNihilis"
 	],
 	"VoidShortBlades": [
 		"Ineluctabilis",
 		"PaladinVoidKnife",
 		"ThePaladinVoidBlade"
+	],
+	"VoidBlunt": [
+		"Macuahuitl",
+		"OldMace",
+		"BattleHammer",
+		"PoleHammer",
+		"TheSprinkler",
+		"TheBraverySimbol"
+	],
+	"VoidStaffs": [
+		"TheRoot",
+		"FalseFlame",
+		"BoneFinger",
+		"TheVoidCrosier",
+		"ShiningCrystal",
+		"Wabbajack",
+		"SerpensAesulapius"
 	]
 }

@@ -300,14 +300,18 @@ const playAround = (page) =>
 		const items = await page.evaluate(() =>
 			Asset.filter((a) => a.Group.Name === 'ItemHandheld' && /^(Void[A-Z]|QueensWrath$)/.test(a.Name)).map((a) => a.Name),
 		);
-		check('the ten Armory items are registered', items.length === 10, items);
+		check(
+			'the twelve Armory items are registered (blunt weapons and staffs too)',
+			items.length === 12 && items.includes('VoidBlunt') && items.includes('VoidStaffs'),
+			items,
+		);
 		const listed = await page.evaluate(() => {
 			const g = AssetGroupGet('Female3DCG', 'ItemHandheld');
 			Player.FocusGroup = g;
 			DialogInventoryBuild(Player, g);
 			return DialogInventory.filter((i) => /^(Void[A-Z]|QueensWrath$)/.test(i.Asset.Name)).length;
 		});
-		check('they are in the hand item list', listed === 10, listed);
+		check('they are in the hand item list', listed === 12, listed);
 		const widest = widestRight();
 		await page.evaluate((widest) => {
 			CharacterNaked(Player);
