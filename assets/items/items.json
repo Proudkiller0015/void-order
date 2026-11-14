@@ -1,6 +1,6 @@
 {
 	"group": "ItemHandheld",
-	"source": "8b1430544",
+	"source": "e75f4bf66",
 	"items": [
 		{
 			"name": "VoidPistols",
@@ -1552,8 +1552,8 @@
 					{
 						"Name": "CrackheadIllegalGunPortArmsMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 193,
-						"Top": 362,
+						"Left": 87,
+						"Top": 355,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 1
@@ -1572,8 +1572,8 @@
 					{
 						"Name": "CrackheadIllegalGunPortArmsGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 193,
-						"Top": 362,
+						"Left": 87,
+						"Top": 355,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 1
@@ -1788,8 +1788,8 @@
 					{
 						"Name": "Mp5KPortArmsMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 157,
-						"Top": 305,
+						"Left": 76,
+						"Top": 298,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 1
@@ -1808,8 +1808,8 @@
 					{
 						"Name": "Mp5KPortArmsGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 157,
-						"Top": 305,
+						"Left": 76,
+						"Top": 298,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 1
@@ -2024,8 +2024,8 @@
 					{
 						"Name": "UpgradedMiniUziPortArmsMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 174,
-						"Top": 332,
+						"Left": 61,
+						"Top": 324,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 1
@@ -2044,8 +2044,8 @@
 					{
 						"Name": "UpgradedMiniUziPortArmsGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 174,
-						"Top": 332,
+						"Left": 61,
+						"Top": 324,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 1
@@ -2260,8 +2260,8 @@
 					{
 						"Name": "VectorSMGPortArmsMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 107,
-						"Top": 292,
+						"Left": 104,
+						"Top": 279,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 1
@@ -2280,8 +2280,8 @@
 					{
 						"Name": "VectorSMGPortArmsGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 107,
-						"Top": 292,
+						"Left": 104,
+						"Top": 279,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 1
@@ -2496,8 +2496,8 @@
 					{
 						"Name": "P100SMGPortArmsMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 156,
-						"Top": 337,
+						"Left": 75,
+						"Top": 329,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 1
@@ -2516,8 +2516,8 @@
 					{
 						"Name": "P100SMGPortArmsGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 156,
-						"Top": 337,
+						"Left": 75,
+						"Top": 329,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 1
@@ -11330,8 +11330,8 @@
 					{
 						"Name": "OldSawedOffShotgunPortArmsMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 137,
-						"Top": 303,
+						"Left": 144,
+						"Top": 292,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 1
@@ -11350,8 +11350,8 @@
 					{
 						"Name": "OldSawedOffShotgunPortArmsGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 137,
-						"Top": 303,
+						"Left": 144,
+						"Top": 292,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 1
@@ -12933,8 +12933,8 @@
 					{
 						"Name": "SimpleHandCrossbowPortArmsMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 165,
-						"Top": 355,
+						"Left": 135,
+						"Top": 344,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 1
@@ -12953,8 +12953,8 @@
 					{
 						"Name": "SimpleHandCrossbowPortArmsGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 165,
-						"Top": 355,
+						"Left": 135,
+						"Top": 344,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 1
@@ -12973,8 +12973,8 @@
 					{
 						"Name": "SimpleHandCrossbowPortArmsGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 165,
-						"Top": 355,
+						"Left": 135,
+						"Top": 344,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 1
@@ -13156,8 +13156,8 @@
 					{
 						"Name": "SmallCrossbowPortArmsMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 84,
-						"Top": 304,
+						"Left": 150,
+						"Top": 264,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 1
@@ -13176,8 +13176,8 @@
 					{
 						"Name": "SmallCrossbowPortArmsGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 84,
-						"Top": 304,
+						"Left": 150,
+						"Top": 264,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 1
@@ -27203,38 +27203,6 @@
 		}
 	],
 	"images": [
-		"img/QueensWrath_BladeFront.png",
-		"img/QueensWrath_BladeHeld.png",
-		"img/QueensWrath_BladeOnBack.png",
-		"img/QueensWrath_ChainFront.png",
-		"img/QueensWrath_ChainHeld.png",
-		"img/QueensWrath_ChainHeldLow.png",
-		"img/QueensWrath_ChainOnBack.png",
-		"img/QueensWrath_CrownFront.png",
-		"img/QueensWrath_CrownHeld.png",
-		"img/QueensWrath_CrownOnBack.png",
-		"img/QueensWrath_CrystalsFront.png",
-		"img/QueensWrath_CrystalsHeld.png",
-		"img/QueensWrath_CrystalsHeldLow.png",
-		"img/QueensWrath_CrystalsOnBack.png",
-		"img/QueensWrath_EdgeFront.png",
-		"img/QueensWrath_EdgeHeld.png",
-		"img/QueensWrath_EdgeOnBack.png",
-		"img/QueensWrath_GemFront.png",
-		"img/QueensWrath_GemHeld.png",
-		"img/QueensWrath_GemHeldLow.png",
-		"img/QueensWrath_GemOnBack.png",
-		"img/QueensWrath_GlowFront.png",
-		"img/QueensWrath_GlowHeld.png",
-		"img/QueensWrath_GlowOnBack.png",
-		"img/QueensWrath_Hand.png",
-		"img/QueensWrath_ShaftFront.png",
-		"img/QueensWrath_ShaftHeld.png",
-		"img/QueensWrath_ShaftHeldLow.png",
-		"img/QueensWrath_ShaftOnBack.png",
-		"img/QueensWrath_SpikeFront.png",
-		"img/QueensWrath_SpikeHeldLow.png",
-		"img/QueensWrath_SpikeOnBack.png",
 		"img/Weapons_AK50BoundGrip.png",
 		"img/Weapons_AK50BoundMetal.png",
 		"img/Weapons_AK50Grip.png",
@@ -28483,7 +28451,6 @@
 		"options/VoidUnblessedSword.png",
 		"options/Wabbajack.png",
 		"options/Zmora.png",
-		"preview/QueensWrath.png",
 		"preview/VoidBlunt.png",
 		"preview/VoidCrossbows.png",
 		"preview/VoidGlowingBlades.png",
@@ -28494,6 +28461,39 @@
 		"preview/VoidShotguns.png",
 		"preview/VoidSniperRifles.png",
 		"preview/VoidStaffs.png",
-		"preview/VoidSwords.png"
+		"preview/VoidSwords.png",
+		"img/QueensWrath_BladeFront.png",
+		"img/QueensWrath_BladeHeld.png",
+		"img/QueensWrath_BladeOnBack.png",
+		"img/QueensWrath_ChainFront.png",
+		"img/QueensWrath_ChainHeld.png",
+		"img/QueensWrath_ChainHeldLow.png",
+		"img/QueensWrath_ChainOnBack.png",
+		"img/QueensWrath_CrownFront.png",
+		"img/QueensWrath_CrownHeld.png",
+		"img/QueensWrath_CrownOnBack.png",
+		"img/QueensWrath_CrystalsFront.png",
+		"img/QueensWrath_CrystalsHeld.png",
+		"img/QueensWrath_CrystalsHeldLow.png",
+		"img/QueensWrath_CrystalsOnBack.png",
+		"img/QueensWrath_EdgeFront.png",
+		"img/QueensWrath_EdgeHeld.png",
+		"img/QueensWrath_EdgeOnBack.png",
+		"img/QueensWrath_GemFront.png",
+		"img/QueensWrath_GemHeld.png",
+		"img/QueensWrath_GemHeldLow.png",
+		"img/QueensWrath_GemOnBack.png",
+		"img/QueensWrath_GlowFront.png",
+		"img/QueensWrath_GlowHeld.png",
+		"img/QueensWrath_GlowOnBack.png",
+		"img/QueensWrath_Hand.png",
+		"img/QueensWrath_ShaftFront.png",
+		"img/QueensWrath_ShaftHeld.png",
+		"img/QueensWrath_ShaftHeldLow.png",
+		"img/QueensWrath_ShaftOnBack.png",
+		"img/QueensWrath_SpikeFront.png",
+		"img/QueensWrath_SpikeHeldLow.png",
+		"img/QueensWrath_SpikeOnBack.png",
+		"preview/QueensWrath.png"
 	]
 }
