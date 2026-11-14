@@ -3,16 +3,20 @@
  *
  * Storage: 'meta' { name, about, questions, open, founded, founder }, 'ranks' (top to bottom, see Rank),
  * 'm:<member number>' members, 'a:<member number>' applications, 'pic:<member number>' pictures,
- * 'o:<id>' orders (the newest LIMITS.orders kept), 'log' (the newest LIMITS.log changes) and 'seq'.
+ * 'o:<id>' orders (the newest LIMITS.orders kept), 'log' (the newest LIMITS.log changes), 'seq', 'ranksV' (bumped on
+ * every change to the ranks, so an editor working from an older ladder is refused) and 'applied' (when each address
+ * sent new applications in the last hour).
  *
  * Clients sign in by signing a one-time nonce with their P-256 key. A member number is bound to the key it
  * applied with. A member who lost their key gets a reset code from someone above them, and the next key that
- * signs in with that code takes the number over. Only env.FOUNDER can found the Order.
+ * signs in with that code takes the number over. A member number is whatever the client says it is (the game
+ * can't vouch for it to an outside server), so founding takes the FOUND_CODE secret as well as env.FOUNDER, and
+ * whoever lets applicants in is told to check them in the game first.
  *
  * The hierarchy: ranks go top to bottom, and the founder stands above every rank. You only act on members
- * strictly below you, and only give ranks strictly below your own. What a rank may do is its `perms`:
- * approve (applications), order (post orders, sessions and notices) and manage (ranks, titles, kicks,
- * reset codes, the about page).
+ * strictly below you, give ranks strictly below your own, and send orders only down the ladder. What a rank may do
+ * is its `perms`: approve (applications), order (post orders, sessions and notices) and manage (ranks, titles,
+ * kicks, reset codes, the about page).
  *
  * Free-plan limits: sockets hibernate and keep-alive pings get an auto-response without waking the object.
  */
@@ -53,8 +57,12 @@ const LIMITS = {
 	room: 40,
 	/** Most messages per connection in 10 s. */
 	burst: 30,
-	/** Most open connections. */
+	/** Most open connections, most from one address, and how long one may stay open without signing in (ms). */
 	sockets: 400,
+	socketsPerIp: 12,
+	signIn: 10000,
+	/** Most new applications from one address per hour. */
+	appsPerIp: 5,
 	/** Hours a reset code stays valid. */
 	resetHours: 48,
 };
@@ -68,7 +76,10 @@ const PIC_RE = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+=*$/;
 const B64URL = /^[A-Za-z0-9_-]{16,128}$/;
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const CODE_RE = /^[A-Z2-9]{10}$/;
-/** Page origins allowed to connect: the game's sites (see the SlimeBeep relay), and localhost for tests. */
+/**
+ * Page origins allowed to connect: the game's sites and their subdomains (the European mirror is spelt both with and
+ * without the hyphen), and localhost for tests.
+ */
 const ORIGINS = [
 	/^https?:\/\/([a-z0-9-]+\.)*bondageprojects\.elementfx\.com$/,
 	/^https?:\/\/([a-z0-9-]+\.)*bondageprojects\.com$/,
@@ -116,6 +127,8 @@ const unb64url = (s) =>
 	Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
 /** Whether two public keys are the same. */
 const samePub = (a, b) => !!a && !!b && a.x === b.x && a.y === b.y;
+/** A request's id, sent back with its answer. */
+const ridOf = (p) => (p && typeof p.rid === 'number' ? { rid: p.rid } : {});
 /** The storage key of an order: padded so they list in order. */
 const orderKey = (id) => `o:${String(id).padStart(10, '0')}`;
 
@@ -212,6 +225,7 @@ export class Order extends DurableObject {
 				this.orders.set(o.id, o);
 			}
 			this.seq = (await ctx.storage.get('seq')) || 0;
+			this.ranksV = (await ctx.storage.get('ranksV')) || 0;
 			this.log = (await ctx.storage.get('log')) || [];
 		});
 	}
@@ -307,15 +321,29 @@ export class Order extends DurableObject {
 	}
 
 	// ---- Connections
-	/** Accepts a WebSocket and sends it a sign-in nonce. */
-	async fetch() {
-		if (this.ctx.getWebSockets().length >= LIMITS.sockets) {
+	/**
+	 * Accepts a WebSocket and sends it a sign-in nonce. Connections that didn't sign in within LIMITS.signIn are closed
+	 * first, and one address holds at most LIMITS.socketsPerIp.
+	 */
+	async fetch(req) {
+		const ip = req.headers.get('CF-Connecting-IP') || '';
+		const now = Date.now();
+		let fromIp = 0;
+		for (const ws of this.ctx.getWebSockets()) {
+			const a = ws.deserializeAttachment() || {};
+			if (!a.member && now - (a.at || 0) > LIMITS.signIn) {
+				this.fail(ws, 'sign in first');
+			} else if (ip && a.ip === ip) {
+				fromIp++;
+			}
+		}
+		if (this.ctx.getWebSockets().length >= LIMITS.sockets || fromIp >= LIMITS.socketsPerIp) {
 			return new Response('Busy', { status: 503 });
 		}
 		const [client, server] = Object.values(new WebSocketPair());
 		this.ctx.acceptWebSocket(server);
 		const nonce = b64url(crypto.getRandomValues(new Uint8Array(18)));
-		server.serializeAttachment({ nonce, member: 0, pub: null, hits: [], room: '' });
+		server.serializeAttachment({ nonce, member: 0, pub: null, hits: [], room: '', ip, at: now });
 		server.send(JSON.stringify({ t: 'hello', nonce }));
 		return new Response(null, { status: 101, webSocket: client });
 	}
@@ -338,11 +366,11 @@ export class Order extends DurableObject {
 	}
 	/** Answers a request with an error, keeping the connection. */
 	no(ws, why, p) {
-		this.send(ws, { t: 'error', why, ...(p && typeof p.rid === 'number' ? { rid: p.rid } : {}) });
+		this.send(ws, { t: 'error', why, ...ridOf(p) });
 	}
 	/** Answers a request as done. */
 	ok(ws, p, extra = {}) {
-		this.send(ws, { t: 'ok', what: p.t, ...(typeof p.rid === 'number' ? { rid: p.rid } : {}), ...extra });
+		this.send(ws, { t: 'ok', what: p.t, ...ridOf(p), ...extra });
 	}
 	/** The signed-in connections with their attachments. */
 	sockets() {
@@ -388,7 +416,6 @@ export class Order extends DurableObject {
 			rank: m.rank,
 			title: m.title || '',
 			joined: m.joined,
-			pv: m.pv || 0,
 			...(m.n in on ? { on: 1, room: on[m.n] } : {}),
 		};
 	}
@@ -407,7 +434,15 @@ export class Order extends DurableObject {
 				}
 			: null;
 		/** @type {Record<string, any>} */
-		const s = { t: 'state', status, member: a.member, meta, ranks: this.ranks, canFound: !this.meta && a.member === this.founderNumber };
+		const s = {
+			t: 'state',
+			status,
+			member: a.member,
+			meta,
+			ranks: this.ranks,
+			ranksV: this.ranksV,
+			canFound: !this.meta && a.member === this.founderNumber,
+		};
 		const all = Object.values(this.members);
 		if (status === 'member') {
 			const me = this.members[a.member];
@@ -441,13 +476,22 @@ export class Order extends DurableObject {
 	}
 
 	// ---- Orders
-	/** Whether member `n` is one an order goes to. */
+	/** Whether member `n` is one an order goes to: everyone below its author, or the ranks and members it names. */
 	isFor(o, n) {
 		const m = this.members[n];
-		if (!m) {
+		if (!m || n === o.by) {
 			return false;
 		}
-		return o.to.all === true || (o.to.ranks || []).includes(m.rank) || (o.to.members || []).includes(n);
+		const below = this.members[o.by] ? this.above(o.by, n) : true;
+		return (o.to.all === true && below) || (o.to.ranks || []).includes(m.rank) || (o.to.members || []).includes(n);
+	}
+	/** Sends every member connection the orders it sees now (after the ranks change who sees what). */
+	pushAllOrders() {
+		for (const { ws, a } of this.sockets()) {
+			if (this.statusOf(a) === 'member') {
+				this.send(ws, { t: 'orders', orders: this.ordersOf(a.member) });
+			}
+		}
 	}
 	/** Whether member `n` oversees an order: they stand above its author (or manage, once its author is gone). */
 	oversees(o, n) {
@@ -635,13 +679,20 @@ export class Order extends DurableObject {
 		}
 	}
 
-	/** Founds the Order: only env.FOUNDER, once. Two ranks to start with, renamed and added to in the app. */
+	/**
+	 * Founds the Order: only env.FOUNDER with the FOUND_CODE secret, once. Two ranks to start with, renamed and added
+	 * to in the app.
+	 */
 	async found(ws, a, p) {
 		if (this.meta) {
 			return this.no(ws, 'already founded', p);
 		}
 		if (a.member !== this.founderNumber) {
 			return this.no(ws, 'only the founder can found the Order', p);
+		}
+		const code = this.env.FOUND_CODE;
+		if (typeof code !== 'string' || code.length < 8 || typeof p.code !== 'string' || p.code.trim() !== code) {
+			return this.no(ws, 'wrong founding code', p);
 		}
 		this.meta = {
 			name: clean(p.name, LIMITS.name) || 'The Void Order',
@@ -665,7 +716,8 @@ export class Order extends DurableObject {
 			joined: Date.now(),
 		};
 		delete this.apps[a.member];
-		await this.ctx.storage.put({ meta: this.meta, ranks: this.ranks });
+		this.ranksV++;
+		await this.ctx.storage.put({ meta: this.meta, ranks: this.ranks, ranksV: this.ranksV });
 		await this.putMember(a.member);
 		await this.putApp(a.member);
 		await this.note(a.member, `${this.nameOf(a.member)} founded ${this.meta.name}`);
@@ -686,8 +738,25 @@ export class Order extends DurableObject {
 		if (status === 'mismatch') {
 			return this.no(ws, 'signed in with another key', p);
 		}
-		if (status === 'guest' && Object.keys(this.apps).length >= LIMITS.apps) {
-			return this.no(ws, 'too many applications are waiting, try again later', p);
+		if (status === 'guest') {
+			if (Object.keys(this.apps).length >= LIMITS.apps) {
+				return this.no(ws, 'too many applications are waiting, try again later', p);
+			}
+			// New applications per address in the last hour, kept in storage (the object sleeps between visitors).
+			const now = Date.now();
+			const applied = (await this.ctx.storage.get('applied')) || {};
+			for (const [ip, times] of Object.entries(applied)) {
+				applied[ip] = times.filter((t) => now - t < 36e5);
+				if (!applied[ip].length) {
+					delete applied[ip];
+				}
+			}
+			const mine = applied[a.ip] || [];
+			if (mine.length >= LIMITS.appsPerIp) {
+				return this.no(ws, 'too many applications from here, try again in an hour', p);
+			}
+			applied[a.ip] = [...mine, now];
+			await this.ctx.storage.put('applied', applied);
 		}
 		if (Object.keys(this.members).length >= LIMITS.members) {
 			return this.no(ws, 'the Order is full', p);
@@ -782,6 +851,7 @@ export class Order extends DurableObject {
 		await this.note(me, `${this.nameOf(me)} made ${this.nameOf(m.n)} ${this.ranks.find((r) => r.id === p.rank).name}`);
 		this.ok(ws, p);
 		this.broadcast();
+		this.pushAllOrders();
 	}
 	async setTitle(ws, me, p) {
 		const m = this.managed(ws, me, p);
@@ -837,13 +907,12 @@ export class Order extends DurableObject {
 		}
 		this.meta.founder = m.n;
 		m.rank = this.ranks[0].id;
-		this.members[me].rank = this.ranks[0].id;
 		await this.ctx.storage.put('meta', this.meta);
 		await this.putMember(m.n);
-		await this.putMember(me);
 		await this.note(me, `${this.nameOf(me)} handed the Order to ${this.nameOf(m.n)}`);
 		this.ok(ws, p);
 		this.broadcast();
+		this.pushAllOrders();
 	}
 
 	/** Your own card: bio and picture ('' removes it). */
@@ -856,7 +925,6 @@ export class Order extends DurableObject {
 			if (p.pic && (p.pic.length > LIMITS.pic || !PIC_RE.test(p.pic))) {
 				return this.no(ws, 'bad picture', p);
 			}
-			m.pv = (m.pv || 0) + 1;
 			if (p.pic) {
 				await this.ctx.storage.put(`pic:${me}`, p.pic);
 			} else {
@@ -871,14 +939,14 @@ export class Order extends DurableObject {
 	async card(ws, p) {
 		const m = this.members[p.member];
 		if (!m) {
-			return this.send(ws, { t: 'card', member: p.member, card: null, ...(typeof p.rid === 'number' ? { rid: p.rid } : {}) });
+			return this.send(ws, { t: 'card', member: p.member, card: null, ...ridOf(p) });
 		}
 		const pic = (await this.ctx.storage.get(`pic:${m.n}`)) || '';
 		const rank = this.ranks.find((r) => r.id === m.rank) || null;
 		this.send(ws, {
 			t: 'card',
 			member: m.n,
-			...(typeof p.rid === 'number' ? { rid: p.rid } : {}),
+			...ridOf(p),
 			card: {
 				n: m.n,
 				name: m.name,
@@ -888,7 +956,6 @@ export class Order extends DurableObject {
 				bio: m.bio || '',
 				joined: m.joined,
 				pic,
-				pv: m.pv || 0,
 				order: this.meta ? this.meta.name : '',
 			},
 		});
@@ -940,6 +1007,9 @@ export class Order extends DurableObject {
 		if (!this.may(me, 'manage')) {
 			return this.no(ws, 'not allowed', p);
 		}
+		if (p.v !== this.ranksV) {
+			return this.no(ws, 'someone changed the ranks meanwhile: look at them again and redo your changes', p);
+		}
 		if (!Array.isArray(p.ranks) || p.ranks.length < 1 || p.ranks.length > LIMITS.ranks) {
 			return this.no(ws, `between 1 and ${LIMITS.ranks} ranks`, p);
 		}
@@ -985,15 +1055,17 @@ export class Order extends DurableObject {
 			await this.putMember(this.meta.founder);
 		}
 		this.ranks = next;
-		await this.ctx.storage.put('ranks', this.ranks);
+		this.ranksV++;
+		await this.ctx.storage.put({ ranks: this.ranks, ranksV: this.ranksV });
 		await this.note(me, `${this.nameOf(me)} changed the ranks`);
 		this.ok(ws, p);
 		this.broadcast();
+		this.pushAllOrders();
 	}
 
 	/**
-	 * A new order, photo session or notice, to everyone, to ranks, or to members. A session has a time (`when`)
-	 * for the reminders.
+	 * A new order, photo session or notice, to everyone below you, or to ranks and members below you. A session has a
+	 * time (`when`) for the reminders.
 	 */
 	async addOrder(ws, me, p) {
 		if (!this.may(me, 'order')) {
@@ -1010,12 +1082,14 @@ export class Order extends DurableObject {
 		if (to.all === true) {
 			dest.all = true;
 		} else {
-			const ranks = Array.isArray(to.ranks)
-				? [...new Set(to.ranks.filter((id) => this.ranks.some((r) => r.id === id)))].slice(0, LIMITS.orderTo)
-				: [];
-			const members = Array.isArray(to.members)
-				? [...new Set(to.members.filter((n) => isNum(n) && this.members[n]))].slice(0, LIMITS.orderTo)
-				: [];
+			const ranks = Array.isArray(to.ranks) ? [...new Set(to.ranks)] : [];
+			const members = Array.isArray(to.members) ? [...new Set(to.members)] : [];
+			if (ranks.length > LIMITS.orderTo || members.length > LIMITS.orderTo) {
+				return this.no(ws, `at most ${LIMITS.orderTo} ranks and ${LIMITS.orderTo} members`, p);
+			}
+			if (!ranks.every((id) => this.mayGive(me, id)) || !members.every((n) => isNum(n) && this.members[n] && this.above(me, n))) {
+				return this.no(ws, 'orders only go to ranks and members below you', p);
+			}
 			if (!ranks.length && !members.length) {
 				return this.no(ws, 'pick who it is for', p);
 			}

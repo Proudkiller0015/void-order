@@ -26,8 +26,8 @@
 (function () {
 	'use strict';
 
-	const SOURCE = 'https://raw.githubusercontent.com/Proudkiller0015/void-order/main/void.js';
-	// GitHub may hand out a copy up to five minutes old, so an update lands within about five minutes.
+	const SOURCE = 'https://proudkiller0015.github.io/void-order/void.js';
+	// The same file the bookmark loads. GitHub Pages may hand out a copy up to ten minutes old.
 	fetch(`${SOURCE}?t=${Math.floor(Date.now() / 60000)}`, { cache: 'no-store' })
 		.then((res) => {
 			if (!res.ok) throw new Error(`HTTP ${res.status}`);

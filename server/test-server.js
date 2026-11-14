@@ -87,7 +87,11 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 	check((await b.req({ t: 'found', name: 'Mine' })).why === 'only the founder can found the Order', 'someone else cannot found the Order');
 	const a = await connect(ann, { fields: { room: 'Void Hall' } });
 	check(a.state.canFound === true, 'the founder number may found the Order');
-	const founded = await a.req({ t: 'found', name: 'The Void Order', about: 'We gaze back.', myName: 'Ann' });
+	check(
+		(await a.req({ t: 'found', name: 'The Void Order', code: 'guess', myName: 'Ann' })).why === 'wrong founding code',
+		'founding takes the founding code too',
+	);
+	const founded = await a.req({ t: 'found', name: 'The Void Order', about: 'We gaze back.', code: 'test-founding-code', myName: 'Ann' });
 	check(
 		founded.t === 'ok' && a.state.status === 'member' && a.state.ranks.map((r) => r.name).join() === 'Head,Member',
 		'founding makes Ann the founder at Head',
@@ -125,7 +129,7 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 		{ id: '', name: 'Paladin', sym: '✦⸸✦', color: '#7fd4ff', perms: ['order'] },
 		{ id: member, name: 'Acolyte', sym: '', color: 'bad', perms: ['fly'] },
 	];
-	check((await a.req({ t: 'ranks', ranks: ladder })).t === 'ok', 'the founder sets the rank ladder');
+	check((await a.req({ t: 'ranks', ranks: ladder, v: a.state.ranksV })).t === 'ok', 'the founder sets the rank ladder');
 	const inq = rankId(a, 'Inquisitor');
 	const pal = rankId(a, 'Paladin');
 	const aco = rankId(a, 'Acolyte');
@@ -170,17 +174,23 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 	const bLadder = b.state.ranks.map((r) => ({ ...r }));
 	bLadder[0].name = 'Mine Now';
 	check(
-		(await b.req({ t: 'ranks', ranks: bLadder })).why === 'you can only change ranks below your own',
+		(await b.req({ t: 'ranks', ranks: bLadder, v: b.state.ranksV })).why === 'you can only change ranks below your own',
 		'Bea cannot change ranks at or above hers',
 	);
 	const bLadder2 = b.state.ranks.map((r) => ({ ...r }));
 	bLadder2[2].name = 'Paladin of the Void';
+	const staleV = b.state.ranksV;
 	check(
-		(await b.req({ t: 'ranks', ranks: bLadder2 })).t === 'ok' && rankId(a, 'Paladin of the Void') === pal,
+		(await b.req({ t: 'ranks', ranks: bLadder2, v: staleV })).t === 'ok' && rankId(a, 'Paladin of the Void') === pal,
 		'Bea renames Paladin, below her',
 	);
 	check(
-		(await b.req({ t: 'ranks', ranks: bLadder2.filter((r) => r.id !== aco) })).why === 'Cat still holds a rank you removed',
+		/changed the ranks meanwhile/.test((await b.req({ t: 'ranks', ranks: bLadder2, v: staleV })).why),
+		'a save from a ladder someone has changed since is refused, not merged over',
+	);
+	check(
+		(await b.req({ t: 'ranks', ranks: bLadder2.filter((r) => r.id !== aco), v: b.state.ranksV })).why ===
+			'Cat still holds a rank you removed',
 		'a rank someone holds cannot be removed',
 	);
 
@@ -197,11 +207,21 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 		'Bea gives Cat a title',
 	);
 
-	// Orders.
-	const o1 = await c.req({ t: 'order', kind: 'order', title: 'Polish the altar', body: 'Before Friday.', to: { all: true } });
+	// Orders go down the ladder.
 	check(
-		o1.t === 'ok' && a.orders.has(o1.id) && b.orders.has(o1.id) && c.orders.has(o1.id),
-		'a Paladin posts an order to everyone; all get it',
+		(await c.req({ t: 'order', title: 'Up the ladder', to: { members: [12] } })).why === 'orders only go to ranks and members below you',
+		'a Paladin cannot send an order to the Inquisitor above her',
+	);
+	check(
+		(await c.req({ t: 'order', title: 'Up the ladder', to: { ranks: [inq] } })).why === 'orders only go to ranks and members below you',
+		'or to a rank above her',
+	);
+	const o0 = await c.req({ t: 'order', title: 'Sweep the steps', to: { ranks: [aco] } });
+	check(o0.t === 'ok' && c.orders.has(o0.id) && a.orders.has(o0.id), 'a Paladin orders the Acolytes below; the founder above sees it');
+	const o1 = await b.req({ t: 'order', kind: 'order', title: 'Polish the altar', body: 'Before Friday.', to: { all: true } });
+	check(
+		o1.t === 'ok' && c.orders.has(o1.id) && a.orders.has(o1.id) && !!a.orders.get(o1.id).acks,
+		'Bea orders everyone below her: Cat gets it, and Ann above oversees it with its answers',
 		o1,
 	);
 	const when = Date.now() + 2 * 36e5;
@@ -215,9 +235,10 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 		(await a.req({ t: 'order', kind: 'session', title: 'No time', to: { all: true } })).why === 'a session needs a time',
 		'a session needs a time',
 	);
+	check((await a.req({ t: 'order', title: 'Nobody', to: {} })).why === 'pick who it is for', 'an order needs someone to go to');
 	check(
-		(await a.req({ t: 'order', title: 'Nobody', to: { members: [999] } })).why === 'pick who it is for',
-		'an order needs someone to go to',
+		(await a.req({ t: 'order', title: 'Ghost', to: { members: [999] } })).why === 'orders only go to ranks and members below you',
+		'and someone in the Order',
 	);
 	check((await c.req({ t: 'ack', id: s1.id, a: 'done' })).why === 'bad answer', 'a session is answered yes, maybe or no');
 	check((await c.req({ t: 'ack', id: s1.id, a: 'yes' })).t === 'ok', 'Cat says yes to the session');
@@ -227,12 +248,9 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 		c.orders.get(s1.id),
 	);
 	check((await b.req({ t: 'ack', id: s1.id, a: 'yes' })).why === 'no such order', 'Bea cannot answer a session not meant for her');
-	await b.req({ t: 'ack', id: o1.id, a: 'done' });
-	check(
-		b.orders.get(o1.id).acks && b.orders.get(o1.id).acks[12].a === 'done',
-		"Bea, above Cat, sees the answers to Cat's order",
-		b.orders.get(o1.id),
-	);
+	check((await a.req({ t: 'ack', id: o1.id, a: 'done' })).why === 'no such order', "Ann, above Bea, doesn't answer Bea's order");
+	await c.req({ t: 'ack', id: o1.id, a: 'done' });
+	check(b.orders.get(o1.id).acks[13].a === 'done', "Bea sees Cat's answer", b.orders.get(o1.id));
 	const dm = await b.req({ t: 'order', kind: 'notice', title: 'For Cat', to: { members: [13] } });
 	check(c.orders.has(dm.id) && a.orders.has(dm.id), 'a notice to one member reaches them, and the founder above sees it');
 
@@ -287,7 +305,7 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 	]);
 	check((await b.req({ t: 'unorder', id: s1.id })).why === 'not allowed', "Bea cannot take down the founder's session");
 	check(
-		(await a.req({ t: 'unorder', id: o1.id })).t === 'ok' && !b.orders.has(o1.id),
+		(await a.req({ t: 'unorder', id: o0.id })).t === 'ok' && !a.orders.has(o0.id),
 		"the founder takes down departed Cat's order; it goes for everyone",
 	);
 
@@ -311,10 +329,15 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 	// Going offline is noticed.
 	b2.ws.send(JSON.stringify({ t: 'room', room: 'Shrine' }));
 	const watcher = await connect(ann);
-	await b2.req({ t: 'rank', member: 11, rank: aco }).catch(() => {});
 	await watcher.req({ t: 'apply', answers: ['back'] });
 	await b2.req({ t: 'approve', member: 11 });
 	check(listed(watcher, 12) && listed(watcher, 12).on === 1, 'Ann sees Bea online');
+	// A promotion brings the orders meant for the new rank at once.
+	const s2 = await b2.req({ t: 'order', kind: 'notice', title: 'For Inquisitors', to: { ranks: [inq] } });
+	check(s2.t === 'ok' && !watcher.orders.has(s2.id), 'a notice for Inquisitors: Ann, a member again, is not one');
+	await b2.req({ t: 'rank', member: 11, rank: inq });
+	await wait(300);
+	check(watcher.orders.has(s2.id), 'made an Inquisitor, Ann gets it without signing in again');
 	b2.close();
 	await wait(600);
 	check(listed(watcher, 12) && !listed(watcher, 12).on, 'and offline once she goes', listed(watcher, 12));
@@ -334,6 +357,47 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 			/* closed */
 		}
 	}
+	await wait(500);
+
+	// Connections that never sign in are closed after 10 s, and one address holds at most 12.
+	const raw = () => new WebSocket(`${BASE}/ws?o=${ORDER}`, { headers: { Origin: 'https://www.bondageprojects.elementfx.com' } });
+	const idle = raw();
+	let idleTold = false;
+	idle.onmessage = (e) => {
+		idleTold = idleTold || JSON.parse(e.data).why === 'sign in first';
+	};
+	await wait(11000);
+	const poke = await connect(await makePeer(40, 'Poke'));
+	await wait(300);
+	check(idleTold && idle.readyState >= 2, 'a connection that never signs in is closed after 10 seconds');
+	poke.close();
+	await wait(300);
+	const many = [];
+	let refused = 0;
+	for (let i = 0; i < 13; i++) {
+		const x = raw();
+		x.onerror = () => refused++;
+		many.push(x);
+	}
+	await wait(1500);
+	check(refused >= 1, `one address can't hold more than 12 connections (${refused} refused)`);
+	for (const x of many) {
+		x.close();
+	}
+	await wait(500);
+
+	// Applications: at most 5 new ones from one address an hour (Bea, Cat and Ann's came from here already).
+	const tries = [];
+	for (let i = 0; i < 4; i++) {
+		const x = await connect(await makePeer(50 + i, `Visitor ${i}`));
+		tries.push((await x.req({ t: 'apply', answers: ['hello'] })).why || 'ok');
+		x.close();
+	}
+	check(
+		tries.join() === 'ok,ok,too many applications from here, try again in an hour,too many applications from here, try again in an hour',
+		'one address can only send a few applications an hour',
+		tries,
+	);
 	console.log(failed ? `${failed} FAILED` : 'all passed');
 	process.exit(failed ? 1 : 0);
 })();

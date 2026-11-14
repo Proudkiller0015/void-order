@@ -13,7 +13,7 @@
 	}
 	const VERSION = '1.0.0';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
-	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev';
+	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
 	/** Where the key is kept in the account (Player.ExtensionSettings), synced to every device. */
 	const SETTINGS_KEY = 'VoidOrder';
 	/** Content of the hidden room message that shows an ID card to the room's Void Order users. */
@@ -32,19 +32,27 @@
 		orderText: 1500,
 		pic: 12000,
 		room: 40,
+		sym: 12,
 	};
+	/** What each right lets a rank do, in words. */
+	const PERM_LABEL = { approve: 'approves members', order: 'gives orders', manage: 'manages' };
 	const KIND_ICON = { order: '📜', session: '📸', notice: '📢' };
 	const KIND_NAME = { order: 'Order', session: 'Photo session', notice: 'Notice' };
 	const ACK_LABEL = { read: '👁 Read', done: '✔ Done', yes: '✔ Coming', maybe: '❔ Maybe', no: '✖ Can’t come' };
 	const ACKS = { order: ['read', 'done'], session: ['yes', 'maybe', 'no'], notice: ['read'] };
 
 	// ---- Small helpers
-	/** A line in your own chat log only. */
+	/** Text made safe to put in HTML. */
+	const escapeHtml = (/** @type {string} */ text) =>
+		String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || c);
+	/** A line in your own chat log only (the game shows it as HTML, so the text is escaped). */
 	const note = (/** @type {string} */ text) => {
 		if (w.CurrentScreen === 'ChatRoom' && typeof w.ChatRoomSendLocal === 'function') {
-			w.ChatRoomSendLocal(`⸸ ${text}`);
+			w.ChatRoomSendLocal(`⸸ ${escapeHtml(text)}`);
 		}
 	};
+	/** "1 member", "3 members". */
+	const plural = (/** @type {number} */ n, /** @type {string} */ word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 	const nick = (/** @type {any} */ C) => (typeof w.CharacterNickname === 'function' ? w.CharacterNickname(C) : C.Nickname || C.Name);
 	/** Local settings for this browser. */
 	const pref = (/** @type {string} */ k, /** @type {any} */ dflt) => {
@@ -200,7 +208,7 @@
 		const me = w.Player.MemberNumber;
 		let sock;
 		try {
-			sock = new WebSocket(`${SERVER}/ws${w.VoidOrderTestOrder ? `?o=${w.VoidOrderTestOrder}` : ''}`);
+			sock = new WebSocket(SERVER);
 		} catch (e) {
 			return later();
 		}
@@ -235,7 +243,9 @@
 				return;
 			}
 			ws = null;
+			state = null;
 			clearInterval(pingTimer);
+			render();
 			later();
 		};
 		sock.onopen = () => {
@@ -297,14 +307,10 @@
 			done(x);
 		}
 		if (x.t === 'state') {
-			const first = !state;
 			state = x;
 			if (resetCode && x.status === 'member') {
 				resetCode = '';
 				note('Your new key is in. Welcome back.');
-			}
-			if (first && x.status === 'member') {
-				ordersLoaded = false;
 			}
 			render();
 		} else if (x.t === 'orders') {
@@ -316,14 +322,14 @@
 				ordersLoaded = true;
 				const open = [...orders.values()].filter(waitsForMe).length;
 				if (open) {
-					note(`${open} unanswered order${open === 1 ? '' : 's'} from the Order. Type /void to read.`);
+					note(`${plural(open, 'unanswered order')} from the Order. Type /void to read.`);
 				}
 			}
 			render();
 		} else if (x.t === 'order') {
 			const fresh = !orders.has(x.o.id);
 			orders.set(x.o.id, x.o);
-			if (fresh && ordersLoaded && isForMe(x.o) && x.o.by !== w.Player.MemberNumber) {
+			if (fresh && ordersLoaded && isForMe(x.o)) {
 				const text = `${KIND_ICON[x.o.kind]} New ${KIND_NAME[x.o.kind].toLowerCase()} from ${x.o.byName}: ${x.o.title}`;
 				note(`${text} (/void)`);
 				toast(text, () => openPanel('orders'));
@@ -352,17 +358,20 @@
 	const aboveMe = (/** @type {any} */ m) => isMember() && state.me.power < powerOf(m);
 	/** Ranks you may give: those strictly below your own. */
 	const givable = () => (isMember() ? state.ranks.filter((/** @type {any} */ r, /** @type {number} */ i) => i > state.me.power) : []);
+	/** Whether an order goes to you: everyone below its author, or your rank or you by name. */
 	function isForMe(/** @type {any} */ o) {
-		if (!isMember()) {
+		if (!isMember() || o.by === state.me.n) {
 			return false;
 		}
 		const me = state.me;
-		return o.to.all === true || (o.to.ranks || []).includes(me.rank) || (o.to.members || []).includes(me.n);
+		const author = memberOf(o.by);
+		const below = author ? powerOf(author) < me.power : true;
+		return (o.to.all === true && below) || (o.to.ranks || []).includes(me.rank) || (o.to.members || []).includes(me.n);
 	}
 	/** Your answer to an order, or null. */
 	const myAck = (/** @type {any} */ o) => (o.acks ? o.acks[w.Player.MemberNumber] : o.mine) || null;
-	/** Whether an order is waiting for your answer (your own never are). */
-	const waitsForMe = (/** @type {any} */ o) => isForMe(o) && o.by !== w.Player.MemberNumber && !myAck(o);
+	/** Whether an order is waiting for your answer. */
+	const waitsForMe = (/** @type {any} */ o) => isForMe(o) && !myAck(o);
 	/** A rank's name with its symbols either side ("≈][≈ Inquisitor ≈][≈"). */
 	const rankLabel = (/** @type {any} */ r) => (r ? (r.sym ? `${r.sym} ${r.name} ${r.sym}` : r.name) : 'No rank');
 
@@ -571,13 +580,13 @@
 		card.append(make('div', 'foot', `${fromRoom ? 'Shown in this room · ' : ''}In the Order since ${date(c.joined)}`));
 		document.body.append(card);
 	}
-	/** Looks up a member's card on the server and opens it. */
-	async function openCard(/** @type {number} */ n) {
+	/** Looks up a member's card on the server and opens it; `say` gets why it couldn't. */
+	async function openCard(/** @type {number} */ n, say = panelSay) {
 		const r = await req({ t: 'card', member: n });
 		if (r.t === 'card' && r.card) {
 			showCard(r.card);
 		} else {
-			panelSay(r.why || `#${n} is not in the Order.`);
+			say(r.why || `#${n} is not in the Order.`);
 		}
 	}
 	/** Shows your ID card to the room: an emote everyone sees, and a hidden note so Void Order users get the card. */
@@ -589,7 +598,7 @@
 			return 'Only members have an ID card.';
 		}
 		w.ServerSend('ChatRoomChat', { Content: `shows their ID card of ${state.meta.name}.`, Type: 'Emote' });
-		w.ServerSend('ChatRoomChat', { Content: HIDDEN, Type: 'Hidden', Dictionary: [{ voidOrder: VERSION, card: true }] });
+		w.ServerSend('ChatRoomChat', { Content: HIDDEN, Type: 'Hidden', Dictionary: [{ card: true }] });
 		return '';
 	}
 	/** A hidden Void Order note in the room: someone showing their card. The card comes from the server, not the note. */
@@ -603,12 +612,19 @@
 				return;
 			}
 			const n = sender.MemberNumber;
+			const last = roomCards.get(n) || 0;
+			if (cardWanted.has(n) || Date.now() - last < 60000) {
+				return;
+			}
+			roomCards.set(n, Date.now());
 			cardWanted.add(n);
 			ws.send(JSON.stringify({ t: 'card', member: n }));
 			setTimeout(() => cardWanted.delete(n), 10000);
 		});
 		return false;
 	}
+	/** @type {Map<number, number>} When each person's card shown in the room was last opened (once a minute at most). */
+	const roomCards = new Map();
 
 	// ---- The panel
 	let tab = 'orders';
@@ -671,6 +687,8 @@
 		t.push(['me', 'My card']);
 		return t;
 	}
+	/** Whether a redraw waits for the field being typed in to lose focus. */
+	let redrawLater = false;
 	/**
 	 * Draws the panel again (after a change), keeping what is typed and where it is scrolled. While you type in a
 	 * field, changes from the server wait until you click elsewhere (`force` draws anyway).
@@ -683,7 +701,18 @@
 		}
 		const active = document.activeElement;
 		if (!force && active && p.contains(active) && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) {
-			active.addEventListener('blur', () => setTimeout(() => render(), 0), { once: true });
+			if (!redrawLater) {
+				redrawLater = true;
+				active.addEventListener(
+					'blur',
+					() =>
+						setTimeout(() => {
+							redrawLater = false;
+							render();
+						}, 0),
+					{ once: true },
+				);
+			}
 			return;
 		}
 		const main = p.querySelector('main');
@@ -721,9 +750,16 @@
 			if (!state) {
 				body.append(make('p', 'dim', ws ? 'Signing in…' : 'Connecting to the Order…'));
 			} else {
-				({ orders: drawOrders, members: drawMembers, order: drawOrder, apps: drawApps, manage: drawManage, me: drawMe, join: drawJoin })[
-					tab
-				](body);
+				const draw = {
+					orders: drawOrders,
+					members: drawMembers,
+					order: drawOrder,
+					apps: drawApps,
+					manage: drawManage,
+					me: drawMe,
+					join: drawJoin,
+				};
+				draw[tab](body);
 			}
 		}, panelSay);
 		const msg = make('div', 'msg', lastMsg);
@@ -753,12 +789,29 @@
 		});
 		return el;
 	}
-	const forget = (/** @type {string} */ prefix) => {
+	/** Forgets a form's drafts: the keys `form:…`. */
+	const forget = (/** @type {string} */ form) => {
 		for (const k of Object.keys(drafts)) {
-			if (k.startsWith(prefix)) {
+			if (k.startsWith(`${form}:`)) {
 				delete drafts[k];
 			}
 		}
+	};
+	/** @type {Map<string, number>} When each "click again to…" was asked. */
+	const confirms = new Map();
+	/**
+	 * Whether `key` was clicked once already in the last 8 seconds; if not, asks for a second click with `ask`.
+	 * @param {string} key
+	 * @param {string} ask
+	 */
+	const confirmed = (key, ask) => {
+		if (Date.now() - (confirms.get(key) || 0) < 8000) {
+			confirms.delete(key);
+			return true;
+		}
+		confirms.set(key, Date.now());
+		panelSay(ask);
+		return false;
 	};
 	const label = (/** @type {string} */ text) => make('label', '', text);
 
@@ -824,11 +877,9 @@
 				button(
 					'Take down',
 					() => {
-						if (drafts[`del${o.id}`]) {
+						if (confirmed(`unorder:${o.id}`, `Click "Take down" again to remove "${o.title}" for everyone.`)) {
 							return act({ t: 'unorder', id: o.id });
 						}
-						drafts[`del${o.id}`] = '1';
-						panelSay(`Click "Take down" again to remove "${o.title}" for everyone.`);
 					},
 					'b bad',
 				),
@@ -854,20 +905,20 @@
 	}
 	function drawNewOrder() {
 		const box = make('div', 'box');
-		if (!drafts.newOpen) {
+		if (!drafts['n:open']) {
 			box.append(
 				button('＋ New order, session or notice', () => {
-					drafts.newOpen = '1';
+					drafts['n:open'] = '1';
 					render(true);
 				}),
 			);
 			return box;
 		}
-		const kind = drafts.nKind || 'order';
+		const kind = drafts['n:kind'] || 'order';
 		const kinds = make('div', 'row');
-		for (const k of ['order', 'session', 'notice']) {
+		for (const k of Object.keys(KIND_NAME)) {
 			const b = button(`${KIND_ICON[k]} ${KIND_NAME[k]}`, () => {
-				drafts.nKind = k;
+				drafts['n:kind'] = k;
 				render(true);
 			});
 			if (k === kind) {
@@ -878,26 +929,26 @@
 		box.append(
 			kinds,
 			label('Title'),
-			field('nTitle', '', LIMITS.orderTitle),
+			field('n:title', '', LIMITS.orderTitle),
 			label('Details'),
-			field('nBody', '', LIMITS.orderText, 'textarea'),
+			field('n:body', '', LIMITS.orderText, 'textarea'),
 		);
 		if (kind === 'session') {
-			const when = field('nWhen', '', 20);
+			const when = field('n:when', '', 20);
 			when.type = 'datetime-local';
 			box.append(label('When (your time)'), when);
 		}
-		// Who it goes to: everyone, ranks, or members.
+		// Who it goes to: everyone below you, or ranks and members below you.
 		box.append(label('For'));
-		const to = drafts.nTo || 'all';
+		const to = drafts['n:to'] || 'all';
 		const pickTo = make('div', 'row');
 		for (const [k, text] of [
-			['all', 'Everyone'],
+			['all', 'Everyone below you'],
 			['ranks', 'Ranks'],
 			['members', 'Members'],
 		]) {
 			const b = button(text, () => {
-				drafts.nTo = k;
+				drafts['n:to'] = k;
 				render(true);
 			});
 			if (k === to) {
@@ -907,7 +958,7 @@
 		}
 		box.append(pickTo);
 		const chosen = new Set(
-			String(drafts[`nPick_${to}`] || '')
+			String(drafts[`n:pick-${to}`] || '')
 				.split(',')
 				.filter(Boolean),
 		);
@@ -915,8 +966,8 @@
 			const pick = make('div', 'pick');
 			const items =
 				to === 'ranks'
-					? state.ranks.map((/** @type {any} */ r) => [r.id, rankLabel(r)])
-					: state.members.filter((/** @type {any} */ m) => m.n !== state.me.n).map((/** @type {any} */ m) => [String(m.n), m.name]);
+					? givable().map((/** @type {any} */ r) => [r.id, rankLabel(r)])
+					: state.members.filter((/** @type {any} */ m) => aboveMe(m)).map((/** @type {any} */ m) => [String(m.n), m.name]);
 			for (const [id, text] of items) {
 				const b = button(text, () => {
 					if (chosen.has(id)) {
@@ -924,7 +975,7 @@
 					} else {
 						chosen.add(id);
 					}
-					drafts[`nPick_${to}`] = [...chosen].join(',');
+					drafts[`n:pick-${to}`] = [...chosen].join(',');
 					render(true);
 				});
 				if (chosen.has(id)) {
@@ -942,12 +993,12 @@
 				() => {
 					/** @type {Record<string, any>} */
 					const dest = to === 'all' ? { all: true } : to === 'ranks' ? { ranks: [...chosen] } : { members: [...chosen].map(Number) };
-					const when = kind === 'session' ? new Date(drafts.nWhen || '').getTime() : undefined;
+					const when = kind === 'session' ? new Date(drafts['n:when'] || '').getTime() : undefined;
 					if (kind === 'session' && !(when > Date.now())) {
 						panelSay('⚠ Pick when the session is, in the future.');
 						return;
 					}
-					return act({ t: 'order', kind, title: drafts.nTitle || '', body: drafts.nBody || '', to: dest, when }, () => {
+					return act({ t: 'order', kind, title: drafts['n:title'] || '', body: drafts['n:body'] || '', to: dest, when }, () => {
 						forget('n');
 						render(true);
 					});
@@ -966,16 +1017,21 @@
 	// -- Members
 	function drawMembers(/** @type {HTMLElement} */ body) {
 		const on = state.members.filter((/** @type {any} */ m) => m.on).length;
-		body.append(make('p', 'dim', `${state.members.length} members, ${on} online. Click someone for their ID card.`));
+		body.append(make('p', 'dim', `${plural(state.members.length, 'member')}, ${on} online. Click someone for their ID card.`));
 		const founder = state.meta.founder;
 		/** @type {[any, any[]][]} */
 		const groups = state.ranks.map((/** @type {any} */ r) => [r, []]);
 		const loose = [];
-		for (const m of [...state.members].sort(
-			(a, b) => (b.n === founder ? 1 : 0) - (a.n === founder ? 1 : 0) || (b.on ? 1 : 0) - (a.on ? 1 : 0) || a.name.localeCompare(b.name),
-		)) {
-			const g = groups.find(([r]) => r.id === m.rank);
-			(g ? g[1] : loose).push(m);
+		// The founder first, then who is online, then by name.
+		const order = (/** @type {any} */ a, /** @type {any} */ b) =>
+			Number(b.n === founder) - Number(a.n === founder) || Number(!!b.on) - Number(!!a.on) || a.name.localeCompare(b.name);
+		for (const m of [...state.members].sort(order)) {
+			const group = groups.find(([r]) => r.id === m.rank);
+			if (group) {
+				group[1].push(m);
+			} else {
+				loose.push(m);
+			}
 		}
 		for (const [r, list] of groups) {
 			if (!list.length) {
@@ -1023,26 +1079,66 @@
 			const n = make('span', '', rankLabel(r));
 			n.style.color = r.color;
 			n.style.fontFamily = 'Georgia, serif';
-			const can = r.perms.map((/** @type {string} */ p) => ({ approve: 'approves members', order: 'gives orders', manage: 'manages' })[p]);
+			const can = r.perms.map((/** @type {string} */ p) => PERM_LABEL[p]);
 			line.append(make('span', 'dim', `${i + 1}.`), n, make('span', 'dim', can.length ? `— ${can.join(', ')}` : ''));
 			body.append(line);
 		}
-		if (meta.founder !== state.me.n) {
-			body.append(make('h3', '', 'Leave'));
-			body.append(
-				button(
-					'Leave the Order',
-					() => {
-						if (drafts.leave) {
-							return act({ t: 'leave' });
-						}
-						drafts.leave = '1';
-						panelSay('Click again to leave. Getting back in takes a new application.');
-					},
-					'b bad',
-				),
-			);
+		if (meta.founder === state.me.n) {
+			body.append(drawHandOver());
+			return;
 		}
+		body.append(make('h3', '', 'Leave'));
+		body.append(
+			button(
+				'Leave the Order',
+				() => {
+					if (confirmed('leave', 'Click again to leave. Getting back in takes a new application.')) {
+						return act({ t: 'leave' });
+					}
+				},
+				'b bad',
+			),
+		);
+	}
+	/** The founder hands the Order to another member (the founder can't leave without doing this first). */
+	function drawHandOver() {
+		const wrap = make('div');
+		wrap.append(
+			make('h3', '', 'Hand the Order over'),
+			make(
+				'p',
+				'dim',
+				'The founder stands above every rank and can only leave after handing the Order to someone else. You keep your rank.',
+			),
+		);
+		const others = state.members.filter((/** @type {any} */ m) => m.n !== state.me.n);
+		if (!others.length) {
+			wrap.append(make('p', 'dim', 'There is nobody to hand it to yet.'));
+			return wrap;
+		}
+		const row = make('div', 'row');
+		const sel = make('select');
+		sel.style.width = 'auto';
+		for (const m of others) {
+			const o = make('option', '', `${m.name} #${m.n}`);
+			o.value = String(m.n);
+			sel.append(o);
+		}
+		row.append(
+			sel,
+			button(
+				'Hand it over',
+				() => {
+					const m = memberOf(Number(sel.value));
+					if (m && confirmed(`founder:${m.n}`, `Click again to make ${m.name} the founder. Only they can give it back.`)) {
+						return act({ t: 'founder', member: m.n });
+					}
+				},
+				'b bad',
+			),
+		);
+		wrap.append(row);
+		return wrap;
 	}
 
 	// -- Joining (and founding, and lost keys)
@@ -1057,21 +1153,30 @@
 				make(
 					'p',
 					'',
-					'You are the founder. Name the Order to start; ranks, the about page and the joining questions come next, under Manage.',
+					'You are the founder. Name the Order and enter the founding code you were given; ranks, the about page and the joining questions come next, under Manage.',
 				),
 			);
 			body.append(
 				label('Name'),
-				field('fName', 'The Void Order', LIMITS.name),
+				field('f:name', 'The Void Order', LIMITS.name),
 				label('About'),
-				field('fAbout', '', LIMITS.about, 'textarea'),
+				field('f:about', '', LIMITS.about, 'textarea'),
+				label('Founding code'),
+				field('f:code', '', 64),
 			);
 			body.append(
 				button(
 					'Found the Order',
 					() =>
-						act({ t: 'found', name: drafts.fName || 'The Void Order', about: drafts.fAbout || '', myName: nick(w.Player) }, () =>
-							forget('f'),
+						act(
+							{
+								t: 'found',
+								name: drafts['f:name'] || 'The Void Order',
+								about: drafts['f:about'] || '',
+								code: drafts['f:code'] || '',
+								myName: nick(w.Player),
+							},
+							() => forget('f'),
 						),
 					'b main',
 				),
@@ -1080,7 +1185,7 @@
 		}
 		const meta = state.meta;
 		body.append(make('h3', '', 'About'), make('p', '', meta.about || ''));
-		body.append(make('p', 'dim', `${state.count} members · founded ${date(meta.founded)}`));
+		body.append(make('p', 'dim', `${plural(state.count, 'member')} · founded ${date(meta.founded)}`));
 		if (state.members.length) {
 			body.append(make('h3', '', 'Heads of the Order'));
 			for (const m of state.members) {
@@ -1105,15 +1210,15 @@
 					'This member number is in the Order with a different key (another browser before the account synced, or a wiped account). Ask someone above you for a reset code and enter it here.',
 				),
 			);
-			body.append(label('Reset code'), field('code', '', 10));
+			body.append(label('Reset code'), field('reset:code', '', 10));
 			body.append(
 				button(
 					'Use the code',
 					() => {
-						resetCode = String(drafts.code || '')
+						resetCode = String(drafts['reset:code'] || '')
 							.trim()
 							.toUpperCase();
-						forget('code');
+						forget('reset');
 						panelSay('Signing in with the code…');
 						reconnect();
 					},
@@ -1136,7 +1241,7 @@
 			return;
 		}
 		for (const [i, q] of meta.questions.entries()) {
-			body.append(label(q), field(`q${i}`, '', LIMITS.answer, 'textarea'));
+			body.append(label(q), field(`q:${i}`, '', LIMITS.answer, 'textarea'));
 		}
 		body.append(
 			button(
@@ -1146,7 +1251,7 @@
 						{
 							t: 'apply',
 							name: nick(w.Player),
-							answers: meta.questions.map((/** @type {string} */ _, /** @type {number} */ i) => drafts[`q${i}`] || ''),
+							answers: meta.questions.map((/** @type {string} */ _, /** @type {number} */ i) => drafts[`q:${i}`] || ''),
 						},
 						() => {
 							forget('q');
@@ -1165,6 +1270,13 @@
 			body.append(make('p', 'dim', 'No applications waiting.'));
 			return;
 		}
+		body.append(
+			make(
+				'p',
+				'dim',
+				"A member number and name are only what the applicant's game says. Check that it's really them in the game before letting them in.",
+			),
+		);
 		const ranks = givable();
 		for (const a of apps) {
 			const box = make('div', 'box');
@@ -1191,6 +1303,8 @@
 		}
 	}
 
+	/** @type {Map<number, { code: string, hours: number }>} Reset codes made in this session, by member. */
+	const resetCodes = new Map();
 	// -- Manage: members below you, the about page, the ranks, the log
 	function drawManage(/** @type {HTMLElement} */ body) {
 		body.append(make('h3', '', 'Members below you'));
@@ -1218,36 +1332,37 @@
 			box.append(row);
 			const row2 = make('div', 'row');
 			row2.style.marginTop = '6px';
-			const title = field(`t${m.n}`, m.title || '', LIMITS.title);
+			const title = field(`title:${m.n}`, m.title || '', LIMITS.title);
 			title.placeholder = 'Title (e.g. Keeper of Cameras)';
 			title.style.flex = '1';
 			title.style.width = 'auto';
 			row2.append(
 				title,
-				button('Set title', () => act({ t: 'title', member: m.n, title: drafts[`t${m.n}`] ?? m.title }, () => forget(`t${m.n}`))),
+				button('Set title', () =>
+					act({ t: 'title', member: m.n, title: drafts[`title:${m.n}`] ?? m.title }, () => delete drafts[`title:${m.n}`]),
+				),
 				button('Reset code', () =>
 					act({ t: 'reset', member: m.n }, (r) => {
-						drafts[`code${m.n}`] = r.code;
+						resetCodes.set(m.n, { code: r.code, hours: r.hours });
 						render(true);
 					}),
 				),
 				button(
 					'Remove',
 					() => {
-						if (drafts[`kick${m.n}`]) {
+						if (confirmed(`kick:${m.n}`, `Click "Remove" again to take ${m.name} out of the Order.`)) {
 							return act({ t: 'kick', member: m.n });
 						}
-						drafts[`kick${m.n}`] = '1';
-						panelSay(`Click "Remove" again to take ${m.name} out of the Order.`);
 					},
 					'b bad',
 				),
 			);
 			box.append(row2);
-			if (drafts[`code${m.n}`]) {
+			const reset = resetCodes.get(m.n);
+			if (reset) {
 				box.append(
-					make('div', 'dim', `Reset code for ${m.name}, valid 48 hours. They open /void and enter it:`),
-					make('div', 'code', drafts[`code${m.n}`]),
+					make('div', 'dim', `Reset code for ${m.name}, valid ${reset.hours} hours. They open /void and enter it:`),
+					make('div', 'code', reset.code),
 				);
 			}
 			body.append(box);
@@ -1258,20 +1373,20 @@
 		body.append(make('h3', '', 'About page and joining'));
 		body.append(
 			label('Name'),
-			field('aName', meta.name, LIMITS.name),
+			field('a:name', meta.name, LIMITS.name),
 			label('About'),
-			field('aAbout', meta.about, LIMITS.about, 'textarea'),
+			field('a:about', meta.about, LIMITS.about, 'textarea'),
 		);
 		body.append(
 			label(`Joining questions, one per line (up to ${LIMITS.questions})`),
-			field('aQs', meta.questions.join('\n'), LIMITS.questions * (LIMITS.question + 1), 'textarea'),
+			field('a:questions', meta.questions.join('\n'), LIMITS.questions * (LIMITS.question + 1), 'textarea'),
 		);
 		const open = make('label');
 		const box = make('input');
 		box.type = 'checkbox';
-		box.checked = 'aOpen' in drafts ? drafts.aOpen === '1' : meta.open;
+		box.checked = 'a:open' in drafts ? drafts['a:open'] === '1' : meta.open;
 		box.addEventListener('change', () => {
-			drafts.aOpen = box.checked ? '1' : '0';
+			drafts['a:open'] = box.checked ? '1' : '0';
 		});
 		open.append(box, document.createTextNode(' Applications open'));
 		open.style.color = 'var(--v-text)';
@@ -1283,10 +1398,10 @@
 					act(
 						{
 							t: 'about',
-							name: drafts.aName ?? meta.name,
-							about: drafts.aAbout ?? meta.about,
-							questions: String(drafts.aQs ?? meta.questions.join('\n')).split('\n'),
-							open: 'aOpen' in drafts ? drafts.aOpen === '1' : meta.open,
+							name: drafts['a:name'] ?? meta.name,
+							about: drafts['a:about'] ?? meta.about,
+							questions: String(drafts['a:questions'] ?? meta.questions.join('\n')).split('\n'),
+							open: 'a:open' in drafts ? drafts['a:open'] === '1' : meta.open,
 						},
 						() => {
 							forget('a');
@@ -1329,7 +1444,7 @@
 			});
 			const sym = make('input');
 			sym.value = r.sym;
-			sym.maxLength = 12;
+			sym.maxLength = LIMITS.sym;
 			sym.placeholder = 'symbol';
 			sym.disabled = locked;
 			sym.addEventListener('input', () => {
@@ -1376,11 +1491,7 @@
 			}
 			rk.append(name, sym, color, moves);
 			const perms = make('div', 'perms');
-			for (const [p, text] of [
-				['approve', 'approves members'],
-				['order', 'gives orders'],
-				['manage', 'manages'],
-			]) {
+			for (const [p, text] of Object.entries(PERM_LABEL)) {
 				const l = make('label');
 				const c = make('input');
 				c.type = 'checkbox';
@@ -1403,9 +1514,9 @@
 				save();
 				render(true);
 			}),
-			button('Save ranks', () => act({ t: 'ranks', ranks: ladder }, () => forget('ladder')), 'b main'),
+			button('Save ranks', () => act({ t: 'ranks', ranks: ladder, v: state.ranksV }, () => delete drafts.ladder), 'b main'),
 			button('Undo changes', () => {
-				forget('ladder');
+				delete drafts.ladder;
 				render(true);
 			}),
 		);
@@ -1427,7 +1538,7 @@
 		);
 		body.append(row);
 		body.append(label(`Bio (up to ${LIMITS.bio} characters)`), field('bio', me.bio, LIMITS.bio, 'textarea'));
-		body.append(button('Save bio', () => act({ t: 'profile', bio: drafts.bio ?? me.bio }, () => forget('bio')), 'b main'));
+		body.append(button('Save bio', () => act({ t: 'profile', bio: drafts.bio ?? me.bio }, () => delete drafts.bio), 'b main'));
 		body.append(label('Picture'));
 		const file = make('input');
 		file.type = 'file';
@@ -1560,7 +1671,7 @@
 				note('Use /void card <member number>.');
 				return;
 			}
-			req({ t: 'card', member: n }).then((r) => (r.card ? showCard(r.card) : note(r.why || `#${n} is not in the Order.`)));
+			openCard(n, note);
 			return;
 		}
 		if (sub === 'id') {

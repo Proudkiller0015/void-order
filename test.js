@@ -4,9 +4,15 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const puppeteer = require('C:/Users/Sam_0/Documents/Project/bc-plushies/node_modules/puppeteer-core');
+const puppeteer = require('puppeteer-core');
 
-const ROOT = process.env.ROOT || 'C:/Users/Sam_0/Documents/Project/bc-plushies/BondageClub/BondageClub';
+// A local Bondage Club checkout (its BondageClub folder) and a Chrome to run it in.
+const ROOT = process.env.BC_ROOT;
+const CHROME = process.env.CHROME;
+if (!ROOT || !CHROME) {
+	console.error('Set BC_ROOT (a Bondage Club checkout: its BondageClub folder) and CHROME (the Chrome executable).');
+	process.exit(2);
+}
 const PORT = 8178;
 const SERVER = process.env.SERVER || 'ws://127.0.0.1:8788';
 const ORDER = `c${Date.now().toString(36)}`;
@@ -143,8 +149,7 @@ async function gamePage(browser, settings = {}) {
 			ServerSend = (msg, data) => window.sent.push([msg, data]);
 			ChatRoomSendLocal = (text) => window.local.push(String(text));
 			ServerPlayerExtensionSettingsSync = (k) => window.synced.push(k);
-			window.VoidOrderServer = server;
-			window.VoidOrderTestOrder = order;
+			window.VoidOrderServer = `${server}/ws?o=${order}`;
 		},
 		SERVER,
 		ORDER,
@@ -189,7 +194,7 @@ const panelText = (page) => page.evaluate(() => document.getElementById('void-pa
 
 (async () => {
 	await new Promise((r) => web.listen(PORT, r));
-	const browser = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new' });
+	const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 	let bea;
 	try {
 		const { page, errors } = await gamePage(browser);
@@ -203,6 +208,7 @@ const panelText = (page) => page.evaluate(() => document.getElementById('void-pa
 		await page.waitForFunction(() => /Found the Order/.test(document.getElementById('void-panel')?.innerText || ''), { timeout: 10000 });
 		await shot(page, '01-found');
 		await type(page, 'textarea', 'We gaze into the Void, and it gazes back.');
+		await type(page, 'input:not([type])', 'test-founding-code', 1);
 		await click(page, 'Found the Order');
 		await page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const tabs = await page.evaluate(() => [...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'));
@@ -291,31 +297,6 @@ const panelText = (page) => page.evaluate(() => document.getElementById('void-pa
 		await wait(400);
 		check("Ann sees Bea's answer", /Coming \(1\): Bea/.test(await panelText(page)), await panelText(page));
 
-		// Bea orders Ann? No: Ann is above her. Bea posts to everyone; Ann gets a note, a toast and a badge.
-		await page.evaluate(() => (window.local = []));
-		const o2 = await bea.req({ t: 'order', kind: 'order', title: 'Polish the altar', body: 'Before Friday.', to: { all: true } });
-		await wait(500);
-		const after = await page.evaluate(() => ({
-			local: window.local.join('\n'),
-			toast: document.querySelector('.void-toast')?.textContent,
-			badge: document.querySelector('#void-panel nav .badge')?.textContent,
-		}));
-		check(
-			'a new order shows as a note, a toast and a badge',
-			/New order from Bea: Polish the altar/.test(after.local) && /Polish the altar/.test(after.toast || '') && after.badge === '1',
-			after,
-		);
-		await shot(page, '05-orders');
-		await click(page, '✔ Done');
-		await wait(400);
-		const acked = await bea.req({ t: 'orders' });
-		await wait(200);
-		const mineSeen = bea.orders.get(o2.id);
-		check('Done answers the order; Bea sees it', mineSeen && mineSeen.acks && mineSeen.acks[11] && mineSeen.acks[11].a === 'done', [
-			acked.t,
-			mineSeen,
-		]);
-
 		// Members and the ID card.
 		await bea.req({ t: 'profile', bio: 'Watcher of the Void.' });
 		await click(page, 'Members');
@@ -368,6 +349,51 @@ const panelText = (page) => page.evaluate(() => document.getElementById('void-pa
 		await wait(2500);
 		check('a private room is not shown', bea.state.members.find((m) => m.n === 11)?.room === '', bea.state.members);
 
+		// Orders only go down the ladder, so Ann hands the Order to Bea, who then orders everyone below her: Ann gets a
+		// note (escaped: the game shows notes as HTML), a toast and a badge.
+		await click(page, 'The Order');
+		await page.evaluate(() => {
+			const sel = document.querySelector('#void-panel main select');
+			sel.value = '12';
+		});
+		await click(page, 'Hand it over');
+		await click(page, 'Hand it over');
+		await wait(500);
+		check('Ann hands the Order to Bea from The Order tab', bea.state.meta.founder === 12 && bea.state.me.power === -1, bea.state.meta);
+		await click(page, 'Orders');
+		await page.evaluate(() => (window.local = []));
+		const o2 = await bea.req({
+			t: 'order',
+			kind: 'order',
+			title: 'Polish the altar <img src=x>',
+			body: 'Before Friday.',
+			to: { all: true },
+		});
+		await wait(500);
+		const after = await page.evaluate(() => ({
+			local: window.local.join('\n'),
+			toast: document.querySelector('.void-toast')?.textContent,
+			badge: document.querySelector('#void-panel nav .badge')?.textContent,
+		}));
+		check(
+			'a new order shows as a note, a toast and a badge',
+			/New order from Bea: Polish the altar &lt;img src=x&gt;/.test(after.local) &&
+				!/<img/.test(after.local) &&
+				/Polish the altar <img src=x>/.test(after.toast || '') &&
+				after.badge === '1',
+			after,
+		);
+		await shot(page, '05-orders');
+		await click(page, '✔ Done');
+		await wait(400);
+		const acked = await bea.req({ t: 'orders' });
+		await wait(200);
+		const mineSeen = bea.orders.get(o2.id);
+		check('Done answers the order; Bea sees it', mineSeen && mineSeen.acks && mineSeen.acks[11] && mineSeen.acks[11].a === 'done', [
+			acked.t,
+			mineSeen,
+		]);
+
 		// A session reminder.
 		await page.evaluate(() => (window.local = []));
 		await bea.req({ t: 'order', kind: 'session', title: 'Quick shoot', to: { all: true }, when: Date.now() + 10 * 60000 });
@@ -388,7 +414,7 @@ const panelText = (page) => page.evaluate(() => document.getElementById('void-pa
 			[...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent.replace(/\d+$/, '')).join('|'),
 		);
 		check(
-			'another device with the same account signs in as the founder',
+			'another device with the same account signs in as the same member',
 			tabs2 === 'Orders|Members|The Order|Applications|Manage|My card',
 			tabs2,
 		);
