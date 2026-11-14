@@ -587,7 +587,7 @@ async function joined(member, name) {
 		'in power armour Cat carries 4',
 		listed(a, 13),
 	);
-	await b.req({ t: 'issue', member: 13, weapon: 4 });
+	await a.req({ t: 'issue', member: 13, weapon: 4 });
 	check((await c2.req({ t: 'carry', weapons: [3, 2, 1, 4] })).t === 'ok' && listed(a, 13).carried.join() === '3,2,1,4', 'and does');
 	const off = await c2.req({ t: 'armor', on: false });
 	check(
@@ -600,7 +600,7 @@ async function joined(member, name) {
 		(await c2.req({ t: 'armor', on: false })).dropped.length === 0 && listed(a, 13).carried.join() === '1,4',
 		'saying it again changes nothing',
 	);
-	await b.req({ t: 'issue', member: 13, weapon: 4, on: false });
+	await a.req({ t: 'issue', member: 13, weapon: 4, on: false });
 	await c2.req({ t: 'carry', weapons: [3, 2] });
 	check(
 		(await a.req({ t: 'carry', weapons: [1, 2, 3, 4, 100] })).t === 'ok' && listed(b, 11).carried.length === 5,
