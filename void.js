@@ -4927,6 +4927,10 @@
 			openCard(n, note);
 			return;
 		}
+		if (sub === 'diag') {
+			diag();
+			return;
+		}
 		if (sub === 'id') {
 			const why = showMyIdInRoom();
 			if (why) {
@@ -5013,6 +5017,11 @@
 		style,
 		/** Rolls Void dice everyone in the room sees: (dice sides, modifier) → '' or why it didn't. */
 		roll: (/** @type {number[]} */ dice, /** @type {number} */ mod) => roll(dice, mod),
+		/** The same, answering { why, roll } with the roll itself (its total) when it went through. */
+		rollFull: async (/** @type {number[]} */ dice, /** @type {number} */ mod) => {
+			const why = await roll(dice, mod);
+			return { why, roll: why ? null : recentRolls[0] || null };
+		},
 		early,
 		report: (/** @type {string} */ feature, /** @type {any} */ error) => {
 			console.warn(`[Oculus Nihili] ${feature}:`, error);
@@ -5064,6 +5073,36 @@
 		report: (/** @type {string} */ feature, /** @type {any} */ e) => ctx.report(feature, e),
 	});
 	loadModules();
+
+	/** /void diag: what the add-on is running, as local notes the player can copy and send. */
+	function diag() {
+		const lines = [`Oculus Nihili ${VERSION} on ${w.GameVersion || '?'}; signed in: ${state ? state.status : 'no'}`];
+		lines.push(`Modules: ${MODULES.map((m) => `${m} ${ctx.modules[m] ? 'on' : m in ctx.modules ? 'OFF' : 'loading'}`).join(', ')}`);
+		const g = ctx.modules.guard;
+		const off = g && g.problems && typeof g.problems.values === 'function' ? [...g.problems.values()] : [];
+		lines.push(off.length ? `Switched off: ${off.map((p) => `${p.feature} (${p.message})`).join('; ')}` : 'Switched off: nothing');
+		const reports = ctx.modules.reports;
+		const seen =
+			reports && typeof reports.problems === 'function'
+				? reports.problems()
+				: early.map(([feature, e]) => ({ feature, error: String((e && e.message) || e) }));
+		lines.push(seen.length ? `Problems: ${seen.map((p) => `${p.feature}: ${p.error}`).join('; ')}` : 'Problems: none');
+		const items = ctx.modules.items;
+		const held = items && w.Player ? items.held(w.Player) : null;
+		lines.push(
+			`Holding: ${held ? `${held.item} / ${held.weapon && held.weapon.name}, carry ${held.position} (${held.carry || '-'})` : 'no Armory weapon'}`,
+		);
+		const actions = ctx.modules.actions;
+		if (actions && typeof actions.diag === 'function') {
+			const d = actions.diag();
+			lines.push(
+				`Actions ${d.on ? 'on' : 'off in settings'}: on someone ${d.onOther.join(', ') || 'none'}; on your hands ${d.onHands.join(', ') || 'none'}`,
+			);
+		}
+		for (const l of lines) {
+			note(l);
+		}
+	}
 
 	// ---- Start: once the game is ready.
 	const start = setInterval(() => {

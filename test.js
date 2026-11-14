@@ -128,7 +128,7 @@ async function peer(member, name, code = '') {
  * `slimebeep` puts a stand-in for SlimeBeep's add-on API on the page, recording the groups it joins in `sbJoined`.
  * @param {{ me: [number, string], other: [number, string], settings?: object, slimebeep?: boolean }} who
  */
-async function gamePage(browser, { me, other, settings = {}, slimebeep = false, grabber = false }) {
+async function gamePage(browser, { me, other, settings = {}, slimebeep = false, grabber = false, addon = true }) {
 	const page = await browser.newPage();
 	await page.setViewport({ width: 1600, height: 900 });
 	const errors = [];
@@ -239,6 +239,9 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false, 
 				true,
 			);
 		});
+	}
+	if (!addon) {
+		return { page, errors };
 	}
 	await page.addScriptTag({ path: path.join(__dirname, 'void.js') });
 	await page.waitForFunction(() => Commands.some((c) => c.Tag === 'void'), { timeout: 10000 });
@@ -572,7 +575,9 @@ const openCardOf = async (page, name) => {
 				wrath: box(100)?.innerText,
 				wrathKind: box(100)?.previousElementSibling?.textContent,
 				wabbajackStats: !!box(98)?.querySelector('.stats'),
-				wabbajackPlain: !!box(98)?.querySelector('.void-sprite.none'),
+				wabbajackPicture: !!box(98)?.querySelector('.void-sprite img'),
+				// The one weapon whose art isn't finished yet (#47) shows a plain mark.
+				unfinishedPlain: !!box(47)?.querySelector('.void-sprite.none'),
 				shotgun: box(1)?.innerText,
 				shotgunPicture: box(1)?.querySelector('.void-sprite img')?.getAttribute('src'),
 			};
@@ -583,7 +588,8 @@ const openCardOf = async (page, name) => {
 				/Queen's Wrath[\s\S]*Legendary[\s\S]*Void Order[\s\S]*Slime’s signature[\s\S]*2 tons[\s\S]*Held by Ann/.test(arms.wrath) &&
 				/^Scythes · 1$/.test(arms.wrathKind || '') &&
 				!arms.wabbajackStats &&
-				arms.wabbajackPlain &&
+				arms.wabbajackPicture &&
+				arms.unfinishedPlain &&
 				/Old sawed-off shotgun[\s\S]*Common[\s\S]*\+3 Base damage · \+1 Speed/.test(arms.shotgun) &&
 				/\/void-assets\/weapons\/1\.png$/.test(arms.shotgunPicture || ''),
 			arms,
@@ -1539,6 +1545,9 @@ const openCardOf = async (page, name) => {
 			['VoidSwords', 'ItemArms', 'VoidSlash'],
 			['VoidGlowingBlades', 'ItemTorso', 'VoidStab'],
 			['VoidShortBlades', 'ItemNeck', 'VoidNeck'],
+			['VoidBlunt', 'ItemTorso', 'VoidStrike'],
+			['VoidStaffs', 'ItemArms', 'VoidStrike'],
+			['VoidStaffs', 'ItemHead', 'VoidCast'],
 		];
 		const missing = [];
 		for (const [item, group, act] of kinds) {
@@ -1546,6 +1555,9 @@ const openCardOf = async (page, name) => {
 			if (!(await menuOn(ap, group)).includes(`${act}:${item}`)) missing.push(`${item} ${act}`);
 		}
 		check('each kind of weapon puts its actions in the activity menu, with the weapon', missing.length === 0, missing);
+		await hold(ap, 'VoidStaffs');
+		const staffHands = await ap.evaluate(() => ActivityAllowedForGroup(Player, 'ItemHands').map((a) => a.Activity.Name));
+		check('a staff can ask the Void for help', staffHands.includes('VoidAskVoid'), staffHands);
 		await hold(ap, 'VoidSwords', { w: 0 });
 		check('the menu labels them', (await ap.evaluate(() => ActivityDictionaryText('Label-ChatOther-ItemArms-VoidSlash'))) === 'Slash');
 		const pic = await ap.evaluate(async () => {
@@ -1676,8 +1688,223 @@ const openCardOf = async (page, name) => {
 		);
 		check(
 			'carrying a gun at port arms gets its line (from held().position)',
-			carryLine.some((t) => /holds across the chest/.test(t)),
+			carryLine.some((t) => /holds the .+ across the chest, at port arms\./.test(t)),
 			carryLine,
+		);
+		// Swords: held or slung on the back; Queen's Wrath: held, held in front or on the back; each with its own line.
+		const carryOptions = await ap.evaluate(() =>
+			['VoidRifles', 'VoidSwords', 'QueensWrath'].map((n) =>
+				ModularItemDataLookup[`ItemHandheld${n}`].modules
+					.find((m) => m.Key === 'Position')
+					.Options.map((o) => AssetTextGet(`ItemHandheld${n}Option${o.Name}`))
+					.join('/'),
+			),
+		);
+		check(
+			'each kind offers its carries by name',
+			carryOptions.join('|') ===
+				'Hand on the trigger/Port arms/On the shoulder/On the back|Held/On the back|Held/Held in front/On the back',
+			carryOptions,
+		);
+		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
+		await wait(1800);
+		await ap.evaluate(() => (window.sent = []));
+		await hold(ap, 'VoidSwords', { w: 0, Position: 1 });
+		await wait(1800);
+		const backLine = await ap.evaluate(() =>
+			window.sent.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action').map(([, d]) => d.Dictionary[0].Text),
+		);
+		check('slinging a sword on the back gets its line', backLine.includes('Ann slings the Recider across the back.'), backLine);
+		// Only where it makes sense, and none of the game's item activities for our weapons.
+		await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			bea.ArousalSettings = { ...JSON.parse(JSON.stringify(Player.ArousalSettings)), Active: 'Hybrid' };
+		});
+		const zones = await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			const on = (g) => ActivityAllowedForGroup(bea, g);
+			const ours = (g) =>
+				on(g)
+					.filter((a) => /^Void/.test(a.Activity.Name))
+					.map((a) => a.Activity.Name);
+			const itemActs = ['ItemArms', 'ItemTorso', 'ItemButt'].flatMap((g) =>
+				on(g)
+					.filter((a) => a.Item && a.Item.Asset.Name === 'VoidSwords' && !/^Void/.test(a.Activity.Name))
+					.map((a) => a.Activity.Name),
+			);
+			return { arms: ours('ItemArms'), pelvis: ours('ItemPelvis'), butt: ours('ItemButt'), ears: ours('ItemEars'), itemActs };
+		});
+		check('a slash lands on an arm', zones.arms.includes('VoidSlash'), zones);
+		check('and never on the pelvis, the butt or the ears', !zones.pelvis.length && !zones.butt.length && !zones.ears.length, zones);
+		check('holding a Void sword offers none of the game’s item activities (rub, spank…)', !zones.itemActs.length, zones.itemActs);
+		await hold(ap, 'VoidPistols');
+		const whip = await ap.evaluate(() =>
+			ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemHead')
+				.filter((a) => /^Void/.test(a.Activity.Name))
+				.map((a) => ActivityDictionaryText(`Label-ChatOther-ItemHead-${a.Activity.Name}`)),
+		);
+		check('a pistol is used in melee as a pistol-whip', whip.includes('Pistol-whip') && !whip.includes('Butt-strike'), whip);
+		await ap.evaluate(() => InventoryWear(Player, 'Crop', 'ItemHandheld'));
+		const crop = await ap.evaluate(() =>
+			['ItemButt', 'ItemTorso', 'ItemArms'].flatMap((g) =>
+				ActivityAllowedForGroup(ChatRoomCharacter[1], g)
+					.filter((a) => a.Item && a.Item.Asset.Name === 'Crop')
+					.map((a) => a.Activity.Name),
+			),
+		);
+		check('a vanilla crop still offers its own activities', crop.length > 0, crop);
+		await hold(ap, 'VoidSwords', { w: 0, Position: 1 });
+		// Breaking free: a blade cuts a rope away (never a locked one, never someone who doesn't allow it); a gun shoots
+		// a lock off as the lock's kind allows, keeping the item.
+		const offeredOn = (group) => ap.evaluate((g) => ActivityAllowedForGroup(ChatRoomCharacter[1], g).map((a) => a.Activity.Name), group);
+		const lineText = () =>
+			ap.evaluate(() =>
+				window.sent
+					.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action' && d.Content === 'Beep')
+					.map(([, d]) => d.Dictionary[0].Text),
+			);
+		// Vic plays without the add-on: what the server relays of Ann's item updates goes through the game's own sync.
+		const vic = await gamePage(browser, { me: [30, 'Vic'], other: [12, 'Bea'], addon: false });
+		// Every item update Ann's page sent and Vic hasn't had yet (the test clears window.sent now and then).
+		const relay = async () => {
+			const updates = await ap.evaluate(() =>
+				window.sent
+					.filter(([t, d]) => t === 'ChatRoomCharacterItemUpdate' && !d.relayed && (d.relayed = true))
+					.map(([, d]) => ({ ...d, relayed: undefined })),
+			);
+			for (const item of updates) {
+				await vic.page.evaluate((item) => ChatRoomSyncItem({ Source: 11, Item: item }), item);
+			}
+		};
+		const vicSees = (group) =>
+			vic.page.evaluate((g) => {
+				const it = InventoryGet(ChatRoomCharacter[1], g);
+				return { item: it?.Asset.Name || '', lock: it?.Property?.LockedBy || '' };
+			}, group);
+		await ap.evaluate(() => (ServerPlayerIsInChatRoom = () => true));
+		await relay();
+		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
+		const dress = (page) =>
+			page.evaluate(() => {
+				const bea = ChatRoomCharacter[1];
+				bea.AllowedInteractions = 0;
+				InventoryWear(bea, 'HempRope', 'ItemArms');
+				CharacterRefresh(bea, false);
+			});
+		await dress(ap);
+		await dress(vic.page);
+		check('a blade can cut a rope on the arms', (await offeredOn('ItemArms')).includes('VoidCutFree'));
+		await ap.evaluate(() => (ChatRoomCharacter[1].AllowedInteractions = 4));
+		check('but not on someone who doesn’t allow your items', !(await offeredOn('ItemArms')).includes('VoidCutFree'));
+		await ap.evaluate(() => (ChatRoomCharacter[1].AllowedInteractions = 0));
+		await runOn(ap, 'ItemArms', 'VoidCutFree');
+		await wait(600);
+		const cut = await ap.evaluate(() => ({ arms: InventoryGet(ChatRoomCharacter[1], 'ItemArms')?.Asset.Name || '' }));
+		const cutLines = await lineText();
+		check('cutting removes the rope', cut.arms === '', cut);
+		await relay();
+		const vicCut = await vicSees('ItemArms');
+		check('and a player without the add-on sees it gone', vicCut.item === '', vicCut);
+		check(
+			'and says so in a line everyone reads',
+			cutLines.some((t) => /^Ann slices through the .+ binding Bea's arms\.$/.test(t)),
+			cutLines,
+		);
+		const strap = (page, lock) =>
+			page.evaluate((lock) => {
+				const bea = ChatRoomCharacter[1];
+				InventoryWear(bea, 'SturdyLeatherBelts', 'ItemLegs');
+				InventoryLock(bea, 'ItemLegs', lock, Player);
+				CharacterRefresh(bea, false);
+			}, lock);
+		await strap(ap, 'MetalPadlock');
+		await strap(vic.page, 'MetalPadlock');
+		check(
+			'a locked strap is not cut',
+			!(await offeredOn('ItemLegs')).includes('VoidCutFree'),
+			await ap.evaluate(() => {
+				const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+				return { name: it?.Asset.Name, prop: it?.Property, allow: it && InventoryDoesItemAllowLock(it) };
+			}),
+		);
+		await hold(ap, 'VoidRifles', { w: 0, Position: 0 });
+		check('a gun can shoot a metal padlock', (await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		await runOn(ap, 'ItemLegs', 'VoidShootLock');
+		await wait(800);
+		const shotOff = await ap.evaluate(() => {
+			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+			return { item: it?.Asset.Name || '', lock: it?.Property?.LockedBy || '' };
+		});
+		const shotLines = await lineText();
+		check('the shot takes the lock off and keeps the item', shotOff.item === 'SturdyLeatherBelts' && shotOff.lock === '', shotOff);
+		check(
+			'with its line',
+			shotLines.some((t) => /^Ann shoots the .+ off Bea's .+\.$/.test(t)),
+			shotLines,
+		);
+		await relay();
+		const vicShot = await vicSees('ItemLegs');
+		check(
+			'a player without the add-on sees the lock gone and the strap still on',
+			vicShot.item === 'SturdyLeatherBelts' && vicShot.lock === '',
+			vicShot,
+		);
+		// The five-minute timer padlock: always, like the metal one.
+		await strap(ap, 'TimerPadlock');
+		check('a timer padlock can be shot off too', (await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		await runOn(ap, 'ItemLegs', 'VoidShootLock');
+		await wait(800);
+		const timerOff = await ap.evaluate(() => {
+			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+			return {
+				item: it?.Asset.Name || '',
+				lock: it?.Property?.LockedBy || '',
+				hidden: window.sent.some(([, d]) => d && d.Type === 'Hidden'),
+			};
+		});
+		check(
+			'and it always comes off, with no roll',
+			timerOff.item === 'SturdyLeatherBelts' && timerOff.lock === '' && !timerOff.hidden,
+			timerOff,
+		);
+		await ap.evaluate(() => {
+			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+			it.Property = { ...(it.Property || {}), LockedBy: 'OwnerPadlock', Effect: [...((it.Property && it.Property.Effect) || []), 'Lock'] };
+		});
+		check('an owner lock is never offered', !(await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		await ap.evaluate(() => {
+			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+			it.Property.LockedBy = 'HighSecurityPadlock';
+		});
+		check('a high-security lock is offered (it takes a roll)', (await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		await runOn(ap, 'ItemLegs', 'VoidShootLock');
+		await wait(1500);
+		const lockRoll = await ap.evaluate(() => ({
+			lock: InventoryGet(ChatRoomCharacter[1], 'ItemLegs')?.Property?.LockedBy || '',
+			hidden: window.sent.some(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Hidden'),
+		}));
+		const rolledLines = await lineText();
+		const missed = rolledLines.some((t) => /ricochets off the/.test(t));
+		check('the roll is a Void roll everyone sees', lockRoll.hidden, lockRoll);
+		check(
+			'a hit takes the lock off; a miss leaves it and it can’t be shot again for a minute',
+			missed ? lockRoll.lock === 'HighSecurityPadlock' && !(await offeredOn('ItemLegs')).includes('VoidShootLock') : lockRoll.lock === '',
+			{ lockRoll, rolledLines },
+		);
+		await ap.evaluate(() => ['ItemArms', 'ItemLegs'].forEach((g) => InventoryRemove(ChatRoomCharacter[1], g)));
+		check('no page errors for the player without the add-on', vic.errors.length === 0, vic.errors);
+		await vic.page.close();
+		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
+		await ap.evaluate(() => (window.local = []));
+		await ap.evaluate(() => Commands.find((c) => c.Tag === 'void').Action('diag', '/void diag', []));
+		const diagText = await ap.evaluate(() => window.local.join('\n'));
+		check(
+			'/void diag tells the version, the modules, what is held and the actions',
+			/Oculus Nihili /.test(diagText) &&
+				/Modules: guard on, reports on, items on, overflow on, actions on/.test(diagText) &&
+				/Holding: VoidSwords/.test(diagText) &&
+				/Actions on/.test(diagText),
+			diagText,
 		);
 		// Queen's Wrath: its own set; its owner lends it into someone's hands and recalls it.
 		await hold(ap, 'QueensWrath');

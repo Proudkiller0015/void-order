@@ -19,6 +19,12 @@ const OUT = path.join(REPO, 'assets', 'items');
 const INDEX = path.join(__dirname, 'items-index.json');
 const PAGES = 'https://proudkiller0015.github.io/void-order/assets/items';
 const GROUP = 'ItemHandheld';
+/** The checkout's carry options (the Weapons item's Position module), by number: what each is, for the add-on's lines. */
+const CARRY_IDS = ['trigger', 'portarms', 'shoulder', 'back'];
+/** Blades, maces and staffs say "Held" where guns say "Hand on the trigger". */
+const BLADE_KINDS = ['Swords', 'GlowingBlades', 'ShortBlades', 'Blunt', 'Staffs'];
+/** Queen's Wrath's carry options, by number. */
+const WRATH_CARRY_IDS = ['held', 'front', 'back'];
 /** Each kind's item name, as it reads after the game's "a" ("swaps a void sword for a void rifle"). */
 const DESCRIPTIONS = {
 	Pistols: 'Void pistol',
@@ -30,6 +36,8 @@ const DESCRIPTIONS = {
 	Swords: 'Void sword',
 	GlowingBlades: 'Void glowing blade',
 	ShortBlades: 'Void short blade',
+	Blunt: 'Void blunt weapon',
+	Staffs: 'Void staff',
 };
 /** Where a category goes when it has too few weapons to be an item of its own. */
 const MERGE_INTO = {
@@ -133,6 +141,14 @@ function main() {
 	const handheld = assets.indexOf(`Group: "${GROUP}"`);
 	const weaponsDef = evaluate(objectAround(assets, 'Name: "Weapons",', handheld));
 	const wrathDef = evaluate(objectAround(assets, 'Name: "QueensWrath",', handheld));
+	const wrathExt = evaluate(
+		objectAround(
+			show('Assets/Female3DCGExtended.js'),
+			'Archetype: ExtendedArchetype.MODULAR,',
+			show('Assets/Female3DCGExtended.js').indexOf('\t\tQueensWrath: {'),
+		),
+	);
+	const wrathStrings = csvRows('Assets/AssetStrings.csv', `${GROUP}QueensWrath`);
 	const extended = show('Assets/Female3DCGExtended.js');
 	const weaponsExt = evaluate(objectAround(extended, 'Archetype: ExtendedArchetype.MODULAR,', extended.indexOf('\t\tWeapons: {')));
 	const strings = csvRows('Assets/AssetStrings.csv', `${GROUP}Weapons`);
@@ -221,7 +237,18 @@ function main() {
 			layers.push({ ...layer, AllowTypes: { w: numbers.length === 1 ? numbers[0] : numbers, ...rest } });
 			copyImage(path.join(art, `Weapons_${layer.Name}.png`), `img/Weapons_${layer.Name}.png`);
 		}
-		const carried = layers.some((l) => l.AllowTypes && 'Position' in l.AllowTypes);
+		// The carries this item's weapons have pictures for, numbered from 0 in the item (swords: held, on the back).
+		const used = [
+			...new Set(layers.flatMap((l) => (l.AllowTypes && 'Position' in l.AllowTypes ? allowed(l.AllowTypes.Position) : []))),
+		].sort((a, b) => a - b);
+		const renumber = new Map(used.map((n, i) => [n, i]));
+		for (const l of layers) {
+			if (l.AllowTypes && 'Position' in l.AllowTypes) {
+				const ns = allowed(l.AllowTypes.Position).map((n) => renumber.get(n));
+				l.AllowTypes = { ...l.AllowTypes, Position: ns.length === 1 ? ns[0] : ns };
+			}
+		}
+		const carried = used.length > 1;
 		for (const w of weapons) {
 			copyImage(path.join(optionArt, `${w.key}.png`), `options/${w.key}.png`);
 		}
@@ -239,18 +266,20 @@ function main() {
 			texts[`${prefix}Setw${i}`] = w.set;
 		});
 		if (carried) {
-			for (const [k, v] of Object.entries(strings)) {
-				const m = /^ItemHandheldWeapons(Module|Select|Option|Set)Position(\d*)$/.exec(k);
-				if (m) {
-					texts[`${prefix}${m[1]}${m[1] === 'Module' || m[1] === 'Select' ? 'Position' : `Position${m[2]}`}`] = v;
-				}
-			}
+			texts[`${prefix}ModulePosition`] = strings[`${GROUP}WeaponsModulePosition`] || 'Carry';
+			texts[`${prefix}SelectPosition`] = strings[`${GROUP}WeaponsSelectPosition`] || 'How to carry it:';
+			used.forEach((n, i) => {
+				const label = n === 0 && BLADE_KINDS.includes(cat) ? 'Held' : strings[`${GROUP}WeaponsOptionPosition${n}`];
+				texts[`${prefix}OptionPosition${i}`] = label;
+				texts[`${prefix}SetPosition${i}`] = strings[`${GROUP}WeaponsSetPosition${n}`];
+			});
 		}
 		items.push({
 			name,
 			// The game writes "a <description>" in lower case in its lines ("uses a void rifle on…").
 			description: DESCRIPTIONS[cat] || `Void ${cat.toLowerCase()}`,
 			weapons: weapons.map((w) => ({ key: w.key, name: w.name, cat: w.cat })),
+			carries: carried ? used.map((n) => (n === 0 && BLADE_KINDS.includes(cat) ? 'held' : CARRY_IDS[n])) : [],
 			source: 'Weapons',
 			def: { Name: name, ...base, Layer: layers },
 			extended: {
@@ -264,7 +293,7 @@ function main() {
 						Options: weapons.map((w) => w.option),
 						DrawData: { elementData: weapons.map((w) => ({ imagePath: `${PAGES}/options/${w.key}.png` })) },
 					},
-					...(carried ? [position] : []),
+					...(carried ? [{ ...position, Options: used.map((n) => position.Options[n]) }] : []),
 				],
 			},
 			texts,
@@ -276,7 +305,7 @@ function main() {
 		});
 	}
 
-	for (const layer of wrathDef.Layer) {
+	for (const layer of wrathDef.Layer.filter((l) => l.HasImage !== false)) {
 		copyImage(path.join(art, `QueensWrath_${layer.Name}.png`), `img/QueensWrath_${layer.Name}.png`);
 	}
 	copyImage(path.join(art, 'Preview', 'QueensWrath.png'), 'preview/QueensWrath.png');
@@ -284,10 +313,11 @@ function main() {
 		name: 'QueensWrath',
 		description: "Queen's Wrath scythe",
 		weapons: [{ key: 'QueensWrath', name: "Queen's Wrath", cat: 'Scythes' }],
+		carries: WRATH_CARRY_IDS,
 		source: 'QueensWrath',
 		def: wrathDef,
-		extended: null,
-		texts: {},
+		extended: { ...wrathExt, ScriptHooks: undefined },
+		texts: Object.fromEntries(Object.entries(wrathStrings).filter(([k]) => /(Select|Module|Option|Set)/.test(k))),
 		layerNames: Object.fromEntries(Object.entries(layerNames).filter(([k]) => k.startsWith(`${GROUP}QueensWrath`))),
 	});
 

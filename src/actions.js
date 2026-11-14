@@ -46,8 +46,136 @@
 		ItemTorso: 'chest',
 		ItemPelvis: 'waist',
 		ItemLegs: 'thigh',
-		ItemFeet: 'legs',
+		ItemFeet: 'feet',
+		ItemBreast: 'chest',
+		ItemMouth: 'chin',
 	};
+	/**
+	 * Where each action may land: only zones where it makes sense (never ears, nose, hair, nails, boots or any intimate
+	 * zone, which also keeps them clearly non-sexual). Own-hands actions are on ItemHands only.
+	 */
+	const ZONES_FOR = {
+		VoidCutFree: ['ItemArms', 'ItemHands', 'ItemLegs', 'ItemFeet', 'ItemTorso', 'ItemNeck', 'ItemMouth', 'ItemHead'],
+		VoidShootLock: ['ItemArms', 'ItemHands', 'ItemLegs', 'ItemFeet', 'ItemTorso', 'ItemNeck', 'ItemMouth', 'ItemHead'],
+		VoidAim: ['ItemHead', 'ItemNeck', 'ItemTorso', 'ItemBreast', 'ItemArms', 'ItemLegs', 'ItemFeet'],
+		VoidShoot: ['ItemHead', 'ItemNeck', 'ItemTorso', 'ItemBreast', 'ItemArms', 'ItemLegs', 'ItemFeet'],
+		VoidLoose: ['ItemHead', 'ItemNeck', 'ItemTorso', 'ItemBreast', 'ItemArms', 'ItemLegs', 'ItemFeet'],
+		VoidMuzzle: ['ItemMouth', 'ItemHead', 'ItemNeck', 'ItemTorso'],
+		VoidButt: ['ItemHead', 'ItemTorso', 'ItemArms'],
+		VoidSlash: ['ItemArms', 'ItemTorso', 'ItemLegs'],
+		VoidStab: ['ItemTorso'],
+		VoidNeck: ['ItemNeck'],
+		VoidPoint: ['ItemHead', 'ItemNeck', 'ItemTorso'],
+		VoidStrike: ['ItemHead', 'ItemTorso', 'ItemArms', 'ItemLegs'],
+		VoidCast: ['ItemHead', 'ItemTorso'],
+		VoidReap: ['ItemTorso', 'ItemLegs'],
+		VoidSweep: ['ItemLegs', 'ItemFeet'],
+		VoidHook: ['ItemNeck', 'ItemArms'],
+		VoidLend: ['ItemHands'],
+		VoidRecall: ['ItemHands'],
+	};
+	// ---- Breaking free
+	/**
+	 * What a blade cuts: rope, tape, cloth, zip ties and leather straps, by the game's asset name (never chains, metal or
+	 * anything rigid). Only these zones; nothing intimate.
+	 */
+	const CUTTABLE = new Set([
+		'HempRope',
+		'NylonRope',
+		'HempRopeHarness',
+		'NylonRopeHarness',
+		'SimpleRopeBondage',
+		'HempRopeCuffs',
+		'NeckRope',
+		'CollarRopeShort',
+		'CollarRopeMedium',
+		'CollarRopeLong',
+		'RopeGag',
+		'RopeBlindfold',
+		'DuctTape',
+		'Zipties',
+		'ClothGag',
+		'ClothBlindfold',
+		'ScarfGag',
+		'ScarfBlindfold',
+		'FurScarf',
+		'Ribbons',
+		'RibbonCollar',
+		'LeatherBelt',
+		'SturdyLeatherBelts',
+		'ThinLeatherStraps',
+	]);
+	/**
+	 * Locks a shot can take off: 0 always, otherwise the Void d20 needed. Any other lock (owner, lover, family, Pandora,
+	 * safeword, portal and add-on locks) is never offered.
+	 */
+	const LOCKS = {
+		MetalPadlock: 0,
+		TimerPadlock: 0,
+		ExclusivePadlock: 10,
+		IntricatePadlock: 12,
+		CombinationPadlock: 14,
+		PasswordPadlock: 16,
+		TimerPasswordPadlock: 16,
+		HighSecurityPadlock: 18,
+		MistressPadlock: 19,
+		MistressTimerPadlock: 19,
+	};
+	/** How long a lock that a shot missed can't be shot again, by anyone (ms). */
+	const LOCK_COOLDOWN = 60000;
+	/** @type {Map<string, number>} Lock cooldowns: "member|group|item" -> until when. */
+	const cooldowns = new Map();
+	const lockKey = (/** @type {any} */ C, /** @type {string} */ group, /** @type {any} */ item) =>
+		`${C.MemberNumber}|${group}|${item.Asset.Name}`;
+	/** Whether this player may act on C's item in `group` at all, as the game's own item menu would let them. */
+	function mayHandle(/** @type {any} */ C, /** @type {string} */ group) {
+		if (typeof w.Player.CanInteract === 'function' && !w.Player.CanInteract()) {
+			return false;
+		}
+		const self = C.MemberNumber === w.Player.MemberNumber;
+		if (!self && typeof w.ServerChatRoomGetAllowItem === 'function' && !w.ServerChatRoomGetAllowItem(w.Player, C)) {
+			return false;
+		}
+		return !(typeof w.InventoryGroupIsBlocked === 'function' && w.InventoryGroupIsBlocked(C, group));
+	}
+	/** The item in C's `group` that a blade could cut away now, as the game's own Remove would allow; or null. */
+	function cuttable(/** @type {any} */ C, /** @type {string} */ group) {
+		const item = typeof w.InventoryGet === 'function' ? w.InventoryGet(C, group) : null;
+		if (!item || !CUTTABLE.has(item.Asset.Name) || !mayHandle(C, group)) {
+			return null;
+		}
+		const a = item.Asset;
+		if (a.OwnerOnly || a.LoverOnly || a.FamilyOnly) {
+			return null;
+		}
+		const has = (/** @type {string} */ e) => typeof w.InventoryItemHasEffect === 'function' && w.InventoryItemHasEffect(item, e, true);
+		return has('Lock') || has('Mounted') || has('Enclose') ? null : item;
+	}
+	/** The locked item in C's `group` whose lock a shot could take off, with what it needs; or null. */
+	function shootable(/** @type {any} */ C, /** @type {string} */ group) {
+		const item = typeof w.InventoryGet === 'function' ? w.InventoryGet(C, group) : null;
+		const lock = item && item.Property && item.Property.LockedBy;
+		if (!lock || !(lock in LOCKS) || !mayHandle(C, group)) {
+			return null;
+		}
+		if ((cooldowns.get(lockKey(C, group, item)) || 0) > Date.now()) {
+			return null;
+		}
+		return { item, lock, needs: LOCKS[/** @type {keyof typeof LOCKS} */ (lock)] };
+	}
+	const describe = (/** @type {any} */ asset) => String((asset && asset.Description) || (asset && asset.Name) || '').toLowerCase();
+	/** The zone a restraint binds, in a word. */
+	const BOUND = {
+		ItemArms: 'arms',
+		ItemHands: 'hands',
+		ItemLegs: 'legs',
+		ItemFeet: 'ankles',
+		ItemTorso: 'body',
+		ItemNeck: 'neck',
+		ItemMouth: 'mouth',
+		ItemHead: 'eyes',
+	};
+
 	/** Rounds or charges when full, by kind. */
 	const FULL = { Pistols: 15, SMGs: 30, Rifles: 30, SniperRifles: 5, Shotguns: 6, Crossbows: 1, GlowingBlades: 5, Staffs: 5, QW: 5 };
 
@@ -57,7 +185,7 @@
 	 * when that's on); `fills`: what an upkeep action refills. `ownerOnly`: Queen's Wrath's owner only.
 	 * @typedef {{ name: string, label: string, kinds: string[], target?: string[], self?: string[],
 	 *   say: (a: string, b: string, wpn: string, zone: string) => string, attack?: boolean, uses?: string, fills?: string,
-	 *   ownerOnly?: boolean, special?: string, prayer?: boolean, when?: (target: any) => boolean }} Def
+	 *   ownerOnly?: boolean, special?: string, prayer?: boolean, melee?: boolean, when?: (target: any, group: string) => boolean }} Def
 	 * @type {Def[]}
 	 */
 	const DEFS = [
@@ -65,14 +193,14 @@
 			name: 'VoidAim',
 			label: 'Aim',
 			kinds: [...GUNS, ...BOWS],
-			target: ['ItemHead', 'ItemTorso'],
+			target: ZONES_FOR.VoidAim,
 			say: (a, b, x, z) => `${a} levels the ${x} at ${b}'s ${z}.`,
 		},
 		{
 			name: 'VoidShoot',
 			label: 'Shoot',
 			kinds: GUNS,
-			target: ['ItemTorso', 'ItemArms', 'ItemLegs', 'ItemFeet'],
+			target: ZONES_FOR.VoidShoot,
 			attack: true,
 			uses: 'shot',
 			say: (a, b, x, z) => `${a} fires the ${x} at ${b}'s ${z}.`,
@@ -81,7 +209,7 @@
 			name: 'VoidLoose',
 			label: 'Loose a bolt',
 			kinds: BOWS,
-			target: ['ItemTorso', 'ItemArms', 'ItemLegs'],
+			target: ZONES_FOR.VoidLoose,
 			attack: true,
 			uses: 'shot',
 			say: (a, b, x, z) => `${a} looses a bolt from the ${x} at ${b}'s ${z}.`,
@@ -90,22 +218,42 @@
 			name: 'VoidMuzzle',
 			label: 'Press the muzzle',
 			kinds: GUNS,
-			target: ['ItemHead', 'ItemNeck', 'ItemTorso'],
+			target: ZONES_FOR.VoidMuzzle,
 			say: (a, b, x, z) => `${a} presses the muzzle of the ${x} against ${b}'s ${z}.`,
+		},
+		// Melee with a gun: a blow, not a shot, so its dice take half the gun's base damage.
+		{
+			name: 'VoidWhip',
+			label: 'Pistol-whip',
+			kinds: ['Pistols'],
+			target: ZONES_FOR.VoidButt,
+			attack: true,
+			melee: true,
+			say: (a, b, x, z) => `${a} pistol-whips ${b} across the ${z} with the ${x}.`,
 		},
 		{
 			name: 'VoidButt',
-			label: 'Strike with the stock',
-			kinds: [...GUNS, ...BOWS],
-			target: ['ItemTorso', 'ItemArms', 'ItemHead'],
+			label: 'Butt-strike',
+			kinds: ['SMGs', 'Rifles', 'SniperRifles', 'Shotguns'],
+			target: ZONES_FOR.VoidButt,
 			attack: true,
+			melee: true,
+			say: (a, b, x, z) => `${a} butt-strikes ${b}'s ${z} with the stock of the ${x}.`,
+		},
+		{
+			name: 'VoidStock',
+			label: 'Strike with the stock',
+			kinds: BOWS,
+			target: ZONES_FOR.VoidButt,
+			attack: true,
+			melee: true,
 			say: (a, b, x, z) => `${a} drives the stock of the ${x} into ${b}'s ${z}.`,
 		},
 		{
 			name: 'VoidSlash',
 			label: 'Slash',
 			kinds: [...BLADES, 'QW'],
-			target: ['ItemArms', 'ItemTorso', 'ItemLegs'],
+			target: ZONES_FOR.VoidSlash,
 			attack: true,
 			say: (a, b, x, z) => `${a} slashes at ${b}'s ${z} with the ${x}.`,
 		},
@@ -113,7 +261,7 @@
 			name: 'VoidStab',
 			label: 'Thrust',
 			kinds: BLADES,
-			target: ['ItemTorso', 'ItemLegs'],
+			target: ZONES_FOR.VoidStab,
 			attack: true,
 			say: (a, b, x, z) => `${a} thrusts the ${x} at ${b}'s ${z}.`,
 		},
@@ -121,21 +269,21 @@
 			name: 'VoidNeck',
 			label: 'Blade to the neck',
 			kinds: [...BLADES, 'QW'],
-			target: ['ItemNeck'],
+			target: ZONES_FOR.VoidNeck,
 			say: (a, b, x) => `${a} rests the edge of the ${x} against ${b}'s throat.`,
 		},
 		{
 			name: 'VoidPoint',
 			label: 'Point the blade',
 			kinds: BLADES,
-			target: ['ItemHead', 'ItemTorso'],
+			target: ZONES_FOR.VoidPoint,
 			say: (a, b, x, z) => `${a} points the ${x} at ${b}'s ${z}.`,
 		},
 		{
 			name: 'VoidStrike',
 			label: 'Strike',
 			kinds: ['Blunt', 'Staffs'],
-			target: ['ItemHead', 'ItemTorso', 'ItemArms', 'ItemLegs'],
+			target: ZONES_FOR.VoidStrike,
 			attack: true,
 			say: (a, b, x, z) => `${a} swings the ${x} into ${b}'s ${z}.`,
 		},
@@ -143,7 +291,7 @@
 			name: 'VoidCast',
 			label: 'Cast a spell',
 			kinds: ['Staffs', 'QW'],
-			target: ['ItemHead', 'ItemTorso'],
+			target: ZONES_FOR.VoidCast,
 			attack: true,
 			uses: 'charge',
 			say: (a, b, x) => `${a} raises the ${x} and casts a spell at ${b}.`,
@@ -152,7 +300,7 @@
 			name: 'VoidReap',
 			label: 'Reap',
 			kinds: ['QW'],
-			target: ['ItemTorso'],
+			target: ZONES_FOR.VoidReap,
 			attack: true,
 			say: (a, b, x) => `${a} brings ${x} around in a reaping arc at ${b}.`,
 		},
@@ -160,7 +308,7 @@
 			name: 'VoidSweep',
 			label: 'Sweep',
 			kinds: ['QW'],
-			target: ['ItemLegs', 'ItemFeet'],
+			target: ZONES_FOR.VoidSweep,
 			attack: true,
 			say: (a, b, x) => `${a} sweeps ${b}'s legs out with the shaft of ${x}.`,
 		},
@@ -168,14 +316,14 @@
 			name: 'VoidHook',
 			label: 'Hook',
 			kinds: ['QW'],
-			target: ['ItemNeck', 'ItemPelvis'],
+			target: ZONES_FOR.VoidHook,
 			say: (a, b, x, z) => `${a} hooks ${b}'s ${z} with the blade of ${x} and drags them close.`,
 		},
 		{
 			name: 'VoidLend',
 			label: 'Lend Queen’s Wrath',
 			kinds: ['QW'],
-			target: ['ItemHands'],
+			target: ZONES_FOR.VoidLend,
 			ownerOnly: true,
 			special: 'lend',
 			say: (a, b, x) => `${a} places ${x} in ${b}'s hands. For now, it lets ${b} lift it.`,
@@ -184,11 +332,33 @@
 			name: 'VoidRecall',
 			label: 'Recall Queen’s Wrath',
 			kinds: ['*'],
-			target: ['ItemHands'],
+			target: ZONES_FOR.VoidRecall,
 			ownerOnly: true,
 			special: 'recall',
 			when: (C) => isQw(items.held(C)),
 			say: (a, b, x) => `${a} calls ${x} back; it tears free of ${b}'s grip and returns to ${a}'s hands.`,
+		},
+		// Breaking free: always works (no dice) for a cut; a shot at a lock as its kind allows (see LOCKS).
+		{
+			name: 'VoidCutFree',
+			label: 'Cut free',
+			kinds: ['Swords', 'ShortBlades', 'GlowingBlades', 'QW'],
+			target: ZONES_FOR.VoidCutFree,
+			self: ZONES_FOR.VoidCutFree,
+			special: 'cut',
+			when: (C, group) => !!cuttable(C, group),
+			say: (a, b) => `${a} cuts ${b} free.`,
+		},
+		{
+			name: 'VoidShootLock',
+			label: 'Shoot the lock',
+			kinds: GUNS,
+			target: ZONES_FOR.VoidShootLock,
+			self: ZONES_FOR.VoidShootLock,
+			special: 'lock',
+			uses: 'shot',
+			when: (C, group) => !!shootable(C, group),
+			say: (a, b) => `${a} shoots at ${b}'s lock.`,
 		},
 		// Upkeep, on your own hands.
 		{
@@ -344,6 +514,7 @@
 		/** @type {string} */ group,
 		/** @type {string} */ name,
 		/** @type {string} */ text,
+		/** @type {any[]} */ extra = [],
 	) {
 		w.ServerSend('ChatRoomChat', {
 			Content: 'Beep',
@@ -352,6 +523,7 @@
 				{ Tag: 'Beep', Text: text },
 				{ Tag: 'VoidOrderAction', Text: name },
 				{ Tag: 'VoidOrderTarget', Text: String(acted && acted.MemberNumber) },
+				...extra,
 			],
 		});
 	}
@@ -387,12 +559,12 @@
 				return false;
 			}
 			if (d.kinds.includes('*')) {
-				return !d.when || d.when(C);
+				return !d.when || d.when(C, group);
 			}
 			if (!h || !d.kinds.includes(kindOf(h))) {
 				return false;
 			}
-			return !d.when || d.when(C);
+			return !d.when || d.when(C, group);
 		}).map((d) => ({ Activity: ACTS.get(d.name), Item: (h && wornOf(w.Player)) || undefined, Group: group }));
 	}
 
@@ -415,6 +587,47 @@
 				name,
 				`${a} strains to move ${QW_NAME}, but in ${a}'s hands it weighs two tons and will not budge.`,
 			);
+			return;
+		}
+		if (d.special === 'cut') {
+			const item = cuttable(acted, group);
+			if (!item) {
+				return;
+			}
+			const what = describe(item.Asset);
+			// The game's own removal, so its rules and other add-ons' apply; if one of them puts it back, so be it.
+			w.InventoryRemove(acted, group);
+			w.ChatRoomCharacterItemUpdate(acted, group);
+			const whose = acted.MemberNumber === w.Player.MemberNumber ? `${a}'s own` : `${b}'s`;
+			sendActivity(w.Player, acted, group, name, `${a} slices through the ${what} binding ${whose} ${BOUND[group] || 'body'}.`);
+			return;
+		}
+		if (d.special === 'lock') {
+			const found = shootable(acted, group);
+			if (!found) {
+				return;
+			}
+			const lockName = describe(w.AssetGet && w.AssetGet('Female3DCG', 'ItemMisc', found.lock)) || 'lock';
+			const itemName = describe(found.item.Asset);
+			let hit = found.needs === 0;
+			if (!hit) {
+				const r = await ctx.rollFull([20], 0);
+				if (r.why) {
+					ctx.note(r.why);
+					return;
+				}
+				hit = !!r.roll && r.roll.total >= found.needs;
+			}
+			if (hit) {
+				// The game's own unlock: only the lock goes, as if it had been opened.
+				w.InventoryUnlock(acted, found.item);
+				w.ChatRoomCharacterItemUpdate(acted, group);
+				sendActivity(w.Player, acted, group, name, `${a} shoots the ${lockName} off ${b}'s ${itemName}.`);
+			} else {
+				const key = lockKey(acted, group, found.item);
+				cooldowns.set(key, Date.now() + LOCK_COOLDOWN);
+				sendActivity(w.Player, acted, group, name, `${a}'s shot ricochets off the ${lockName}.`, [{ Tag: 'VoidOrderCooldown', Text: key }]);
+			}
 			return;
 		}
 		if (d.special === 'lend') {
@@ -460,7 +673,8 @@
 		});
 		if ((d.attack || d.prayer) && h && on('actionDice')) {
 			// An attack: the weapon's attack dice. A prayer: 1d20, whether the Void answers.
-			const roll = d.prayer ? { dice: [20], mod: 0 } : attackDice(h);
+			// A prayer: 1d20, whether the Void answers. A gun's blow: 1d6 and half its base damage (that is for shooting).
+			const roll = d.prayer ? { dice: [20], mod: 0 } : d.melee ? { dice: [6], mod: Math.floor(baseDamage(h) / 2) } : attackDice(h);
 			const why = await ctx.roll(roll.dice, roll.mod);
 			if (why) {
 				ctx.note(why);
@@ -525,14 +739,19 @@
 		if (!C || !Array.isArray(list)) {
 			return list;
 		}
+		// A weapon of ours is for our actions only: none of the game's activities "with an item" (rub, spank…) for it.
+		const kept = list.filter(
+			(a) => !(a && a.Item && a.Item.Asset && items.isArmory(a.Item.Asset) && !(a.Activity && a.Activity.VoidOrder)),
+		);
 		if (
 			C.MemberNumber !== w.Player.MemberNumber &&
 			typeof w.InventoryIsBlockedByDistance === 'function' &&
 			w.InventoryIsBlockedByDistance(C)
 		) {
-			return list;
+			return kept;
 		}
-		return [...list, ...offered(C, group)];
+		const have = new Set(kept.map((a) => a && a.Activity && a.Activity.Name));
+		return [...kept, ...offered(C, group).filter((a) => !have.has(a.Activity.Name))];
 	});
 	hook('ActivityRun', (args, next) => {
 		const [actor, acted, targetGroup, itemActivity] = args;
@@ -568,7 +787,16 @@
 	/** @type {string | null} */
 	let last = null;
 	let warnedQw = false;
-	const CARRY = ['puts a finger on the trigger of the', 'holds across the chest the', 'rests on a shoulder the'];
+	/** The line for taking a carry, by what it is (held().carry); `x` is the weapon, with its article. */
+	const CARRY = {
+		trigger: (a, x) => `${a} puts a finger on the trigger of ${x}.`,
+		portarms: (a, x) => `${a} holds ${x} across the chest, at port arms.`,
+		shoulder: (a, x) => `${a} rests ${x} on a shoulder, muzzle up.`,
+		back: (a, x) => `${a} slings ${x} across the back.`,
+		held: (a, x) => `${a} takes ${x} in hand.`,
+		front: (a, x) => `${a} holds ${x} out in front.`,
+	};
+	const withArticle = (/** @type {any} */ h) => (isQw(h) ? QW_NAME : `the ${nameOf(h)}`);
 	setInterval(
 		() =>
 			ctx.guard(
@@ -584,8 +812,8 @@
 						const x = nameOf(h);
 						if (before !== ammoKey(h)) {
 							sendLine(before ? `${a} switches to ${isQw(h) ? x : `the ${x}`}.` : `${a} takes up ${isQw(h) ? x : `the ${x}`}.`);
-						} else if (typeof h.position === 'number' && CARRY[h.position]) {
-							sendLine(`${a} ${CARRY[h.position]} ${x}.`);
+						} else if (h.carry && CARRY[/** @type {keyof typeof CARRY} */ (h.carry)]) {
+							sendLine(CARRY[/** @type {keyof typeof CARRY} */ (h.carry)](a, withArticle(h)));
 						}
 					}
 					last = now;
@@ -616,6 +844,11 @@
 							return;
 						}
 						const tag = (/** @type {string} */ t) => data.Dictionary.find((/** @type {any} */ e) => e && e.Tag === t);
+						// A shot that missed a lock: nobody here shoots that lock again for a minute either.
+						const missed = tag('VoidOrderCooldown');
+						if (missed && /^\d+\|Item[A-Za-z0-9]+\|[A-Za-z0-9]+$/.test(String(missed.Text))) {
+							cooldowns.set(String(missed.Text), Date.now() + LOCK_COOLDOWN);
+						}
 						const d = byName.get(String((tag('VoidOrderAction') || {}).Text || ''));
 						const at = Number((tag('VoidOrderTarget') || {}).Text);
 						const faceOk = !w.Player.ArousalSettings || w.Player.ArousalSettings.AffectExpression !== false;
@@ -645,5 +878,19 @@
 		}
 	});
 
-	return { offered, run, defs: DEFS };
+	/** For /void diag: whether the actions are on, and those your weapon gives on someone and on your own hands. */
+	function diag() {
+		const other = Array.isArray(w.ChatRoomCharacter) ? w.ChatRoomCharacter.find((C) => C.MemberNumber !== w.Player.MemberNumber) : null;
+		const names = (/** @type {any} */ C, /** @type {string[]} */ groups) => [
+			...new Set(groups.flatMap((g) => offered(C, g).map((a) => a.Activity.Name))),
+		];
+		return {
+			on: !!on('actions'),
+			onOther: other
+				? names(other, ['ItemHead', 'ItemNeck', 'ItemArms', 'ItemHands', 'ItemTorso', 'ItemPelvis', 'ItemLegs', 'ItemFeet'])
+				: [],
+			onHands: names(w.Player, ['ItemHands']),
+		};
+	}
+	return { offered, run, diag, defs: DEFS };
 };
