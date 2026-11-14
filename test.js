@@ -343,7 +343,7 @@ const openCardOf = async (page, name) => {
 		const tabs = await page.evaluate(() => [...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'));
 		check(
 			'founding gives the Founder every tab',
-			tabs === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|Manage|My card|⚙ Settings',
+			tabs === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|Manage|My card|🐞 Reports|⚙ Settings',
 			tabs,
 		);
 
@@ -1004,7 +1004,7 @@ const openCardOf = async (page, name) => {
 		// Settings: one list, in the panel's ⚙ tab and the game's Settings > Extensions page.
 		await click(fp, '⚙ Settings');
 		const groups = await fp.evaluate(() => [...document.querySelectorAll('#void-panel main h3')].map((h) => h.textContent).join('|'));
-		check('the ⚙ tab groups the settings', groups === 'Notifications|Rooms|Panel|SlimeBeep|Privacy', groups);
+		check('the ⚙ tab groups the settings', groups === 'Notifications|Rooms|Panel|SlimeBeep|Privacy|Problems', groups);
 		await shot(fp, '15-settings');
 		await toggleSetting(fp, 'Pop-ups for new orders');
 		await fp.evaluate(() => {
@@ -1121,6 +1121,70 @@ const openCardOf = async (page, name) => {
 			(await second.page.evaluate(() => window.sbJoined.length)) === 0,
 			await second.page.evaluate(() => window.sbJoined),
 		);
+		// A feature that fails shows a small notice once; the player sees what a report sends and sends it on a click;
+		// the app admin is told and reads it under Reports.
+		await second.page.close();
+		const problemText = () => fay.page.evaluate(() => [...document.querySelectorAll('.void-problem')].map((t) => t.innerText).join('\n'));
+		await fay.page.evaluate(() => VoidOrder.report('Test feature', new Error('forced failure 42')));
+		await wait(300);
+		check(
+			'a failure shows the problem notice',
+			/Test feature switched off after a game change/.test(await problemText()),
+			await problemText(),
+		);
+		await fay.page.evaluate(() => VoidOrder.report('Test feature', new Error('forced failure 43')));
+		await wait(300);
+		check(
+			'the same failure again shows no second notice',
+			(await fay.page.evaluate(() => document.querySelectorAll('.void-problem').length)) === 1,
+		);
+		await fay.page.evaluate(() =>
+			[...document.querySelectorAll('.void-problem button')].find((b) => b.textContent === 'Send report').click(),
+		);
+		await wait(200);
+		const reportShown = await problemText();
+		check(
+			'before sending, the player sees exactly what goes',
+			/Feature: Test feature/.test(reportShown) &&
+				/Error: forced failure 42/.test(reportShown) &&
+				/Member: #15/.test(reportShown) &&
+				/Add-on: /.test(reportShown),
+			reportShown,
+		);
+		check('nothing is sent before the second click', !(await page.evaluate(() => /New problem report/.test(document.body.innerText))));
+		await fay.page.evaluate(() => [...document.querySelectorAll('.void-problem button')].find((b) => b.textContent === 'Send').click());
+		await fay.page
+			.waitForFunction(() => /Sent\. Thank you!/.test(document.querySelector('.void-problem')?.innerText || ''), { timeout: 5000 })
+			.catch(() => {});
+		check('the report is sent', /Sent\. Thank you!/.test(await problemText()), await problemText());
+		await page
+			.waitForFunction(
+				() => [...document.querySelectorAll('.void-toast')].some((t) => /New problem report: Test feature/.test(t.textContent)),
+				{ timeout: 5000 },
+			)
+			.catch(() => {});
+		check(
+			'the app admin is told about the new kind',
+			await page.evaluate(() =>
+				[...document.querySelectorAll('.void-toast')].some((t) => /New problem report: Test feature/.test(t.textContent)),
+			),
+		);
+		await slash(page, '');
+		await click(page, '🐞 Reports');
+		await page
+			.waitForFunction(() => /forced failure/.test(document.getElementById('void-panel')?.innerText || ''), { timeout: 5000 })
+			.catch(() => {});
+		const reportsText = await panelText(page);
+		check(
+			'the app admin reads it under Reports, with its count and player',
+			/Test feature: forced failure 42/.test(reportsText) && /1 report from 1 player/.test(reportsText) && /#15/.test(reportsText),
+			reportsText,
+		);
+		await click(fay.page, '⚙ Settings').catch(() => {});
+		await slash(fay.page, '');
+		await click(fay.page, '⚙ Settings');
+		const fayProblems = await panelText(fay.page);
+		check('⚙ Settings lists the problem', /problems/i.test(fayProblems) && /Test feature switched off/.test(fayProblems), fayProblems);
 		check('no page errors', errors.length === 0 && fay.errors.length === 0 && second.errors.length === 0, [
 			...errors,
 			...fay.errors,

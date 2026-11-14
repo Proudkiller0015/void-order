@@ -103,25 +103,31 @@
 	 * Runs fn; if it throws, the error goes to `say` (or the console) and the game carries on.
 	 * @param {() => any} fn
 	 * @param {(text: string) => void} [say]
+	 * @param {string} [feature] the feature named in a problem report
 	 */
-	function guard(fn, say) {
+	function guard(fn, say, feature = 'Oculus Nihili') {
 		try {
 			const r = fn();
 			if (r && typeof r.catch === 'function') {
-				r.catch((/** @type {any} */ e) => report(e, say));
+				r.catch((/** @type {any} */ e) => report(e, say, feature));
 			}
 		} catch (e) {
-			report(e, say);
+			report(e, say, feature);
 		}
 	}
-	function report(/** @type {any} */ e, /** @type {((text: string) => void) | undefined} */ say) {
+	function report(/** @type {any} */ e, /** @type {((text: string) => void) | undefined} */ say, feature = 'Oculus Nihili') {
 		const text = `⚠ Oculus Nihili hit a problem: ${(e && e.message) || e}`;
 		if (say) {
 			say(text);
 		} else {
 			console.warn(text);
 		}
+		if (problem) {
+			problem(feature, e);
+		}
 	}
+	/** Hands a failure to the problem reporter (set once the modules' context exists). */
+	let problem = /** @type {((feature: string, e: any) => void) | null} */ (null);
 
 	// ---- The key: P-256, kept in the account's add-on settings so every device signs in as the same member.
 	/** @type {{ owner: number, priv: CryptoKey, pub: { x: string, y: string } } | null} */
@@ -1558,12 +1564,18 @@
 		if (!sdk || typeof sdk.registerMod !== 'function') {
 			return;
 		}
-		const mod = sdk.registerMod({
-			name: 'VoidOrder',
-			fullName: 'Oculus Nihili',
-			version: VERSION,
-			repository: 'https://github.com/Proudkiller0015/void-order',
-		});
+		let mod;
+		try {
+			mod = sdk.registerMod({
+				name: 'VoidOrder',
+				fullName: 'Oculus Nihili',
+				version: VERSION,
+				repository: 'https://github.com/Proudkiller0015/void-order',
+			});
+		} catch (e) {
+			report(e, undefined, 'Mod registration');
+			return;
+		}
 		let broken = false;
 		mod.hookFunction('ChatRoomCharacterViewDrawOverlay', 0, (/** @type {any[]} */ args, /** @type {(a: any[]) => any} */ next) => {
 			const r = next(args);
@@ -1573,7 +1585,7 @@
 					drawTarget(args[0], args[1], args[2], args[3]);
 				} catch (e) {
 					broken = true;
-					report(e);
+					report(e, undefined, 'Room marks');
 				}
 			}
 			return r;
@@ -2307,6 +2319,9 @@
 				}
 			}
 		}
+		for (const f of moduleSettings) {
+			guard(() => f(body), panelSay);
+		}
 		body.append(
 			make(
 				'p',
@@ -2370,6 +2385,7 @@
 		const buttonAt = (/** @type {number} */ i) => [1240, TOP + i * ROW, 560, 64];
 		const mouse = (/** @type {Rect} */ r) => typeof w.MouseIn === 'function' && w.MouseIn(...r);
 		const canvas = () => /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
+		let drawFailed = false;
 		w.PreferenceRegisterExtensionSetting({
 			Identifier: 'OculusNihili',
 			ButtonText: 'Oculus Nihili',
@@ -2393,7 +2409,11 @@
 					w.DrawButton(...buttonAt(others().length), 'Open the Oculus Nihili panel', 'White');
 					w.DrawButton(...EXIT, '', 'White', 'Icons/Exit.png');
 				} catch (e) {
-					// Never throw inside the game's draw loop.
+					// Never throw inside the game's draw loop; say so once.
+					if (!drawFailed) {
+						drawFailed = true;
+						report(e, undefined, 'Extensions page');
+					}
 				} finally {
 					if (g) {
 						g.textAlign = 'center';
@@ -2436,11 +2456,14 @@
 	const manages = () => isMember() && (isTop(state.me) || leadsAny(state.me));
 	/** The tabs you have, in order. */
 	function tabs() {
+		/** @type {[string, string][]} */
+		const extra = moduleTabs.filter((x) => guarded(x.show, false)).map((x) => [x.id, x.label]);
 		if (!isMember()) {
 			return [
 				['join', state && state.meta ? 'The Order' : 'Found'],
 				['dice', 'Dice'],
 				['hunt', '🎯 Hunt board'],
+				...extra,
 				['settings', '⚙ Settings'],
 			];
 		}
@@ -2456,7 +2479,7 @@
 		if (manages()) {
 			t.push(['manage', 'Manage']);
 		}
-		t.push(['me', 'My card'], ['settings', '⚙ Settings']);
+		t.push(['me', 'My card'], ...extra, ['settings', '⚙ Settings']);
 		return t;
 	}
 	/** Whether a redraw waits for the field being typed in to lose focus. */
@@ -2535,7 +2558,8 @@
 					hunt: drawHunt,
 					armory: drawArmory,
 				};
-				draw[tab](body);
+				const fromModule = moduleTabs.find((x) => x.id === tab);
+				(fromModule ? fromModule.draw : draw[tab])(body);
 			}
 		}, panelSay);
 		const msg = make('div', 'msg', lastMsg);
@@ -3789,8 +3813,6 @@
 		openPanel();
 	}
 
-	w.VoidOrder = Object.freeze({ version: VERSION });
-
 	// ---- Modules: the add-on's other parts (src/<name>.js next to assets/), loaded in order as the page starts.
 	/** The modules' folder (a test page sets VoidOrderSrc). */
 	const SRC = w.VoidOrderSrc || ASSETS.replace(/assets\/?$/, 'src/');
@@ -3799,6 +3821,18 @@
 	const early = /** @type {[string, any, number][]} */ ([]);
 	/** @type {((t: any) => void)[]} */
 	const serverListeners = [];
+	/** @type {{ id: string, label: string, show: () => boolean, draw: (body: HTMLElement) => void }[]} */
+	const moduleTabs = [];
+	/** @type {((body: HTMLElement) => void)[]} */
+	const moduleSettings = [];
+	/** f(), or `dflt` if it throws. */
+	const guarded = (/** @type {() => any} */ f, /** @type {any} */ dflt) => {
+		try {
+			return f();
+		} catch (e) {
+			return dflt;
+		}
+	};
 	/** @type {(() => void)[]} */
 	const signInListeners = [];
 	let signedIn = false;
@@ -3820,7 +3854,7 @@
 		pref,
 		setPref,
 		openPanel: (/** @type {string | undefined} */ which) => openPanel(which),
-		render: () => render(),
+		render: (force = false) => render(force),
 		state: () => state,
 		me: () => (w.Player && w.Player.MemberNumber) || null,
 		isMember,
@@ -3829,6 +3863,12 @@
 		onSignIn: (/** @type {() => void} */ f) => (signedIn ? guard(f) : signInListeners.push(f)),
 		/** Calls f with every message from the server. */
 		onServer: (/** @type {(x: any) => void} */ f) => serverListeners.push(f),
+		/** A panel tab from a module: { id, label, show() (whether you have it), draw(body) }. */
+		addTab: (/** @type {(typeof moduleTabs)[number]} */ t) => moduleTabs.push(t),
+		/** A section a module adds at the end of ⚙ Settings: f(body). */
+		addSettings: (/** @type {(body: HTMLElement) => void} */ f) => moduleSettings.push(f),
+		make,
+		style,
 		early,
 		report: (/** @type {string} */ feature, /** @type {any} */ error) => {
 			console.warn(`[Oculus Nihili] ${feature}:`, error);
@@ -3873,6 +3913,12 @@
 			toast('Oculus Nihili: some features are switched off after a game change. Reload to try again.');
 		}
 	}
+	problem = (feature, e) => ctx.report(feature, e);
+	/** For other add-ons and tests: the version, and report(feature, error) to note a feature that failed. */
+	w.VoidOrder = Object.freeze({
+		version: VERSION,
+		report: (/** @type {string} */ feature, /** @type {any} */ e) => ctx.report(feature, e),
+	});
 	loadModules();
 
 	// ---- Start: once the game is ready.
@@ -3891,11 +3937,16 @@
 				},
 			]);
 			if (typeof w.ChatRoomRegisterMessageHandler === 'function') {
-				w.ChatRoomRegisterMessageHandler({
-					Description: 'Oculus Nihili: ID cards, dice and marks',
-					Priority: -150,
-					Callback: onRoomMessage,
-				});
+				guard(
+					() =>
+						w.ChatRoomRegisterMessageHandler({
+							Description: 'Oculus Nihili: ID cards, dice and marks',
+							Priority: -150,
+							Callback: onRoomMessage,
+						}),
+					undefined,
+					'Room messages',
+				);
 			}
 			document.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') {
@@ -3908,8 +3959,8 @@
 			});
 			document.addEventListener('keydown', hotkeyDown, true);
 			applyLook();
-			hookRoom();
-			registerExtension();
+			guard(hookRoom, undefined, 'Room hooks');
+			guard(registerExtension, undefined, 'Extensions page');
 			connect();
 			setInterval(tick, 2000);
 		});
