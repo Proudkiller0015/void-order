@@ -109,7 +109,7 @@
 			"+3 Damage received",
 			"+1 Luck"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 9,
@@ -975,7 +975,7 @@
 			"+5 Luck",
 			"+3 Damage received"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 68,
@@ -989,7 +989,7 @@
 			"+14 Base damage",
 			"-3 Speed"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 69,
@@ -1003,7 +1003,7 @@
 			"+16 Base damage",
 			"-3 Speed"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 70,
@@ -1018,7 +1018,7 @@
 			"-1 Speed",
 			"+3 Luck"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 71,
@@ -1062,7 +1062,7 @@
 			"+20 Base damage",
 			"-3 Speed"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 74,
@@ -1077,7 +1077,7 @@
 			"+4 Speed",
 			"+5 Damage received"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 75,
@@ -1092,7 +1092,7 @@
 			"+3 Speed",
 			"+3 Damage received"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 76,
@@ -1105,7 +1105,7 @@
 		"stats": [
 			"+15 Base damage"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 77,
@@ -1133,7 +1133,7 @@
 		"stats": [
 			"+15 Base damage"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 79,
@@ -1148,7 +1148,7 @@
 			"+3 Defence",
 			"+3 Luck"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 80,
@@ -1162,7 +1162,7 @@
 			"+45 Base damage",
 			"-3 Speed"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 81,
@@ -1176,7 +1176,7 @@
 			"+20 Base damage",
 			"+3 Speed"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 82,
@@ -1190,7 +1190,7 @@
 			"+25 Base damage",
 			"-1 Speed"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 83,
@@ -1205,7 +1205,7 @@
 			"-3 Speed",
 			"+7 Damage received"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 84,
@@ -1218,7 +1218,7 @@
 		"stats": [
 			"-5 Speed"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 85,
@@ -1233,7 +1233,7 @@
 			"+3 Speed",
 			"+15 HP"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 86,
@@ -1247,7 +1247,7 @@
 			"+20 Base Damage",
 			"+5 Speed"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 87,
@@ -1262,7 +1262,7 @@
 			"+5 Defence",
 			"+10 HP"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 88,
@@ -1275,7 +1275,7 @@
 		"stats": [
 			"+25 Base damage"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 89,
@@ -1304,7 +1304,7 @@
 			"+30 Base damage",
 			"+5 Defence"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 91,
@@ -1333,7 +1333,7 @@
 			"+3 Defence",
 			"+3 Luck"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 93,

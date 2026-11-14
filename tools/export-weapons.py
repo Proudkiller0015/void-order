@@ -30,6 +30,15 @@ REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / 'assets' / 'weapons'
 SIZE = 360
 ZONES = ('Metal', 'Grip', 'Glow')
+QUEENS_WRATH = 100
+QUEENS_WRATH_ART = Path('queens-wrath') / 'layers' / 'qw-default.png'
+# Queen's Wrath is in no catalog: what the Armory says about it.
+QUEENS_WRATH_ENTRY = {
+    'rarity': 'Legendary',
+    'kind': 'Scythes',
+    'lore': "Slime Queen Samantha's signature scythe. It weighs 2 tons, and at its Queen's will anything from 5 kg to "
+            '1,000 tons; it casts spells and changes its form.',
+}
 
 
 def read_json(path, tries=5):
@@ -162,6 +171,11 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     changes = []
     for wid, (base, colors, flip) in sorted(done.items()):
+        if wid == QUEENS_WRATH and (project / QUEENS_WRATH_ART).exists():
+            # Queen's Wrath has its own finished drawing; its layer files are an early version.
+            art = Image.open(project / QUEENS_WRATH_ART).convert('RGBA')
+            write_if_changed(OUT / f'{wid}.png', png_bytes(art.crop(art.getbbox())), changes)
+            continue
         write_if_changed(OUT / f'{wid}.png', png_bytes(sprite(base, colors, flip)), changes)
     for old in OUT.glob('*.png'):
         if old.stem.isdigit() and int(old.stem) not in done:
@@ -181,6 +195,7 @@ def main():
             'kind': kind.get(w['id']),
             'stats': stats.get(w['id'], []),
             'sprite': w['id'] in done,
+            **(QUEENS_WRATH_ENTRY if w['id'] == QUEENS_WRATH else {}),
         })
     text = json.dumps(index, ensure_ascii=False, indent='\t') + '\n'
     write_if_changed(OUT / 'index.json', text.encode('utf-8'), changes)
