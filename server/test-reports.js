@@ -141,6 +141,16 @@ const report = (feature, error, extra = {}) => ({
 	admin.state = lastState(admin);
 	check(listed(admin, 255659)?.badge === '', 'taken away, it stays off', listed(admin, 255659));
 
+	// Queen's Wrath's lend: recorded from the app admin's own session; nobody else lends or recalls it.
+	check((await joiner.req({ t: 'lend', member: 63 })).t === 'error', 'a member cannot lend it');
+	check((await admin.req({ t: 'lend', member: 63 })).t === 'ok', 'the app admin lends it');
+	await wait(300);
+	check(lastState(joiner).lent === 63, 'everyone sees who it is lent to', lastState(joiner).lent);
+	check((await joiner.req({ t: 'recall' })).t === 'error', 'a member cannot recall it');
+	check((await admin.req({ t: 'recall' })).t === 'ok', 'the app admin recalls it');
+	await wait(300);
+	check(lastState(joiner).lent === 0, 'recalled, it is lent to nobody', lastState(joiner).lent);
+
 	console.log(failed ? `${failed} FAILED, ${passed} passed` : `all ${passed} passed`);
 	process.exit(failed ? 1 : 0);
 })();

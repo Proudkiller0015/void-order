@@ -3925,6 +3925,8 @@
 		addSettings: (/** @type {(body: HTMLElement) => void} */ f) => moduleSettings.push(f),
 		make,
 		style,
+		/** Rolls Void dice everyone in the room sees: (dice sides, modifier) → '' or why it didn't. */
+		roll: (/** @type {number[]} */ dice, /** @type {number} */ mod) => roll(dice, mod),
 		early,
 		report: (/** @type {string} */ feature, /** @type {any} */ error) => {
 			console.warn(`[Oculus Nihili] ${feature}:`, error);

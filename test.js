@@ -119,7 +119,7 @@ async function peer(member, name, code = '') {
  * `slimebeep` puts a stand-in for SlimeBeep's add-on API on the page, recording the groups it joins in `sbJoined`.
  * @param {{ me: [number, string], other: [number, string], settings?: object, slimebeep?: boolean }} who
  */
-async function gamePage(browser, { me, other, settings = {}, slimebeep = false }) {
+async function gamePage(browser, { me, other, settings = {}, slimebeep = false, armory = false }) {
 	const page = await browser.newPage();
 	await page.setViewport({ width: 1600, height: 900 });
 	const errors = [];
@@ -201,6 +201,35 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false }
 		me,
 		other,
 	);
+	if (armory) {
+		// A mod SDK that really wraps the game's functions, and a stand-in for the Armory items: the Foam Sword in your
+		// hands is the Recider, or Queen's Wrath while window.stubQw is set.
+		await page.evaluate(() => {
+			window.bcModSdk = {
+				registerMod: () => ({
+					hookFunction: (name, priority, fn) => {
+						const orig = window[name];
+						window[name] = (...args) => fn(args, (a) => orig(...a));
+					},
+				}),
+			};
+			window.VoidOrderModules = {
+				items: () => ({
+					isArmory: (a) => !!a && a.Name === 'Sword',
+					held: (C) => {
+						const it = InventoryGet(C, 'ItemHandheld');
+						if (!it || it.Asset.Name !== 'Sword') return null;
+						const weapon = window.stubQw
+							? { key: 'QueensWrath', name: "Queen's Wrath", cat: 'Staffs' }
+							: { key: 'Recider', name: 'Recider', cat: 'Swords' };
+						return { item: it, weapon, option: 0, position: undefined };
+					},
+					armoryItems: new Map(),
+					whenItemsReady: (f) => f(),
+				}),
+			};
+		});
+	}
 	if (slimebeep) {
 		await page.evaluate(() => {
 			window.sbJoined = [];
@@ -1208,6 +1237,75 @@ const openCardOf = async (page, name) => {
 		const badgeSrc = await page.evaluate(() => document.querySelector('#void-card img.badge')?.getAttribute('src') || '');
 		check("Fay's ID card shows her badge", /\/void-assets\/badges\/slime-queen-160\.png$/.test(badgeSrc), badgeSrc);
 		await page.evaluate(() => document.getElementById('void-card')?.remove());
+		// Weapon actions: holding the Recider adds its actions to the activity menu; a slash sends a line everyone reads.
+		const annKey = await page.evaluate(() => Player.ExtensionSettings.VoidOrder);
+		const armed = await gamePage(browser, { me: [11, 'Ann'], other: [12, 'Bea'], settings: { VoidOrder: annKey }, armory: true });
+		const ap = armed.page;
+		await wait(3000);
+		await ap.evaluate(() => InventoryWear(Player, 'Sword', 'ItemHandheld'));
+		const menu = await ap.evaluate(() =>
+			ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemArms').map((a) => `${a.Activity.Name}:${a.Item ? a.Item.Asset.Name : ''}`),
+		);
+		check('holding a blade puts Slash in the activity menu, with the weapon', menu.includes('VoidSlash:Sword'), menu);
+		check('the menu labels it', (await ap.evaluate(() => ActivityDictionaryText('Label-ChatOther-ItemArms-VoidSlash'))) === 'Slash');
+		const runOn = (pg, group, name) =>
+			pg.evaluate(
+				(group, name) => {
+					window.sent = [];
+					const act = ActivityAllowedForGroup(ChatRoomCharacter[1], group).find((a) => a.Activity.Name === name);
+					ActivityRun(Player, ChatRoomCharacter[1], AssetGroupGet('Female3DCG', group), act);
+				},
+				group,
+				name,
+			);
+		const lineOf = (pg) =>
+			pg.evaluate(() => {
+				const m = window.sent.find(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Activity');
+				if (!m) return null;
+				const entry = m[1].Dictionary.find((e) => e.Tag && String(e.Tag).startsWith('MISSING'));
+				// What a game without the add-on looks up for this message, and so replaces with the text.
+				const vanilla = TextGetInScope(ScreenFileGetPath('ActivityDictionary.csv', 'Character', 'Preference'), m[1].Content);
+				return { content: m[1].Content, text: entry && entry.Text, matches: !!entry && entry.Tag === vanilla };
+			});
+		await runOn(ap, 'ItemArms', 'VoidSlash');
+		await wait(1500);
+		const slashed = await lineOf(ap);
+		check(
+			'a slash sends a line players without the add-on read',
+			!!slashed &&
+				slashed.content === 'ChatOther-ItemArms-VoidSlash' &&
+				slashed.text === "Ann slashes at Bea's arm with the Recider." &&
+				slashed.matches,
+			slashed,
+		);
+		check('an attack rolls Void dice', await ap.evaluate(() => window.sent.some(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Hidden')));
+		const selfMenu = await ap.evaluate(() => ActivityAllowedForGroup(Player, 'ItemHands').map((a) => a.Activity.Name));
+		check('your own hands offer the upkeep', selfMenu.includes('VoidHone'), selfMenu);
+		// Queen's Wrath: its owner has its set and lends it; in anyone else's hands it won't move.
+		await ap.evaluate(() => (window.stubQw = true));
+		const qwMenu = await ap.evaluate(() => ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemTorso').map((a) => a.Activity.Name));
+		check("Queen's Wrath has its own set", qwMenu.includes('VoidReap') && qwMenu.includes('VoidCast'), qwMenu);
+		const lendMenu = await ap.evaluate(() => ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemHands').map((a) => a.Activity.Name));
+		check('its owner may lend it', lendMenu.includes('VoidLend'), lendMenu);
+		const zed = await gamePage(browser, { me: [20, 'Zed'], other: [11, 'Ann'], armory: true });
+		await wait(3000);
+		await zed.page.evaluate(() => {
+			window.stubQw = true;
+			InventoryWear(Player, 'Sword', 'ItemHandheld');
+		});
+		await wait(2000);
+		check(
+			"someone else holding it is told they aren't its worthy wielder",
+			/does not consider you its worthy wielder/.test(await zed.page.evaluate(() => window.local.join('\n'))),
+		);
+		const zedMenu = await zed.page.evaluate(() => ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemHands').map((a) => a.Activity.Name));
+		check('only its owner sees Lend', !zedMenu.includes('VoidLend'), zedMenu);
+		await runOn(zed.page, 'ItemTorso', 'VoidReap');
+		await wait(800);
+		const refused = await lineOf(zed.page);
+		check("in anyone else's hands it weighs two tons", /weighs two tons and will not budge/.test((refused && refused.text) || ''), refused);
+		await armed.page.close();
+		await zed.page.close();
 		check('no page errors', errors.length === 0 && fay.errors.length === 0 && second.errors.length === 0, [
 			...errors,
 			...fay.errors,
