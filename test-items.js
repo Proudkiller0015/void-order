@@ -196,7 +196,11 @@ const edges = (page, { member, zoom = 1, inverted = false }) =>
 			MainCanvas.fillStyle = '#123456';
 			MainCanvas.fillRect(0, 0, 2000, 1000);
 			const X = 700;
+			// No zone outlines: the game draws them over a character with a focused group, and one runs along the edge.
+			const focus = c.FocusGroup;
+			c.FocusGroup = null;
 			DrawCharacter(c, X, 0, zoom);
+			c.FocusGroup = focus;
 			window.CharacterAppearsInverted = was;
 			const left = X + CharacterAppearanceXOffset(c, c.HeightRatio) * zoom;
 			const right = left + 500 * c.HeightRatio * zoom;
