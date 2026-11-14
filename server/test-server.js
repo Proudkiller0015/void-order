@@ -240,6 +240,24 @@ async function joined(member, name) {
 		card,
 	);
 
+	// Who sees your public room: everyone, only those over you, or nobody.
+	c.ws.send(JSON.stringify({ t: 'room', room: 'Shrine' }));
+	await wait(300);
+	check(listed(d, 13).room === 'Shrine', 'by default everyone in the Order sees Cat’s room');
+	check((await c.req({ t: 'profile', roomFor: 'some' })).why === 'bad choice', 'only the three choices');
+	check(
+		(await c.req({ t: 'profile', roomFor: 'over' })).t === 'ok' && c.state.me.roomFor === 'over',
+		'Cat shows it only to those over her',
+	);
+	check(
+		listed(b, 13).room === 'Shrine' && listed(a, 13).room === 'Shrine' && listed(c, 13).room === 'Shrine',
+		'Bea, over her, Ann and Cat herself still see it',
+	);
+	check(listed(d, 13).on === 1 && listed(d, 13).room === '', 'Dan sees her online, not where');
+	await c.req({ t: 'profile', roomFor: 'none' });
+	check(listed(a, 13).room === '' && listed(b, 13).room === '', 'with nobody, not even the Founder sees it');
+	await c.req({ t: 'profile', roomFor: 'all' });
+
 	// Monsignor: an honorary rank the Founder and admins give.
 	const { c: g } = await joined(16, 'Gus');
 	check((await b.req({ t: 'monsignor', member: 16, on: true })).why === 'not allowed', 'a leader cannot make a Monsignor');

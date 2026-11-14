@@ -265,6 +265,31 @@ async function placeVia(page, name, branch, tier, chapter = '') {
 	}, name);
 }
 /** The ID lines of the open card, as written (the card shows some in capitals). */
+/** Clicks the checkbox of the setting whose label starts with `text`, in the panel's ⚙ Settings tab. */
+async function toggleSetting(page, text) {
+	await click(page, '⚙ Settings');
+	return page.evaluate((text) => {
+		const l = [...document.querySelectorAll('#void-panel label.check')].find((x) => x.textContent.trim().startsWith(text));
+		const c = l.querySelector('input');
+		c.checked = !c.checked;
+		c.dispatchEvent(new Event('change'));
+		return c.checked;
+	}, text);
+}
+/** Picks a choice (by its text) for the setting whose label starts with `text`, in the ⚙ Settings tab. */
+async function chooseSetting(page, text, choice) {
+	await click(page, '⚙ Settings');
+	return page.evaluate(
+		(text, choice) => {
+			const row = [...document.querySelectorAll('#void-panel .setting')].find((x) => x.textContent.trim().startsWith(text));
+			const sel = row.querySelector('select');
+			sel.value = [...sel.options].find((o) => o.textContent === choice).value;
+			sel.dispatchEvent(new Event('change'));
+		},
+		text,
+		choice,
+	);
+}
 const cardText = (page) => page.evaluate(() => [...document.querySelectorAll('#void-card .id .ln')].map((l) => l.textContent).join('\n'));
 const openCardOf = async (page, name) => {
 	await page.evaluate(() => document.getElementById('void-card')?.remove());
@@ -296,7 +321,7 @@ const openCardOf = async (page, name) => {
 		await click(page, 'Found the Order');
 		await page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const tabs = await page.evaluate(() => [...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'));
-		check('founding gives the Founder every tab', tabs === 'Orders|Members|The Order|Dice|Manage|My card', tabs);
+		check('founding gives the Founder every tab', tabs === 'Orders|Members|The Order|Dice|Manage|My card|⚙ Settings', tabs);
 
 		// Bea joins at once and waits for a place; Ann places her from Manage as a Paladin rank 5.
 		const bea = await peer(12, 'Bea');
@@ -700,13 +725,12 @@ const openCardOf = async (page, name) => {
 			"clicking Ann's mark opens her ID card",
 			/Ann[\s\S]*Member #11/.test(await fp.evaluate(() => document.getElementById('void-card')?.innerText || '')),
 		);
-		await fp.evaluate(() => {
-			document.getElementById('void-card')?.remove();
-			localStorage.setItem('voidorder.roomBadges', 'false');
-		});
-		check('the setting turns the marks off', !(await marked(1)));
-		await fp.evaluate(() => localStorage.removeItem('voidorder.roomBadges'));
+		await fp.evaluate(() => document.getElementById('void-card')?.remove());
 		await slash(fp, '');
+		await toggleSetting(fp, 'Void mark over members');
+		check('the setting turns the marks off', !(await marked(1)));
+		await toggleSetting(fp, 'Void mark over members');
+		check('and on again', await marked(1));
 
 		// Someone showing their ID in the room: the card comes from the server.
 		await page.evaluate(() => {
@@ -759,6 +783,96 @@ const openCardOf = async (page, name) => {
 		);
 		await shot(page, '13-the-order');
 
+		// Settings: one list, in the panel's ⚙ tab and the game's Settings > Extensions page.
+		await click(fp, '⚙ Settings');
+		const groups = await fp.evaluate(() => [...document.querySelectorAll('#void-panel main h3')].map((h) => h.textContent).join('|'));
+		check('the ⚙ tab groups the settings', groups === 'Notifications|Rooms|Panel|SlimeBeep|Privacy', groups);
+		await shot(fp, '15-settings');
+		await toggleSetting(fp, 'Pop-ups for new orders');
+		await fp.evaluate(() => {
+			window.local = [];
+			document.querySelectorAll('.void-toast').forEach((t) => t.remove());
+		});
+		await bea.req({ t: 'order', kind: 'notice', title: 'Quiet notice', to: { members: [15] } });
+		await wait(600);
+		check(
+			'with pop-ups off a notice comes as a chat line, without a pop-up',
+			await fp.evaluate(() => window.local.some((l) => /Quiet notice/.test(l)) && !document.querySelector('.void-toast')),
+		);
+		await toggleSetting(fp, 'Pop-ups for new orders');
+		await chooseSetting(fp, 'Who sees my public room', 'Nobody');
+		await wait(2600);
+		check(
+			'“Who sees my public room: Nobody” hides Fay’s room from Bea',
+			bea.state.members.find((m) => m.n === 15)?.room === '',
+			bea.state.members.find((m) => m.n === 15),
+		);
+		await chooseSetting(fp, 'Who sees my public room', 'Everyone in the Order');
+		await wait(2600);
+		check(
+			'and Everyone shows it again',
+			bea.state.members.find((m) => m.n === 15)?.room === 'Void Hall',
+			bea.state.members.find((m) => m.n === 15),
+		);
+
+		// The Extensions page: Ann turns off other people's dice there; the panel agrees.
+		await page.bringToFront();
+		const ext = await page.evaluate(() => {
+			const e = PreferenceExtensionsSettings.OculusNihili;
+			e.load();
+			e.run();
+			// "Play dice others roll in my room", the seventh checkbox: rows of 72 from 170, at x 400.
+			MouseX = 420;
+			MouseY = 170 + 6 * 72 + 20;
+			e.click();
+			return { text: e.ButtonText, image: /^data:image\/png/.test(e.Image) };
+		});
+		check('Settings > Extensions lists Oculus Nihili with its eye', ext.text === 'Oculus Nihili' && ext.image, ext);
+		await page.evaluate(() => document.querySelectorAll('body > :not(canvas)').forEach((el) => el.classList.add('vo-test-hidden')));
+		await page.addStyleTag({ content: '.vo-test-hidden { visibility: hidden !important; }' });
+		// Drawn twice: the checkbox ticks are pictures the game loads on first use.
+		const drawExtensions = () =>
+			page.evaluate(() => {
+				const g = document.getElementById('MainCanvas').getContext('2d');
+				g.fillStyle = '#eee';
+				g.fillRect(0, 0, 2000, 1000);
+				PreferenceExtensionsSettings.OculusNihili.run();
+			});
+		await drawExtensions();
+		await wait(500);
+		await drawExtensions();
+		await shot(page, '16-extensions-page');
+		await page.evaluate(() => document.querySelectorAll('.vo-test-hidden').forEach((el) => el.classList.remove('vo-test-hidden')));
+		await slash(page, '');
+		await click(page, '⚙ Settings');
+		const diceBox = await page.evaluate(
+			() =>
+				[...document.querySelectorAll('#void-panel label.check')]
+					.find((l) => /Play dice others roll/.test(l.textContent))
+					.querySelector('input').checked,
+		);
+		check('a checkbox clicked on the Extensions page shows in the panel', diceBox === false);
+		await toggleSetting(page, 'Play dice others roll');
+
+		// The ⸸ tab's side, the look, and the open/close key.
+		await chooseSetting(page, 'Side tab position', 'Right');
+		await chooseSetting(page, 'Look', 'Lighter');
+		check('the lighter look applies', await page.evaluate(() => /#2b2140/.test(document.getElementById('void-look').textContent)));
+		await chooseSetting(page, 'Look', 'Void dark');
+		await click(page, 'none');
+		await page.keyboard.press('F2');
+		check('the key picker takes F2', /F2/.test(await panelText(page)), await panelText(page));
+		await page.evaluate(() => document.querySelector('#void-panel .x').click());
+		check(
+			'with the panel shut, the ⸸ tab sits on the right',
+			await page.evaluate(() => document.getElementById('void-tab')?.classList.contains('right')),
+		);
+		await page.keyboard.press('F2');
+		check('F2 opens the panel', await page.evaluate(() => !!document.getElementById('void-panel')));
+		await page.keyboard.press('F2');
+		check('and closes it', await page.evaluate(() => !document.getElementById('void-panel')));
+		await slash(page, '');
+
 		// My room shows in the list; a private one doesn't.
 		await wait(2500);
 		check('my public room shows to the Order', bea.state.members.find((m) => m.n === 11)?.room === 'Void Hall', bea.state.members);
@@ -778,11 +892,11 @@ const openCardOf = async (page, name) => {
 		);
 		check(
 			'another device with the same account signs in as the same member',
-			tabs2 === 'Orders|Members|The Order|Dice|Manage|My card',
+			tabs2 === 'Orders|Members|The Order|Dice|Manage|My card|⚙ Settings',
 			tabs2,
 		);
 		const noteOnLogin = await second.page.evaluate(() => window.local.join('\n'));
-		check('signing in tells you about unanswered orders', /2 unanswered orders/.test(noteOnLogin), noteOnLogin);
+		check('signing in tells you about unanswered orders', /3 unanswered orders/.test(noteOnLogin), noteOnLogin);
 		await wait(2500);
 		check(
 			'the second device does not put Fay in the Order chat again',

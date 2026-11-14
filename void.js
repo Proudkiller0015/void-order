@@ -18,8 +18,6 @@
 	const SETTINGS_KEY = 'VoidOrder';
 	/** Content of the hidden room messages that show an ID card or a dice roll to the room's Void Order users. */
 	const HIDDEN = 'VoidOrder';
-	/** Minutes before a session that the reminder comes. */
-	const REMIND_MIN = 15;
 	const LIMITS = {
 		name: 40,
 		bio: 300,
@@ -198,10 +196,10 @@
 	/** The room told to the server. */
 	let toldRoom = '';
 
-	/** The current room, if it is public and you share it; else ''. */
+	/** The current room, if it is public and you are a member who shows it to anyone; else ''. */
 	function publicRoom() {
 		const d = w.ChatRoomData;
-		if (w.CurrentScreen !== 'ChatRoom' || !d || !d.Name || !pref('shareRoom', true)) {
+		if (w.CurrentScreen !== 'ChatRoom' || !d || !d.Name || !isMember() || state.me.roomFor === 'none') {
 			return '';
 		}
 		const pub = Array.isArray(d.Visibility) ? d.Visibility.length === 1 && d.Visibility[0] === 'All' : !d.Private;
@@ -533,10 +531,13 @@
 				continue;
 			}
 			const left = o.when - Date.now();
-			const stage = left <= 0 && left > -30 * 60000 ? 'now' : left > 0 && left <= REMIND_MIN * 60000 ? 'soon' : '';
+			const stage = left <= 0 && left > -30 * 60000 ? 'now' : left > 0 && left <= opts.remind * 60000 ? 'soon' : '';
 			if (stage && seen[o.id] !== stage && !(stage === 'soon' && seen[o.id] === 'now')) {
 				seen[o.id] = stage;
 				changed = true;
+				if (stage === 'now' && !opts.remindNow) {
+					continue;
+				}
 				const text = stage === 'now' ? `📸 ${o.title} starts now!` : `📸 ${o.title} starts ${fromNow(o.when)}.`;
 				note(`${text}${o.body ? ` ${o.body}` : ''}`);
 				toast(text, () => openPanel('orders'));
@@ -636,6 +637,9 @@
 			border: 1px solid #7a52c4; background: #12091fee; box-shadow: 0 8px 30px #000c; transition: opacity .4s; }
 		#void-tab { position: fixed; z-index: 2147483000; left: 0; top: 50%; transform: translateY(-50%); width: 26px; height: 54px; border: 1px solid #5b3d8f; border-left: 0;
 			border-radius: 0 10px 10px 0; background: #12091fdd; color: #c9a8ff; font: 600 16px Georgia, serif; cursor: pointer; padding: 0; text-shadow: 0 0 8px #9b59ff; }
+		#void-tab.right { left: auto; right: 0; border-left: 1px solid #5b3d8f; border-right: 0; border-radius: 10px 0 0 10px; }
+		#void-panel .setting { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }
+		#void-panel .setting .hint { flex-basis: 100%; margin: -2px 0 0 26px; }
 		#void-dice { position: fixed; z-index: 2147483004; left: 50%; bottom: 14vh; transform: translateX(-50%); width: min(380px, 94vw); border-radius: 20px; padding: 0 0 10px; cursor: pointer;
 			border: 1px solid #7a52c4; background: radial-gradient(120% 100% at 50% 40%, #2a1250 0%, #0e0619 70%); box-shadow: 0 16px 50px #000d, 0 0 50px #8a4dff55; transition: opacity .4s; text-align: center; }
 		#void-dice canvas { position: static; margin: 0; display: block; width: 100%; height: 190px; }
@@ -712,8 +716,17 @@
 			});
 		}
 	};
-	/** A short message at the bottom right that goes away by itself; clicking it runs `click`. */
+	/**
+	 * A pop-up at the bottom right that goes away by itself (clicking it runs `click`), with a soft sound if that is on;
+	 * neither while pop-ups are off or you don't want to be disturbed.
+	 */
 	function toast(/** @type {string} */ text, /** @type {(() => void) | undefined} */ click) {
+		if (!opts.toasts || opts.dnd) {
+			return;
+		}
+		if (opts.sound) {
+			chime();
+		}
 		style();
 		const t = make('div', 'void-toast', text);
 		const others = document.querySelectorAll('.void-toast').length;
@@ -822,7 +835,7 @@
 			}
 			const d = Array.isArray(data.Dictionary) ? data.Dictionary[0] : null;
 			const n = sender.MemberNumber;
-			if (d && d.card === true && pref('roomCards', true)) {
+			if (d && d.card === true && opts.roomCards) {
 				const last = roomCards.get(n) || 0;
 				if (cardWanted.has(n) || Date.now() - last < 60000) {
 					return;
@@ -837,7 +850,7 @@
 					hereAnswered.set(n, Date.now());
 					sendHere(false);
 				}
-			} else if (d && typeof d.roll === 'string' && n !== w.Player.MemberNumber && pref('roomDice', true)) {
+			} else if (d && typeof d.roll === 'string' && n !== w.Player.MemberNumber && opts.roomDice) {
 				// At most one roll a second from each person, and a few waiting.
 				if (Date.now() - (roomRolls.get(n) || 0) < 1000 || diceQueue.length >= DICE_QUEUE) {
 					return;
@@ -876,7 +889,7 @@
 	}
 	/** The member under character C's mark, if it shows: they run the add-on, they are a member, and so are you. */
 	function markedMember(/** @type {any} */ C) {
-		if (!C || !C.MemberNumber || !isMember() || !pref('roomBadges', true)) {
+		if (!C || !C.MemberNumber || !isMember() || !opts.roomBadges) {
 			return null;
 		}
 		if (typeof w.ChatRoomHideIconState === 'number' && w.ChatRoomHideIconState > 0) {
@@ -1388,7 +1401,7 @@
 	}
 	/** Once per session, a member running SlimeBeep who was never put in the Order chat on this browser is put in. */
 	function chatTick() {
-		if (!isMember() || !slimeBeep() || chatTried === state.me.n || pref(`chat.${state.me.n}`, false)) {
+		if (!opts.autoChat || !isMember() || !slimeBeep() || chatTried === state.me.n || pref(`chat.${state.me.n}`, false)) {
 			return;
 		}
 		chatTried = state.me.n;
@@ -1441,6 +1454,394 @@
 		}
 		render(true);
 	}
+	// ---- Settings: one list for the panel's ⚙ tab and the game's Settings > Extensions page
+	/** Accent colours to pick from. */
+	const ACCENTS = [
+		['#b48cff', 'Violet'],
+		['#e05cff', 'Orchid'],
+		['#7fd4ff', 'Ice'],
+		['#f0d08a', 'Gold'],
+		['#ff7a8c', 'Crimson'],
+	];
+	/**
+	 * Every setting: its key, group, label (short: the Extensions page draws it on the game's canvas), kind, default and
+	 * an optional hint. Kept per browser, except `server` ones: who sees your room is about what others see, so the
+	 * server keeps it (members only).
+	 * @type {{ k: string, group: string, label: string, kind: 'bool' | 'choice' | 'key', dflt?: any, choices?: [any, string][], hint?: string, server?: boolean }[]}
+	 */
+	const SETTINGS = [
+		{ k: 'toasts', group: 'Notifications', label: 'Pop-ups for new orders and reminders', kind: 'bool', dflt: true },
+		{
+			k: 'remind',
+			group: 'Notifications',
+			label: 'Session reminder',
+			kind: 'choice',
+			dflt: 15,
+			choices: [
+				[0, 'Off'],
+				[5, '5 min before'],
+				[15, '15 min before'],
+				[30, '30 min before'],
+				[60, '1 hour before'],
+			],
+		},
+		{ k: 'remindNow', group: 'Notifications', label: 'Remind me when a session starts', kind: 'bool', dflt: true },
+		{ k: 'sound', group: 'Notifications', label: 'A soft sound with pop-ups', kind: 'bool', dflt: false },
+		{
+			k: 'dnd',
+			group: 'Notifications',
+			label: 'Do not disturb',
+			kind: 'bool',
+			dflt: false,
+			hint: 'No pop-ups or sounds; everything is still listed.',
+		},
+		{ k: 'roomBadges', group: 'Rooms', label: 'Void mark over members in my room', kind: 'bool', dflt: true },
+		{ k: 'roomCards', group: 'Rooms', label: 'Open ID cards shown in my room', kind: 'bool', dflt: true },
+		{ k: 'roomDice', group: 'Rooms', label: 'Play dice others roll in my room', kind: 'bool', dflt: true },
+		{ k: 'sideTab', group: 'Panel', label: 'Show the side tab', kind: 'bool', dflt: true },
+		{
+			k: 'tabSide',
+			group: 'Panel',
+			label: 'Side tab position',
+			kind: 'choice',
+			dflt: 'left',
+			choices: [
+				['left', 'Left'],
+				['right', 'Right'],
+			],
+		},
+		{ k: 'hotkey', group: 'Panel', label: 'Open/close key', kind: 'key', dflt: '', hint: 'A plain letter is left alone while you type.' },
+		{
+			k: 'look',
+			group: 'Panel',
+			label: 'Look',
+			kind: 'choice',
+			dflt: 'dark',
+			choices: [
+				['dark', 'Void dark'],
+				['light', 'Lighter'],
+			],
+		},
+		{ k: 'accent', group: 'Panel', label: 'Accent colour', kind: 'choice', dflt: ACCENTS[0][0], choices: ACCENTS },
+		{
+			k: 'autoChat',
+			group: 'SlimeBeep',
+			label: 'Join the Order chat in SlimeBeep',
+			kind: 'bool',
+			dflt: true,
+			hint: 'Once per browser, when you sign in as a member.',
+		},
+		{
+			k: 'roomFor',
+			group: 'Privacy',
+			label: 'Who sees my public room',
+			kind: 'choice',
+			server: true,
+			choices: [
+				['all', 'Everyone in the Order'],
+				['over', 'Only those over me'],
+				['none', 'Nobody'],
+			],
+		},
+	];
+	const settingOf = (/** @type {string} */ k) => /** @type {(typeof SETTINGS)[number]} */ (SETTINGS.find((s) => s.k === k));
+	/** The settings in this browser: saved ones, else what older versions kept one by one, else the defaults. */
+	const opts = /** @type {Record<string, any>} */ ({});
+	{
+		const saved = pref('opts', null);
+		for (const s of SETTINGS) {
+			if (s.server) {
+				continue;
+			}
+			const v = saved && s.k in saved ? saved[s.k] : pref(s.k, s.dflt);
+			const ok =
+				s.kind === 'bool' ? typeof v === 'boolean' : s.kind === 'key' ? typeof v === 'string' : (s.choices || []).some(([c]) => c === v);
+			opts[s.k] = ok ? v : s.dflt;
+		}
+	}
+	/** Whether a setting is shown: the server ones to members only. */
+	const shownSetting = (/** @type {(typeof SETTINGS)[number]} */ s) => !s.server || isMember();
+	const getSetting = (/** @type {(typeof SETTINGS)[number]} */ s) => (s.server ? state.me[s.k] : opts[s.k]);
+	/** A setting's value in words ("15 min before", "F2", "none"). */
+	function settingText(/** @type {(typeof SETTINGS)[number]} */ s) {
+		const v = getSetting(s);
+		if (s.kind === 'key') {
+			return pickingKey ? 'press a key… (Esc: none)' : v || 'none';
+		}
+		return ((s.choices || []).find(([c]) => c === v) || ['', String(v)])[1];
+	}
+	/** Changes a setting: saved in this browser (or on the server), and applied at once. */
+	function setSetting(/** @type {(typeof SETTINGS)[number]} */ s, /** @type {any} */ v) {
+		if (s.server) {
+			return act({ t: 'profile', [s.k]: v });
+		}
+		opts[s.k] = v;
+		setPref('opts', opts);
+		applyLook();
+		drawTab();
+		render(true);
+	}
+	/** The next choice of a setting, going round (for the Extensions page's buttons). */
+	function nextChoice(/** @type {(typeof SETTINGS)[number]} */ s) {
+		const list = s.choices || [];
+		const i = list.findIndex(([c]) => c === getSetting(s));
+		return list[(i + 1) % list.length][0];
+	}
+	/** The lighter look, and the accent colour, over the Void dark one. */
+	const LIGHT_CSS = `
+		#void-panel, #void-card, .void-toast, #void-dice { --v-bg: #2b2140; --v-line: #5d4a85; --v-text: #f6f0ff; --v-dim: #cfc3ea; }
+		#void-panel { background: radial-gradient(120% 80% at 50% -10%, #5a3d8f 0%, #2b2140 60%) #2b2140; }
+		#void-panel input, #void-panel textarea, #void-panel select { background: #1d1530; }
+		#void-card { background: radial-gradient(140% 90% at 50% 0%, #6a4aa5 0%, #2e2148 60%, #221935 100%); }
+		.void-toast { background: #2e2148ee; }
+	`;
+	function applyLook() {
+		style();
+		let el = document.getElementById('void-look');
+		if (!el) {
+			el = document.createElement('style');
+			el.id = 'void-look';
+			document.head.append(el);
+		}
+		const accent = isColor(opts.accent) ? opts.accent : ACCENTS[0][0];
+		el.textContent = `#void-panel, #void-card, .void-toast, #void-tab, #void-dice { --v-accent: ${accent}; }${opts.look === 'light' ? LIGHT_CSS : ''}`;
+	}
+	/** @type {AudioContext | null} */
+	let audio = null;
+	/** A soft two-note chime. */
+	function chime() {
+		try {
+			audio = audio || new AudioContext();
+			const t = audio.currentTime;
+			const o = audio.createOscillator();
+			const g = audio.createGain();
+			o.type = 'sine';
+			o.frequency.setValueAtTime(660, t);
+			o.frequency.exponentialRampToValueAtTime(990, t + 0.18);
+			g.gain.setValueAtTime(0.0001, t);
+			g.gain.exponentialRampToValueAtTime(0.06, t + 0.02);
+			g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+			o.connect(g).connect(audio.destination);
+			o.start(t);
+			o.stop(t + 0.5);
+		} catch (e) {
+			/* no sound here */
+		}
+	}
+	/** True while the open/close key is being picked. */
+	let pickingKey = false;
+	/**
+	 * A key press as 'Ctrl+Alt+Shift+B': letters and digits by where they are on the keyboard (so Shift or a keyboard
+	 * layout doesn't change them), other keys by name. Null for a modifier on its own.
+	 */
+	function comboOf(/** @type {KeyboardEvent} */ e) {
+		if (!e.key || ['Control', 'Alt', 'Shift', 'Meta', 'AltGraph', 'CapsLock', 'Dead', 'Unidentified'].includes(e.key)) {
+			return null;
+		}
+		const m = /^(?:Key([A-Z])|Digit(\d))$/.exec(e.code || '');
+		let k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+		if (m) {
+			k = m[1] || m[2];
+		} else if (e.key === ' ') {
+			k = 'Space';
+		}
+		return [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.metaKey && 'Meta', e.shiftKey && 'Shift', k].filter(Boolean).join('+');
+	}
+	/** The open/close key, and picking it. A plain letter or digit is left alone while you type in a text box. */
+	function hotkeyDown(/** @type {KeyboardEvent} */ e) {
+		if (pickingKey) {
+			const combo = e.key === 'Escape' ? '' : comboOf(e);
+			if (combo === null) {
+				return;
+			}
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			pickingKey = false;
+			setSetting(settingOf('hotkey'), combo);
+			return;
+		}
+		if (!opts.hotkey || e.repeat || comboOf(e) !== opts.hotkey) {
+			return;
+		}
+		const t = e.target instanceof HTMLElement ? e.target : null;
+		const typing = !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+		if (typing && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+			return;
+		}
+		e.preventDefault();
+		e.stopImmediatePropagation();
+		if (document.getElementById('void-panel')) {
+			closePanel();
+		} else {
+			openPanel();
+		}
+	}
+	/** One setting's control in the panel: a checkbox, a choice or the key picker, with its hint. */
+	function settingControl(/** @type {(typeof SETTINGS)[number]} */ s) {
+		const row = make('div', 'setting');
+		const v = getSetting(s);
+		if (s.kind === 'bool') {
+			row.append(check(` ${s.label}`, !!v, (on) => setSetting(s, on)));
+		} else {
+			row.append(make('span', 'grow', s.label));
+			if (s.kind === 'key') {
+				row.append(
+					button(settingText(s), () => {
+						pickingKey = !pickingKey;
+						render(true);
+					}),
+				);
+			} else {
+				const choices = s.choices || [];
+				row.append(
+					select(
+						choices.map(([c, text]) => [String(c), text]),
+						String(v),
+						(text) => setSetting(s, (choices.find(([c]) => String(c) === text) || [s.dflt])[0]),
+					),
+				);
+			}
+		}
+		if (s.hint) {
+			row.append(make('div', 'dim hint', s.hint));
+		}
+		return row;
+	}
+	function drawSettings(/** @type {HTMLElement} */ body) {
+		for (const group of [...new Set(SETTINGS.map((s) => s.group))]) {
+			const items = SETTINGS.filter((s) => s.group === group && shownSetting(s));
+			if (items.length) {
+				body.append(make('h3', '', group));
+				for (const s of items) {
+					body.append(settingControl(s));
+				}
+			}
+		}
+		body.append(
+			make(
+				'p',
+				'dim',
+				'Kept in this browser, except who sees your room, which the Order keeps. The same settings are in the game’s Settings › Extensions.',
+			),
+			make(
+				'p',
+				'dim',
+				`Oculus Nihili ${VERSION}. /void opens this panel; /void card <member number> opens someone's card; /void roll 2d6+3 rolls dice.`,
+			),
+		);
+	}
+	/** The Void eye, drawn: the add-on's picture on the game's Extensions page. */
+	function eyeIcon() {
+		const c = document.createElement('canvas');
+		c.width = c.height = 64;
+		const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+		g.fillStyle = '#12091f';
+		g.beginPath();
+		g.arc(32, 32, 31, 0, Math.PI * 2);
+		g.fill();
+		g.strokeStyle = '#b48cff';
+		g.lineWidth = 3;
+		g.beginPath();
+		g.moveTo(8, 32);
+		g.quadraticCurveTo(32, 8, 56, 32);
+		g.quadraticCurveTo(32, 56, 8, 32);
+		g.stroke();
+		g.fillStyle = '#e05cff';
+		g.beginPath();
+		g.arc(32, 32, 9, 0, Math.PI * 2);
+		g.fill();
+		g.fillStyle = '#000';
+		g.beginPath();
+		g.arc(32, 32, 4.5, 0, Math.PI * 2);
+		g.fill();
+		return c.toDataURL('image/png');
+	}
+	/**
+	 * Registers the add-on's page in the game's Settings > Extensions, drawn on the game's canvas with its own checkbox
+	 * and button helpers: the on/off settings on the left, the others as buttons on the right (a click moves to the
+	 * next choice), and a button that opens the panel.
+	 */
+	function registerExtension() {
+		if (typeof w.PreferenceRegisterExtensionSetting !== 'function') {
+			return;
+		}
+		if (w.PreferenceExtensionsSettings && w.PreferenceExtensionsSettings.OculusNihili) {
+			return;
+		}
+		/** @typedef {[number, number, number, number]} Rect x, y, width, height on the canvas */
+		/** @type {Rect} */
+		const EXIT = [1815, 75, 90, 90];
+		const LEFT = 400;
+		const TOP = 170;
+		const ROW = 72;
+		const bools = () => SETTINGS.filter((s) => s.kind === 'bool' && shownSetting(s));
+		const others = () => SETTINGS.filter((s) => s.kind !== 'bool' && shownSetting(s));
+		/** @returns {Rect} */
+		const buttonAt = (/** @type {number} */ i) => [1240, TOP + i * ROW, 560, 64];
+		const mouse = (/** @type {Rect} */ r) => typeof w.MouseIn === 'function' && w.MouseIn(...r);
+		const canvas = () => /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
+		w.PreferenceRegisterExtensionSetting({
+			Identifier: 'OculusNihili',
+			ButtonText: 'Oculus Nihili',
+			Image: eyeIcon(),
+			load: () => {
+				pickingKey = false;
+			},
+			run: () => {
+				const g = canvas();
+				try {
+					if (g) {
+						g.textAlign = 'left';
+					}
+					w.DrawText(`- Oculus Nihili Settings - v${VERSION}`, LEFT, 125, 'Black', 'Gray');
+					bools().forEach((s, i) => w.DrawCheckbox(LEFT, TOP + i * ROW, 64, 64, s.label, !!getSetting(s)));
+					// The game centres button labels with the current textAlign.
+					if (g) {
+						g.textAlign = 'center';
+					}
+					others().forEach((s, i) => w.DrawButton(...buttonAt(i), `${s.label}: ${settingText(s)}`, 'White'));
+					w.DrawButton(...buttonAt(others().length), 'Open the Oculus Nihili panel', 'White');
+					w.DrawButton(...EXIT, '', 'White', 'Icons/Exit.png');
+				} catch (e) {
+					// Never throw inside the game's draw loop.
+				} finally {
+					if (g) {
+						g.textAlign = 'center';
+					}
+				}
+			},
+			click: () =>
+				guard(() => {
+					if (mouse(EXIT)) {
+						pickingKey = false;
+						w.PreferenceSubscreenExtensionsClear?.();
+						return;
+					}
+					bools().forEach((s, i) => {
+						if (mouse([LEFT, TOP + i * ROW, 64, 64])) {
+							setSetting(s, !getSetting(s));
+						}
+					});
+					others().forEach((s, i) => {
+						if (mouse(buttonAt(i))) {
+							if (s.kind === 'key') {
+								pickingKey = !pickingKey;
+							} else {
+								setSetting(s, nextChoice(s));
+							}
+						}
+					});
+					if (mouse(buttonAt(others().length))) {
+						openPanel('settings');
+					}
+				}),
+			exit: () => {
+				pickingKey = false;
+				return true;
+			},
+		});
+	}
+
 	/** Whether you may manage anyone: the Founder, admins and branch leaders. */
 	const manages = () => isMember() && (isTop(state.me) || leadsAny(state.me));
 	/** The tabs you have, in order. */
@@ -1449,6 +1850,7 @@
 			return [
 				['join', state && state.meta ? 'The Order' : 'Found'],
 				['dice', 'Dice'],
+				['settings', '⚙ Settings'],
 			];
 		}
 		/** @type {[string, string][]} */
@@ -1461,7 +1863,7 @@
 		if (manages()) {
 			t.push(['manage', 'Manage']);
 		}
-		t.push(['me', 'My card']);
+		t.push(['me', 'My card'], ['settings', '⚙ Settings']);
 		return t;
 	}
 	/** Whether a redraw waits for the field being typed in to lose focus. */
@@ -1536,6 +1938,7 @@
 					manage: drawManage,
 					me: drawMe,
 					join: drawJoin,
+					settings: drawSettings,
 				};
 				draw[tab](body);
 			}
@@ -2613,30 +3016,6 @@
 				button('Join the Order chat in SlimeBeep', async () => panelSay((await joinChat()).text)),
 			);
 		}
-		body.append(make('h3', '', 'Settings (this browser)'));
-		for (const [k, text, dflt] of [
-			['shareRoom', 'Show the Order which public room I am in', true],
-			['roomCards', 'Open ID cards people show in my room', true],
-			['roomDice', 'Play the Void dice people roll in my room', true],
-			['roomBadges', 'Show the Void mark over members in my room', true],
-			['sideTab', 'Show the ⸸ tab on the left of the screen', true],
-		]) {
-			const l = check(` ${text}`, pref(String(k), dflt), (on) => {
-				setPref(String(k), on);
-				roomTick(true);
-				drawTab();
-			});
-			l.style.display = 'flex';
-			l.style.margin = '4px 0';
-			body.append(l);
-		}
-		body.append(
-			make(
-				'p',
-				'dim',
-				`Oculus Nihili ${VERSION}. /void opens this panel; /void card <member number> opens someone's card; /void roll 2d6+3 rolls dice.`,
-			),
-		);
 	}
 	/**
 	 * A picture file as a small square data URL that fits LIMITS.pic.
@@ -2666,11 +3045,7 @@
 	// ---- The side tab, the room, and the clock
 	function drawTab() {
 		const want =
-			!!w.Player &&
-			!!w.Player.MemberNumber &&
-			pref('sideTab', true) &&
-			!document.getElementById('void-panel') &&
-			w.CurrentScreen === 'ChatRoom';
+			!!w.Player && !!w.Player.MemberNumber && opts.sideTab && !document.getElementById('void-panel') && w.CurrentScreen === 'ChatRoom';
 		let t = document.getElementById('void-tab');
 		if (!want) {
 			t?.remove();
@@ -2684,6 +3059,7 @@
 			t.addEventListener('click', () => guard(() => openPanel()));
 			document.body.append(t);
 		}
+		t.classList.toggle('right', opts.tabSide === 'right');
 		const n = openOrders();
 		t.textContent = n ? `⸸${n}` : '⸸';
 	}
@@ -2795,7 +3171,10 @@
 					}
 				}
 			});
+			document.addEventListener('keydown', hotkeyDown, true);
+			applyLook();
 			hookRoom();
+			registerExtension();
 			connect();
 			setInterval(tick, 2000);
 		});

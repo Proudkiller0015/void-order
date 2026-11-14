@@ -72,8 +72,21 @@ time.
 In a chat room, members who run the add-on carry a small Void mark over their character, so members spot each other on
 sight: the Founder's 𓁹‿𓁹, a Monsignor's 🎇, or their branch's symbol (⸸ while they wait for a place). The mouse on it
 shows their place; clicking it opens their ID card. Each add-on tells the room it is there with a hidden message when it
-comes in, and the mark only shows for someone the Order knows as a member. Only members see the marks. _My card_ ›
-_Settings_ turns them off.
+comes in, and the mark only shows for someone the Order knows as a member. Only members see the marks. _⚙ Settings_
+turns them off.
+
+## Settings
+
+The panel's **⚙ Settings** tab, and the game's own _Settings › Extensions › Oculus Nihili_ page, hold the same settings:
+
+- **Notifications**: pop-ups for new orders and reminders, the session reminder (off, or 5 to 60 minutes before), a
+  reminder when a session starts, a soft sound, and do not disturb (no pop-ups or sounds; everything is still listed).
+- **Rooms**: the Void mark, ID cards and dice shown in your room.
+- **Panel**: the ⸸ side tab and its position, an open/close key, the look (Void dark or lighter) and the accent colour.
+- **SlimeBeep**: joining the Order chat there.
+- **Privacy**: who sees the public room you are in: everyone in the Order, only those over you, or nobody.
+
+They are kept in this browser, except who sees your room, which the Order's server keeps.
 
 ## The Order chat in SlimeBeep
 
@@ -95,7 +108,7 @@ gets a join code, valid 7 days.
 
 `server/` is a Cloudflare Worker with one Durable Object that holds the Order: members and their places, the structure,
 the newest 300 orders, dice rolls for 10 minutes, and a log of changes. Rooms and who's online are never stored. Private
-rooms are never sent.
+rooms are never sent, and a member's public room goes only to those they let see it.
 
 ```sh
 cd server

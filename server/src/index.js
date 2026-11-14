@@ -75,6 +75,8 @@ const LEADS_FROM = 4;
 /** Most branches one member holds. */
 const PLACES = 2;
 const FORMS = ['f', 'm', 'n'];
+/** Who sees a member's public room: everyone in the Order, only those over them, or nobody. */
+const ROOM_FOR = ['all', 'over', 'none'];
 const DICE = [4, 6, 8, 10, 12, 20, 100];
 const KINDS = ['order', 'session', 'notice'];
 /** What an order can be answered with, by kind. */
@@ -107,8 +109,9 @@ const ORIGINS = [
  *   elements: string[] }} Branch
  * @typedef {{ b: string, t: number, c: string }} Place a branch, the rank in it (1-5) and the chapter ('' for none).
  * @typedef {{ n: number, name: string, pub: { x: string, y: string } | null, joined: number, bio: string,
- *   form: string, el: string, places: Place[], mon: boolean, reset?: { code: string, exp: number } }} Member
+ *   form: string, el: string, places: Place[], mon: boolean, roomFor?: string, reset?: { code: string, exp: number } }} Member
  *   `places`: the first is their main branch. `mon`: a Monsignor. `pub` is null until a member brought in joins.
+ *   `roomFor`: who sees the public room they are in (ROOM_FOR; everyone when unset).
  */
 
 /** A rank name with the same word in every form. */
@@ -605,8 +608,13 @@ export class Order extends DurableObject {
 		return on;
 	}
 
-	/** A member as others see them in the list (no picture or bio: cards carry those). */
-	listed(m, on) {
+	/**
+	 * A member as `viewer` sees them in the list (no picture or bio: cards carry those). Their room shows to whom they
+	 * let see it: everyone, those over them (and themselves), or nobody.
+	 */
+	listed(m, on, viewer = 0) {
+		const roomFor = m.roomFor || 'all';
+		const seesRoom = roomFor === 'all' || (roomFor === 'over' && (viewer === m.n || this.commands(viewer, m.n)));
 		return {
 			n: m.n,
 			name: m.name,
@@ -617,7 +625,7 @@ export class Order extends DurableObject {
 			...(m.mon ? { mon: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
-			...(m.n in on ? { on: 1, room: on[m.n] } : {}),
+			...(m.n in on ? { on: 1, room: seesRoom ? on[m.n] : '' } : {}),
 		};
 	}
 
@@ -640,8 +648,8 @@ export class Order extends DurableObject {
 		const all = Object.values(this.members);
 		if (status === 'member') {
 			const me = this.members[a.member];
-			s.me = { ...this.listed(me, on), bio: me.bio, powers: this.powersOf(a.member) };
-			s.members = all.map((m) => this.listed(m, on));
+			s.me = { ...this.listed(me, on, me.n), bio: me.bio, roomFor: me.roomFor || 'all', powers: this.powersOf(a.member) };
+			s.members = all.map((m) => this.listed(m, on, me.n));
 			if (this.isTop(a.member)) {
 				s.log = this.log.slice(-50);
 			}
@@ -1218,9 +1226,15 @@ export class Order extends DurableObject {
 		this.pushAllOrders();
 	}
 
-	/** Your own card: bio, picture ('' removes it), the form of your rank names and your element. */
+	/** Your own card: bio, picture ('' removes it), the form of your rank names, your element, and who sees your room. */
 	async profile(ws, me, p) {
 		const m = this.members[me];
+		if (typeof p.roomFor === 'string') {
+			if (!ROOM_FOR.includes(p.roomFor)) {
+				return this.no(ws, 'bad choice', p);
+			}
+			m.roomFor = p.roomFor;
+		}
 		if (typeof p.form === 'string') {
 			if (!FORMS.includes(p.form)) {
 				return this.no(ws, 'bad form', p);
