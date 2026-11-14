@@ -30,6 +30,16 @@ const TYPES = {
 	'.webp': 'image/webp',
 	'.mp3': 'audio/mpeg',
 };
+/** A stand-in for the SlimeBeep relay's link API (dev:test points the server here): invites are 'CODE<member>'. */
+const relay = http.createServer((req, res) => {
+	let body = '';
+	req.on('data', (d) => (body += d));
+	req.on('end', () => {
+		const member = JSON.parse(body || '{}').member;
+		res.writeHead(200, { 'content-type': 'application/json' });
+		res.end(JSON.stringify(req.url === '/link/invite' ? { code: `CODE${member}`, gid: 'g1' } : { removed: true }));
+	});
+});
 const web = http.createServer((req, res) => {
 	const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
 	fs.readFile(p, (err, data) => {
@@ -88,9 +98,10 @@ async function peer(member, name, code = '') {
 /**
  * A page with the game: `me` in a fake chat room with `other`, and the add-on pointed at the local server.
  * @param {any} browser
- * @param {{ me: [number, string], other: [number, string], settings?: object }} who
+ * `slimebeep` puts a stand-in for SlimeBeep's add-on API on the page, recording the groups it joins in `sbJoined`.
+ * @param {{ me: [number, string], other: [number, string], settings?: object, slimebeep?: boolean }} who
  */
-async function gamePage(browser, { me, other, settings = {} }) {
+async function gamePage(browser, { me, other, settings = {}, slimebeep = false }) {
 	const page = await browser.newPage();
 	await page.setViewport({ width: 1600, height: 900 });
 	const errors = [];
@@ -169,6 +180,20 @@ async function gamePage(browser, { me, other, settings = {} }) {
 		me,
 		other,
 	);
+	if (slimebeep) {
+		await page.evaluate(() => {
+			window.sbJoined = [];
+			window.SlimeBeep = {
+				api: {
+					joinGroup: async (code) => {
+						window.sbJoined.push(code);
+						return { ok: true, gid: 'g1' };
+					},
+					group: () => null,
+				},
+			};
+		});
+	}
 	await page.addScriptTag({ path: path.join(__dirname, 'void.js') });
 	await page.waitForFunction(() => Commands.some((c) => c.Tag === 'void'), { timeout: 10000 });
 	return { page, errors };
@@ -251,6 +276,7 @@ const openCardOf = async (page, name) => {
 
 (async () => {
 	await new Promise((r) => web.listen(PORT, r));
+	await new Promise((r) => relay.listen(8799, '127.0.0.1', r));
 	const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 	const peers = [];
 	try {
@@ -326,7 +352,7 @@ const openCardOf = async (page, name) => {
 		check('Ann makes herself a Monsignor', bea.state.members.find((m) => m.n === 11)?.mon === 1);
 
 		// Fay joins from the game: at once, from the join button.
-		const fay = await gamePage(browser, { me: [15, 'Fay'], other: [11, 'Ann'] });
+		const fay = await gamePage(browser, { me: [15, 'Fay'], other: [11, 'Ann'], slimebeep: true });
 		await slash(fay.page, '');
 		await fay.page.waitForFunction(() => /Join the Order/.test(document.getElementById('void-panel')?.innerText || ''), { timeout: 10000 });
 		await click(fay.page, 'Join the Order');
@@ -341,6 +367,13 @@ const openCardOf = async (page, name) => {
 			[...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'),
 		);
 		check('placed as a Paladin rank 4, Fay leads: she gets Manage', /Manage/.test(fayTabs), fayTabs);
+		await fay.page.waitForFunction(() => window.sbJoined.length > 0, { timeout: 8000 }).catch(() => {});
+		check(
+			'running SlimeBeep, Fay is put in the Order chat once she is a member',
+			(await fay.page.evaluate(() => window.sbJoined.join())) === 'SB-g1-CODE15' &&
+				(await fay.page.evaluate(() => window.local.some((l) => /in the Void Order chat in SlimeBeep/.test(l)))),
+			await fay.page.evaluate(() => [window.sbJoined, window.local]),
+		);
 
 		// The members by branch, then by rank from 5 down to 1.
 		await click(page, 'Members');
@@ -599,6 +632,13 @@ const openCardOf = async (page, name) => {
 
 		// My card: the form of rank names, and showing it.
 		await click(fay.page, 'My card');
+		await click(fay.page, 'Join the Order chat in SlimeBeep');
+		await wait(500);
+		check(
+			'My card has a button to join the Order chat when SlimeBeep runs',
+			/You’re in the Void Order chat in SlimeBeep/.test(await panelText(fay.page)),
+			await panelText(fay.page),
+		);
 		const forms = await fay.page.evaluate(() =>
 			[...document.querySelector('#void-panel main select').options].map((o) => o.textContent).join('|'),
 		);
@@ -614,6 +654,8 @@ const openCardOf = async (page, name) => {
 		await shot(fay.page, '12-my-card');
 		await page.bringToFront();
 		await page.waitForFunction(() => !document.getElementById('void-dice'), { timeout: 8000 });
+		await click(page, 'My card');
+		check('without SlimeBeep there is no chat button', !/Join the Order chat/.test(await panelText(page)));
 		await click(page, 'The Order');
 		const about = await panelText(page);
 		check(
@@ -651,7 +693,7 @@ const openCardOf = async (page, name) => {
 
 		// Another device: the same account settings sign in as the same member.
 		const fayKey = await fay.page.evaluate(() => Player.ExtensionSettings.VoidOrder);
-		const second = await gamePage(browser, { me: [15, 'Fay'], other: [11, 'Ann'], settings: { VoidOrder: fayKey } });
+		const second = await gamePage(browser, { me: [15, 'Fay'], other: [11, 'Ann'], settings: { VoidOrder: fayKey }, slimebeep: true });
 		await slash(second.page, '');
 		await second.page
 			.waitForFunction(() => /Manage/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 })
@@ -666,6 +708,12 @@ const openCardOf = async (page, name) => {
 		);
 		const noteOnLogin = await second.page.evaluate(() => window.local.join('\n'));
 		check('signing in tells you about unanswered orders', /2 unanswered orders/.test(noteOnLogin), noteOnLogin);
+		await wait(2500);
+		check(
+			'the second device does not put Fay in the Order chat again',
+			(await second.page.evaluate(() => window.sbJoined.length)) === 0,
+			await second.page.evaluate(() => window.sbJoined),
+		);
 		check('no page errors', errors.length === 0 && fay.errors.length === 0 && second.errors.length === 0, [
 			...errors,
 			...fay.errors,
@@ -675,6 +723,7 @@ const openCardOf = async (page, name) => {
 		for (const p of peers) p.close();
 		await browser.close();
 		web.close();
+		relay.close();
 	}
 	console.log(failed ? `${failed} FAILED, ${passed} passed` : `All ${passed} checks passed`);
 	process.exit(failed ? 1 : 0);

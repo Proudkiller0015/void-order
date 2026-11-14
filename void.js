@@ -1197,6 +1197,51 @@
 		g.restore();
 	}
 
+	// ---- The Order's group chat in SlimeBeep
+	/** SlimeBeep's add-on API, when SlimeBeep runs here too. */
+	const slimeBeep = () => (w.SlimeBeep && w.SlimeBeep.api && typeof w.SlimeBeep.api.joinGroup === 'function' ? w.SlimeBeep.api : null);
+	/** The member this session already tried to put in the Order chat. */
+	let chatTried = 0;
+	/**
+	 * Puts you in the Order's group chat in SlimeBeep: the server gets an invite from SlimeBeep's relay, and SlimeBeep
+	 * joins with it. Remembered per account on this browser, so someone who later leaves the group isn't put back.
+	 * @returns {Promise<{ joined: boolean, text: string }>}
+	 */
+	async function joinChat() {
+		const api = slimeBeep();
+		if (!api) {
+			return { joined: false, text: 'SlimeBeep isn’t running here.' };
+		}
+		const n = state.me.n;
+		const r = await req({ t: 'chat' });
+		if (r.t !== 'ok') {
+			return { joined: false, text: `⚠ ${r.why}` };
+		}
+		if (r.already || (typeof api.group === 'function' && api.group(r.gid))) {
+			setPref(`chat.${n}`, true);
+			return { joined: false, text: 'You’re in the Void Order chat in SlimeBeep already.' };
+		}
+		const res = await api.joinGroup(`SB-${r.gid}-${r.code}`);
+		if (!res || !res.ok) {
+			return { joined: false, text: `⚠ SlimeBeep couldn’t join the Order chat: ${(res && res.why) || 'no answer'}` };
+		}
+		setPref(`chat.${n}`, true);
+		return { joined: true, text: 'You’re in the Void Order chat in SlimeBeep.' };
+	}
+	/** Once per session, a member running SlimeBeep who was never put in the Order chat on this browser is put in. */
+	function chatTick() {
+		if (!isMember() || !slimeBeep() || chatTried === state.me.n || pref(`chat.${state.me.n}`, false)) {
+			return;
+		}
+		chatTried = state.me.n;
+		guard(async () => {
+			const r = await joinChat();
+			if (r.joined) {
+				note(r.text);
+			}
+		});
+	}
+
 	// ---- The panel
 	let tab = 'orders';
 	/** Unsaved form text, kept across re-renders. */
@@ -2592,6 +2637,12 @@
 		);
 		body.append(picRow);
 
+		if (slimeBeep()) {
+			body.append(
+				make('h3', '', 'SlimeBeep'),
+				button('Join the Order chat in SlimeBeep', async () => panelSay((await joinChat()).text)),
+			);
+		}
 		body.append(make('h3', '', 'Settings (this browser)'));
 		for (const [k, text, dflt] of [
 			['shareRoom', 'Show the Order which public room I am in', true],
@@ -2691,6 +2742,7 @@
 			}
 			roomTick();
 			remindTick();
+			chatTick();
 			drawTab();
 		});
 	}

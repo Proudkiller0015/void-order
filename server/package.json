@@ -4,7 +4,7 @@
 	"description": "The Void Order add-on's server: members, their places in the Order, orders and dice rolls, in one Durable Object.",
 	"scripts": {
 		"dev": "wrangler dev --port 8788",
-		"dev:test": "wrangler dev --port 8788 --var ALLOW_ANY_ORIGIN:1 --var ADMIN:11 --var FOUND_CODE:test-founding-code",
+		"dev:test": "wrangler dev --port 8788 --var ALLOW_ANY_ORIGIN:1 --var ADMIN:11 --var FOUND_CODE:test-founding-code --var SLIMEBEEP_RELAY:http://127.0.0.1:8799 --var SLIMEBEEP_LINK_KEY:test-link-key",
 		"deploy": "wrangler deploy",
 		"test": "node test-server.js"
 	},

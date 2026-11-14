@@ -5,6 +5,8 @@ compatibility_date = "2026-09-01"
 # The app admin: the member number who runs the app, founds the Order and always has every power.
 [vars]
 ADMIN = "255659"
+# The SlimeBeep relay that keeps the Order's group chat; its link key is the SLIMEBEEP_LINK_KEY secret.
+SLIMEBEEP_RELAY = "https://slimebeep-relay.slimebeep-relay.workers.dev"
 
 [[durable_objects.bindings]]
 name = "ORDER"

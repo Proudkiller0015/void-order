@@ -67,6 +67,13 @@ tumble and land in a small tray. A roll is only played if it is the sender's own
 says when the roller had rolled again after it. Each member rolls at most 8 times a minute; the tray plays one roll at a
 time.
 
+## The Order chat in SlimeBeep
+
+Members who also run [SlimeBeep](https://github.com/Proudkiller0015/slimebeep) are put in the Order's group chat there
+once, when they first sign in as a member on a browser. Someone who leaves that group by themselves isn't put back; _My
+card_ › _Join the Order chat in SlimeBeep_ joins it again on purpose. Members who leave or are removed from the Order are
+taken out of it.
+
 ## Keys and devices
 
 Each member signs in with a key kept in their BC account's add-on settings, so the same account works on every device.
@@ -85,8 +92,8 @@ rooms are never sent.
 ```sh
 cd server
 npm install
-npm run dev:test     # a local server (app admin 11, founding code test-founding-code, any origin)
-node test-server.js  # joining, placing, branch leaders, hybrids, orders, cards, dice, codes, limits
+npm run dev:test     # a local server (app admin 11, founding code test-founding-code, any origin, a stand-in relay)
+node test-server.js  # joining, placing, branch leaders, hybrids, orders, cards, dice, the chat, codes, limits
 npm run deploy
 ```
 
@@ -95,6 +102,10 @@ place over, and keep every power after. Founding also takes the `FOUND_CODE` sec
 FOUND_CODE`), since the server can't check a member number by itself. If the Founder loses their key, set an
 `OPERATOR_KEY` secret (32+ characters) and ask for a code:
 `curl -X POST -H "Authorization: Bearer <key>" -d '{"member":<number>}' https://<worker>/op/reset`.
+
+The Order chat takes the `SLIMEBEEP_LINK_KEY` secret, the same value as the SlimeBeep relay's `LINK_KEY`
+(`npx wrangler secret put SLIMEBEEP_LINK_KEY`); `SLIMEBEEP_RELAY` in `wrangler.toml` is the relay's address. Without
+the key, members are told the chat isn't set up yet.
 
 ## Checks
 

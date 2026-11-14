@@ -20,6 +20,9 @@
  * branch leads it: they place, move, give orders to and remove that branch's members whose rank in it is below
  * theirs, and place members who have no place yet.
  *
+ * Members who also run SlimeBeep are put in the Order's group chat there: the SlimeBeep relay makes an invite for
+ * them (SLIMEBEEP_RELAY, with the SLIMEBEEP_LINK_KEY secret), and takes them out when they leave the Order.
+ *
  * Free-plan limits: sockets hibernate and keep-alive pings get an auto-response without waking the object.
  */
 
@@ -923,6 +926,8 @@ export class Order extends DurableObject {
 					return await this.unorder(ws, me, p);
 				case 'founder':
 					return await this.setFounder(ws, me, p);
+				case 'chat':
+					return await this.chatInvite(ws, me, p);
 				default:
 					return this.no(ws, 'unknown', p);
 			}
@@ -1195,6 +1200,7 @@ export class Order extends DurableObject {
 		}
 		await this.note(me, `${this.nameOf(me)} removed ${this.nameOf(m.n)}`);
 		delete this.members[m.n];
+		this.chatRemove(m.n);
 		this.meta.admins = this.meta.admins.filter((n) => n !== m.n);
 		await this.ctx.storage.put('meta', this.meta);
 		await this.putMember(m.n);
@@ -1285,6 +1291,7 @@ export class Order extends DurableObject {
 		}
 		await this.note(me, `${this.nameOf(me)} left`);
 		delete this.members[me];
+		this.chatRemove(me);
 		this.meta.admins = this.meta.admins.filter((n) => n !== me);
 		await this.ctx.storage.put('meta', this.meta);
 		await this.putMember(me);
@@ -1531,6 +1538,46 @@ export class Order extends DurableObject {
 		this.ok(ws, p);
 		for (const { ws: w } of seen) {
 			this.send(w, { t: 'unorder', id: o.id });
+		}
+	}
+
+	// ---- The Order's group chat in SlimeBeep
+	/** A POST to the SlimeBeep relay's link API, or null without the key. */
+	relay(path, body) {
+		const key = this.env.SLIMEBEEP_LINK_KEY;
+		const base = this.env.SLIMEBEEP_RELAY;
+		if (typeof key !== 'string' || !key || typeof base !== 'string' || !base) {
+			return null;
+		}
+		return fetch(`${base.replace(/\/+$/, '')}${path}`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+			body: JSON.stringify(body),
+		});
+	}
+	/** An invite to the Order's SlimeBeep group for member `me`: { code, gid }, or { already: true, gid }. */
+	async chatInvite(ws, me, p) {
+		const res = this.relay('/link/invite', { member: me });
+		if (!res) {
+			return this.no(ws, "the Order chat isn't set up yet", p);
+		}
+		const r = await res.then((x) => (x.ok ? x.json() : null)).catch(() => null);
+		if (!r || typeof r.gid !== 'string') {
+			return this.no(ws, 'the Order chat could not be reached, try again later', p);
+		}
+		if (r.member === true) {
+			return this.ok(ws, p, { already: true, gid: r.gid });
+		}
+		if (typeof r.code !== 'string') {
+			return this.no(ws, 'the Order chat could not be reached, try again later', p);
+		}
+		this.ok(ws, p, { code: r.code, gid: r.gid });
+	}
+	/** Takes someone who left the Order out of its SlimeBeep group (in the background; errors are ignored). */
+	chatRemove(n) {
+		const res = this.relay('/link/remove', { member: n });
+		if (res) {
+			this.ctx.waitUntil(res.catch(() => null));
 		}
 	}
 

@@ -11,6 +11,30 @@ const check = (ok, what, got) => {
 	else failed++;
 };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * A stand-in for the SlimeBeep relay's link API (dev:test points SLIMEBEEP_RELAY here, with the key test-link-key):
+ * invites are 'CODE<member>' in group 'g1', members in `inGroup` are in already, and `down` answers 500.
+ */
+const relay = { calls: [], inGroup: new Set(), down: false };
+const relayServer = require('http').createServer((req, res) => {
+	let body = '';
+	req.on('data', (d) => (body += d));
+	req.on('end', () => {
+		const p = JSON.parse(body || '{}');
+		relay.calls.push({ path: req.url, member: p.member, auth: req.headers.authorization });
+		const reply = (status, x) => {
+			res.writeHead(status, { 'content-type': 'application/json' });
+			res.end(JSON.stringify(x));
+		};
+		if (relay.down) return reply(500, {});
+		if (req.headers.authorization !== 'Bearer test-link-key') return reply(404, {});
+		if (req.url === '/link/invite')
+			return reply(200, relay.inGroup.has(p.member) ? { member: true, gid: 'g1' } : { code: `CODE${p.member}`, gid: 'g1' });
+		if (req.url === '/link/remove') return reply(200, { removed: true });
+		reply(404, {});
+	});
+});
 const b64url = (buf) => Buffer.from(buf).toString('base64url');
 
 /** A player with their own P-256 key. */
@@ -82,6 +106,7 @@ async function joined(member, name) {
 }
 
 (async () => {
+	await new Promise((r) => relayServer.listen(8799, '127.0.0.1', r));
 	const ann = await makePeer(11, 'Ann');
 
 	const forged = await connect(ann, { badSig: true });
@@ -427,6 +452,34 @@ async function joined(member, name) {
 	const faces = tries.slice(0, 8).flatMap((r) => r.roll.dice.map((x) => x.v));
 	check(new Set(faces).size === 6, 'eighty d6 show every face', [...new Set(faces)]);
 
+	// The Order's group chat in SlimeBeep: the server asks the relay for an invite, and takes leavers out.
+	const inv = await c2.req({ t: 'chat' });
+	check(inv.t === 'ok' && inv.code === 'CODE13' && inv.gid === 'g1', 'a member gets an invite to the Order chat', inv);
+	check(
+		relay.calls.some((x) => x.path === '/link/invite' && x.member === 13 && x.auth === 'Bearer test-link-key'),
+		'the server asks the relay with its key, for her number',
+	);
+	relay.inGroup.add(13);
+	const again = await c2.req({ t: 'chat' });
+	check(again.t === 'ok' && again.already === true && again.gid === 'g1' && !again.code, 'someone in it already gets no new invite', again);
+	check((await late.req({ t: 'chat' })).why === 'not a member', 'guests get no invite');
+	relay.down = true;
+	check(/could not be reached/.test((await c2.req({ t: 'chat' })).why), 'a relay that fails is reported, not passed on');
+	relay.down = false;
+	check(
+		relay.calls.some((x) => x.path === '/link/remove' && x.member === 17),
+		'Eve, removed earlier, was taken out of the chat',
+	);
+	const kimIn = await a.req({ t: 'add', people: [{ member: 19, name: 'Kim' }] });
+	const kim = await connect(await makePeer(19, 'Kim'), { fields: { code: kimIn.codes[0].code } });
+	await kim.req({ t: 'leave' });
+	await wait(300);
+	check(
+		relay.calls.some((x) => x.path === '/link/remove' && x.member === 19),
+		'someone who leaves is taken out of the chat',
+	);
+	kim.close();
+
 	// Everything is kept.
 	b.close();
 	const b2 = await connect(await makePeer(12, 'Bea'));
@@ -491,5 +544,6 @@ async function joined(member, name) {
 	);
 	visitor.close();
 	console.log(failed ? `${failed} FAILED, ${passed} passed` : `all ${passed} passed`);
+	relayServer.close();
 	process.exit(failed ? 1 : 0);
 })();
