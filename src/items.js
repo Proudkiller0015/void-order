@@ -60,13 +60,10 @@
 
 		/** Fetches the definitions and registers them, once the game has loaded its own items. */
 		function start() {
-			const gameReady = () =>
-				typeof w.AssetAdd === 'function' &&
-				typeof w.AssetGroupGet === 'function' &&
-				typeof w.AssetGet === 'function' &&
-				Array.isArray(w.Asset) &&
-				w.Asset.length > 0 &&
-				Array.isArray(w.AssetFemale3DCG);
+			/** The game functions registering needs; the first one missing, or ''. */
+			const missing = () =>
+				['AssetAdd', 'AssetGroupGet', 'AssetGet'].find((f) => !guard.gameFunction(f)) ||
+				(Array.isArray(w.AssetFemale3DCG) ? '' : 'AssetFemale3DCG');
 			let tries = 0;
 			const wait = setInterval(() => {
 				if (++tries > 1200) {
@@ -74,7 +71,13 @@
 					guard.problem(FEATURE, 'the game never finished loading its items');
 					return;
 				}
-				if (!gameReady()) {
+				// The game has loaded its own items once its item list has them.
+				if (!Array.isArray(w.Asset) || !w.Asset.length) {
+					return;
+				}
+				if (missing()) {
+					clearInterval(wait);
+					guard.problem(FEATURE, `the game has no ${missing()}`);
 					return;
 				}
 				clearInterval(wait);
