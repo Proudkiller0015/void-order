@@ -22,7 +22,7 @@ export default [
 		rules: { 'no-unused-vars': ['error', { caughtErrors: 'none' }] },
 	},
 	{
-		files: ['server/test-hunt-board.js'],
+		files: ['server/test-hunt-board.js', 'server/test-order-sheet.js'],
 		languageOptions: { ecmaVersion: 2023, sourceType: 'module', globals: { ...globals.node } },
 		rules: { 'no-unused-vars': ['error', { caughtErrors: 'none' }] },
 	},
