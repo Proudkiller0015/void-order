@@ -577,7 +577,7 @@ const openCardOf = async (page, name) => {
 		// Fay, in the same room, gets the hidden note: her client fetches the roll and plays the same dice.
 		await fay.page.bringToFront();
 		await fay.page.evaluate((id) => {
-			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'The Void Order ID cards and dice');
+			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'Oculus Nihili: ID cards, dice and marks');
 			h.Callback({ Type: 'Hidden', Content: 'VoidOrder', Dictionary: [{ roll: id }] }, ChatRoomCharacter[1], '', {});
 		}, tray.id);
 		await fay.page.waitForSelector('#void-dice', { timeout: 5000 });
@@ -593,7 +593,7 @@ const openCardOf = async (page, name) => {
 		// A roll shown by someone who didn't make it is not played; nor is a flood from one person.
 		await fay.page.evaluate(() => (window.trays = []));
 		await fay.page.evaluate((id) => {
-			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'The Void Order ID cards and dice');
+			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'Oculus Nihili: ID cards, dice and marks');
 			h.Callback({ Type: 'Hidden', Content: 'VoidOrder', Dictionary: [{ roll: id }] }, { MemberNumber: 99, Name: 'Mallory' }, '', {});
 		}, tray.id);
 		await wait(800);
@@ -607,7 +607,7 @@ const openCardOf = async (page, name) => {
 				(await page.evaluate(() => window.sent.some(([, d]) => /^rolls the Void dice: 2d6\+1: \d+ \+ \d+ \+ 1 = \d+$/.test(d.Content)))),
 		);
 		await fay.page.evaluate((ids) => {
-			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'The Void Order ID cards and dice');
+			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'Oculus Nihili: ID cards, dice and marks');
 			for (const id of [...ids, ...ids, ...ids])
 				h.Callback({ Type: 'Hidden', Content: 'VoidOrder', Dictionary: [{ roll: id }] }, ChatRoomCharacter[1], '', {});
 		}, rolled);
@@ -666,7 +666,7 @@ const openCardOf = async (page, name) => {
 		await fp.evaluate(() => (window.sent = []));
 		const hello = (i) =>
 			fp.evaluate((i) => {
-				const h = ChatRoomMessageHandlers.find((x) => x.Description === 'The Void Order ID cards and dice');
+				const h = ChatRoomMessageHandlers.find((x) => x.Description === 'Oculus Nihili: ID cards, dice and marks');
 				h.Callback({ Type: 'Hidden', Content: 'VoidOrder', Dictionary: [{ here: true, reply: true }] }, ChatRoomCharacter[i], '', {});
 			}, i);
 		await hello(1);
@@ -710,7 +710,7 @@ const openCardOf = async (page, name) => {
 
 		// Someone showing their ID in the room: the card comes from the server.
 		await page.evaluate(() => {
-			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'The Void Order ID cards and dice');
+			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'Oculus Nihili: ID cards, dice and marks');
 			h.Callback({ Type: 'Hidden', Content: 'VoidOrder', Dictionary: [{ card: true }] }, ChatRoomCharacter[1], '', {});
 		});
 		await page.waitForSelector('#void-card', { timeout: 5000 });

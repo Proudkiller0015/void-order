@@ -1,4 +1,4 @@
-// The Void Order: a Bondage Club add-on for the members of the Void Order.
+// Oculus Nihili, the Eye of the Void: the Void Order's add-on for Bondage Club.
 //
 // /void opens the Order's panel: orders and photo sessions from the hierarchy, the members by branch and rank, ID
 // cards in the Order's own format, joining, Void dice everyone in the room sees roll, and for the Founder, admins and
@@ -113,7 +113,7 @@
 		}
 	}
 	function report(/** @type {any} */ e, /** @type {((text: string) => void) | undefined} */ say) {
-		const text = `⚠ The Void Order hit a problem: ${(e && e.message) || e}`;
+		const text = `⚠ Oculus Nihili hit a problem: ${(e && e.message) || e}`;
 		if (say) {
 			say(text);
 		} else {
@@ -966,7 +966,7 @@
 		}
 		const mod = sdk.registerMod({
 			name: 'VoidOrder',
-			fullName: 'The Void Order',
+			fullName: 'Oculus Nihili',
 			version: VERSION,
 			repository: 'https://github.com/Proudkiller0015/void-order',
 		});
@@ -1502,7 +1502,7 @@
 		x.title = 'Close';
 		x.addEventListener('click', closePanel);
 		const head = make('header');
-		head.append(make('h2', '', (state && state.meta && state.meta.name) || 'The Void Order'), make('span', 'status', statusLine()), x);
+		head.append(make('h2', '', (state && state.meta && state.meta.name) || 'Oculus Nihili'), make('span', 'status', statusLine()), x);
 		p.append(head);
 		const list = tabs();
 		if (!list.some(([id]) => id === tab)) {
@@ -2634,7 +2634,7 @@
 			make(
 				'p',
 				'dim',
-				`Void Order ${VERSION}. /void opens this panel; /void card <member number> opens someone's card; /void roll 2d6+3 rolls dice.`,
+				`Oculus Nihili ${VERSION}. /void opens this panel; /void card <member number> opens someone's card; /void roll 2d6+3 rolls dice.`,
 			),
 		);
 	}
@@ -2680,7 +2680,7 @@
 			style();
 			t = make('button', '', '⸸');
 			t.id = 'void-tab';
-			t.title = 'The Void Order (/void)';
+			t.title = 'Oculus Nihili (/void)';
 			t.addEventListener('click', () => guard(() => openPanel()));
 			document.body.append(t);
 		}
@@ -2774,12 +2774,17 @@
 			w.CommandCombine([
 				{
 					Tag: 'void',
-					Description: ': The Void Order (orders, members, ID cards, dice). /void card <number>, /void id, /void roll 2d6+3',
+					Description:
+						': Oculus Nihili, the Void Order’s add-on (orders, members, ID cards, dice). /void card <number>, /void id, /void roll 2d6+3',
 					Action: (/** @type {string} */ args) => guard(() => command(args)),
 				},
 			]);
 			if (typeof w.ChatRoomRegisterMessageHandler === 'function') {
-				w.ChatRoomRegisterMessageHandler({ Description: 'The Void Order ID cards and dice', Priority: -150, Callback: onRoomMessage });
+				w.ChatRoomRegisterMessageHandler({
+					Description: 'Oculus Nihili: ID cards, dice and marks',
+					Priority: -150,
+					Callback: onRoomMessage,
+				});
 			}
 			document.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') {

@@ -1,6 +1,6 @@
-# ⸸ The Void Order
+# ⸸ Oculus Nihili
 
-The Void Order's add-on for Bondage Club: orders and photo sessions from the hierarchy, the members by branch and rank,
+Oculus Nihili, the Eye of the Void: the Void Order's add-on for Bondage Club. Orders and photo sessions from the hierarchy, the members by branch and rank,
 ID cards in the Order's own format, joining, and Void dice that everyone in the room sees roll.
 
 **[Install it](https://proudkiller0015.github.io/void-order/install.html)**: a bookmark (no extension, phones too) or a

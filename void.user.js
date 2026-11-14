@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         The Void Order
+// @name         Oculus Nihili
 // @namespace    https://github.com/Proudkiller0015/void-order
 // @version      1.0.0
-// @description  The Void Order's add-on for Bondage Club: orders and photo sessions, the members by branch, ID cards and Void dice. /void opens it. Always runs the newest version.
+// @description  Oculus Nihili, the Eye of the Void: the Void Order's add-on for Bondage Club. Orders and photo sessions, the members by branch, ID cards and Void dice. /void opens it. Always runs the newest version.
 // @author       SlimeQueenSamantha
 // @homepageURL  https://github.com/Proudkiller0015/void-order
 // @downloadURL  https://raw.githubusercontent.com/Proudkiller0015/void-order/main/void.user.js
@@ -19,7 +19,7 @@
 // ==/UserScript==
 
 /*
- * The Void Order loader, like SlimeBeep's. It never needs updating: on every game load it fetches the
+ * The Oculus Nihili loader, like SlimeBeep's. It never needs updating: on every game load it fetches the
  * newest add-on from GitHub (void.js) and runs it, so an update reaches everybody the next time they
  * reload or log in.
  */
@@ -40,5 +40,5 @@
 			document.head.appendChild(script);
 			script.remove();
 		})
-		.catch((err) => console.warn('[Void Order] could not load:', err.message));
+		.catch((err) => console.warn('[Oculus Nihili] could not load:', err.message));
 })();
