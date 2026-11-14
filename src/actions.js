@@ -259,8 +259,10 @@
 		]),
 	);
 
+	/** The weapon item a character holds (held() names it; the menu needs the item itself). */
+	const wornOf = (/** @type {any} */ C) => (typeof w.InventoryGet === 'function' ? w.InventoryGet(C, 'ItemHandheld') : null);
 	const isQw = (/** @type {any} */ h) =>
-		!!h && ((!!h.item && !!h.item.Asset && h.item.Asset.Name === QW) || (!!h.weapon && h.weapon.key === QW));
+		!!h && (h.item === QW || (!!h.item && !!h.item.Asset && h.item.Asset.Name === QW) || (!!h.weapon && h.weapon.key === QW));
 	const kindOf = (/** @type {any} */ h) => (isQw(h) ? 'QW' : h.weapon && h.weapon.cat);
 	const nameOf = (/** @type {any} */ h) => (isQw(h) ? QW_NAME : (h.weapon && h.weapon.name) || 'weapon');
 	const nick = (/** @type {any} */ C) => (typeof w.CharacterNickname === 'function' ? w.CharacterNickname(C) : C.Nickname || C.Name);
@@ -356,7 +358,7 @@
 				return false;
 			}
 			return !d.when || d.when(C);
-		}).map((d) => ({ Activity: ACTS.get(d.name), Item: h ? h.item : undefined, Group: group }));
+		}).map((d) => ({ Activity: ACTS.get(d.name), Item: (h && wornOf(w.Player)) || undefined, Group: group }));
 	}
 
 	// ---- Doing one
@@ -504,6 +506,21 @@
 		ctx.guard(() => run(acted, targetGroup.Name, act.Name), undefined, FEATURE);
 		return undefined;
 	});
+	// The action buttons show the weapon's own picture (the game would look for it among its own previews).
+	try {
+		hook('ElementButton.CreateForActivity', (args, next) => {
+			const act = args[1];
+			const it = act && act.Item;
+			if (!act || !act.Activity || !act.Activity.VoidOrder || !it || !items.isArmory(it.Asset)) {
+				return next(args);
+			}
+			const options = { ...(args[4] || {}) };
+			options.image ??= `${ctx.assets}items/preview/${it.Asset.Name}.png`;
+			return next([args[0], args[1], args[2], args[3], options, ...args.slice(5)]);
+		});
+	} catch (e) {
+		ctx.report('Weapon action pictures', e);
+	}
 	hook('ActivityDictionaryText', (args, next) => {
 		const m = /^Label-Chat(?:Other|Self)-[A-Za-z]+-(Void[A-Za-z]+)$/.exec(String(args[0] || ''));
 		const d = m && byName.get(m[1]);

@@ -13,7 +13,8 @@ if (!ROOT || !CHROME) {
 	console.error('Set BC_ROOT (a Bondage Club checkout: its BondageClub folder) and CHROME (the Chrome executable).');
 	process.exit(2);
 }
-const PORT = 8178;
+// Ports can move (WEB_PORT, RELAY_PORT) when another test run holds the usual ones.
+const PORT = Number(process.env.WEB_PORT) || 8178;
 const SERVER = process.env.SERVER || 'ws://127.0.0.1:8788';
 const ORDER = `c${Date.now().toString(36)}`;
 const SHOTS = !!process.env.SHOTS;
@@ -119,11 +120,12 @@ async function peer(member, name, code = '') {
  * `slimebeep` puts a stand-in for SlimeBeep's add-on API on the page, recording the groups it joins in `sbJoined`.
  * @param {{ me: [number, string], other: [number, string], settings?: object, slimebeep?: boolean }} who
  */
-async function gamePage(browser, { me, other, settings = {}, slimebeep = false, armory = false }) {
+async function gamePage(browser, { me, other, settings = {}, slimebeep = false }) {
 	const page = await browser.newPage();
 	await page.setViewport({ width: 1600, height: 900 });
 	const errors = [];
 	page.on('pageerror', (e) => errors.push(String(e.message).split('\n')[0]));
+	if (process.env.DEBUG) page.on('console', (m) => console.log(`[${me[1]}] ${m.text()}`));
 	await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'load', timeout: 120000 });
 	await page.waitForFunction(() => typeof Asset !== 'undefined' && Asset.length > 1000 && typeof Player !== 'undefined' && !!Player, {
 		timeout: 120000,
@@ -201,35 +203,6 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false, 
 		me,
 		other,
 	);
-	if (armory) {
-		// A mod SDK that really wraps the game's functions, and a stand-in for the Armory items: the Foam Sword in your
-		// hands is the Recider, or Queen's Wrath while window.stubQw is set.
-		await page.evaluate(() => {
-			window.bcModSdk = {
-				registerMod: () => ({
-					hookFunction: (name, priority, fn) => {
-						const orig = window[name];
-						window[name] = (...args) => fn(args, (a) => orig(...a));
-					},
-				}),
-			};
-			window.VoidOrderModules = {
-				items: () => ({
-					isArmory: (a) => !!a && a.Name === 'Sword',
-					held: (C) => {
-						const it = InventoryGet(C, 'ItemHandheld');
-						if (!it || it.Asset.Name !== 'Sword') return null;
-						const weapon = window.stubQw
-							? { key: 'QueensWrath', name: "Queen's Wrath", cat: 'Staffs' }
-							: { key: 'Recider', name: 'Recider', cat: 'Swords' };
-						return { item: it, weapon, option: 0, position: undefined };
-					},
-					armoryItems: new Map(),
-					whenItemsReady: (f) => f(),
-				}),
-			};
-		});
-	}
 	if (slimebeep) {
 		await page.evaluate(() => {
 			window.sbJoined = [];
@@ -351,7 +324,7 @@ const openCardOf = async (page, name) => {
 
 (async () => {
 	await new Promise((r) => web.listen(PORT, r));
-	await new Promise((r) => relay.listen(8799, '127.0.0.1', r));
+	await new Promise((r) => relay.listen(Number(process.env.RELAY_PORT) || 8799, '127.0.0.1', r));
 	const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 	const peers = [];
 	try {
@@ -1033,7 +1006,7 @@ const openCardOf = async (page, name) => {
 		// Settings: one list, in the panel's ⚙ tab and the game's Settings > Extensions page.
 		await click(fp, '⚙ Settings');
 		const groups = await fp.evaluate(() => [...document.querySelectorAll('#void-panel main h3')].map((h) => h.textContent).join('|'));
-		check('the ⚙ tab groups the settings', groups === 'Notifications|Rooms|Panel|SlimeBeep|Privacy|Problems', groups);
+		check('the ⚙ tab groups the settings', groups === 'Notifications|Rooms|Panel|SlimeBeep|Privacy|Problems|Weapon actions', groups);
 		await shot(fp, '15-settings');
 		await toggleSetting(fp, 'Pop-ups for new orders');
 		await fp.evaluate(() => {
@@ -1237,17 +1210,65 @@ const openCardOf = async (page, name) => {
 		const badgeSrc = await page.evaluate(() => document.querySelector('#void-card img.badge')?.getAttribute('src') || '');
 		check("Fay's ID card shows her badge", /\/void-assets\/badges\/slime-queen-160\.png$/.test(badgeSrc), badgeSrc);
 		await page.evaluate(() => document.getElementById('void-card')?.remove());
-		// Weapon actions: holding the Recider adds its actions to the activity menu; a slash sends a line everyone reads.
+		// Weapon actions, with the real Armory items: each kind's actions in the activity menu while holding it.
 		const annKey = await page.evaluate(() => Player.ExtensionSettings.VoidOrder);
-		const armed = await gamePage(browser, { me: [11, 'Ann'], other: [12, 'Bea'], settings: { VoidOrder: annKey }, armory: true });
+		const armed = await gamePage(browser, { me: [11, 'Ann'], other: [12, 'Bea'], settings: { VoidOrder: annKey } });
 		const ap = armed.page;
-		await wait(3000);
-		await ap.evaluate(() => InventoryWear(Player, 'Sword', 'ItemHandheld'));
-		const menu = await ap.evaluate(() =>
-			ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemArms').map((a) => `${a.Activity.Name}:${a.Item ? a.Item.Asset.Name : ''}`),
-		);
-		check('holding a blade puts Slash in the activity menu, with the weapon', menu.includes('VoidSlash:Sword'), menu);
-		check('the menu labels it', (await ap.evaluate(() => ActivityDictionaryText('Label-ChatOther-ItemArms-VoidSlash'))) === 'Slash');
+		await ap.waitForFunction(() => !!AssetGet('Female3DCG', 'ItemHandheld', 'VoidSwords') && !!window.VoidOrderModules?.actions, {
+			timeout: 30000,
+		});
+		await wait(2500);
+		const hold = (pg, name, record) =>
+			pg.evaluate(
+				(name, record) => {
+					InventoryWear(Player, name, 'ItemHandheld');
+					if (record)
+						InventoryGet(Player, 'ItemHandheld').Property = {
+							...(InventoryGet(Player, 'ItemHandheld').Property || {}),
+							TypeRecord: record,
+						};
+					CharacterRefresh(Player, false);
+				},
+				name,
+				record,
+			);
+		const menuOn = (pg, group) =>
+			pg.evaluate(
+				(group) => ActivityAllowedForGroup(ChatRoomCharacter[1], group).map((a) => `${a.Activity.Name}:${a.Item ? a.Item.Asset.Name : ''}`),
+				group,
+			);
+		const kinds = [
+			['VoidPistols', 'ItemTorso', 'VoidShoot'],
+			['VoidSMGs', 'ItemTorso', 'VoidShoot'],
+			['VoidRifles', 'ItemArms', 'VoidShoot'],
+			['VoidSniperRifles', 'ItemHead', 'VoidAim'],
+			['VoidShotguns', 'ItemNeck', 'VoidMuzzle'],
+			['VoidCrossbows', 'ItemTorso', 'VoidLoose'],
+			['VoidSwords', 'ItemArms', 'VoidSlash'],
+			['VoidGlowingBlades', 'ItemTorso', 'VoidStab'],
+			['VoidShortBlades', 'ItemNeck', 'VoidNeck'],
+		];
+		const missing = [];
+		for (const [item, group, act] of kinds) {
+			await hold(ap, item);
+			if (!(await menuOn(ap, group)).includes(`${act}:${item}`)) missing.push(`${item} ${act}`);
+		}
+		check('each kind of weapon puts its actions in the activity menu, with the weapon', missing.length === 0, missing);
+		await hold(ap, 'VoidSwords', { w: 0 });
+		check('the menu labels them', (await ap.evaluate(() => ActivityDictionaryText('Label-ChatOther-ItemArms-VoidSlash'))) === 'Slash');
+		const pic = await ap.evaluate(async () => {
+			const act = ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemArms').find((a) => a.Activity.Name === 'VoidSlash');
+			ChatRoomCharacter[1].FocusGroup = AssetGroupGet('Female3DCG', 'ItemArms');
+			const btn = ElementButton.CreateForActivity('void-test-act', act, ChatRoomCharacter[1], () => {});
+			document.body.append(btn);
+			const img = btn.querySelector('img');
+			await new Promise((r) => setTimeout(r, 1500));
+			const out = { src: img ? img.src : '', ok: !!img && img.complete && img.naturalWidth > 0 };
+			btn.remove();
+			ChatRoomCharacter[1].FocusGroup = null;
+			return out;
+		});
+		check('the action button shows the weapon item’s picture', pic.ok, pic);
 		const runOn = (pg, group, name) =>
 			pg.evaluate(
 				(group, name) => {
@@ -1281,29 +1302,66 @@ const openCardOf = async (page, name) => {
 		check('an attack rolls Void dice', await ap.evaluate(() => window.sent.some(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Hidden')));
 		const selfMenu = await ap.evaluate(() => ActivityAllowedForGroup(Player, 'ItemHands').map((a) => a.Activity.Name));
 		check('your own hands offer the upkeep', selfMenu.includes('VoidHone'), selfMenu);
-		// Queen's Wrath: its owner has its set and lends it; in anyone else's hands it won't move.
-		await ap.evaluate(() => (window.stubQw = true));
-		const qwMenu = await ap.evaluate(() => ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemTorso').map((a) => a.Activity.Name));
-		check("Queen's Wrath has its own set", qwMenu.includes('VoidReap') && qwMenu.includes('VoidCast'), qwMenu);
-		const lendMenu = await ap.evaluate(() => ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemHands').map((a) => a.Activity.Name));
-		check('its owner may lend it', lendMenu.includes('VoidLend'), lendMenu);
-		const zed = await gamePage(browser, { me: [20, 'Zed'], other: [11, 'Ann'], armory: true });
-		await wait(3000);
-		await zed.page.evaluate(() => {
-			window.stubQw = true;
-			InventoryWear(Player, 'Sword', 'ItemHandheld');
+		// The carry: moving a gun to port arms says so in the room.
+		await hold(ap, 'VoidRifles', { w: 0, Position: 0 });
+		await wait(1800);
+		await ap.evaluate(() => (window.sent = []));
+		await hold(ap, 'VoidRifles', { w: 0, Position: 1 });
+		await wait(1800);
+		const carryLine = await ap.evaluate(() =>
+			window.sent.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action').map(([, d]) => d.Dictionary[0].Text),
+		);
+		check(
+			'carrying a gun at port arms gets its line (from held().position)',
+			carryLine.some((t) => /holds across the chest/.test(t)),
+			carryLine,
+		);
+		// Queen's Wrath: its own set; its owner lends it into someone's hands and recalls it.
+		await hold(ap, 'QueensWrath');
+		const qwMenu = await menuOn(ap, 'ItemTorso');
+		check("Queen's Wrath has its own set", qwMenu.includes('VoidReap:QueensWrath') && qwMenu.includes('VoidCast:QueensWrath'), qwMenu);
+		await ap.evaluate(() => InventoryRemove(ChatRoomCharacter[1], 'ItemHandheld'));
+		await runOn(ap, 'ItemHands', 'VoidLend');
+		await wait(1500);
+		const lent = await ap.evaluate(() => ({
+			bea: InventoryGet(ChatRoomCharacter[1], 'ItemHandheld')?.Asset.Name || '',
+			ann: InventoryGet(Player, 'ItemHandheld')?.Asset.Name || '',
+		}));
+		check("Lend moves Queen's Wrath into Bea's hands", lent.bea === 'QueensWrath' && lent.ann === '', lent);
+		check('the lend is recorded on the server', bea.state && bea.state.lent === 12, bea.state && bea.state.lent);
+		const recallMenu = await menuOn(ap, 'ItemHands');
+		check(
+			'Recall is offered on whoever holds it',
+			recallMenu.some((x) => x.startsWith('VoidRecall:')),
+			recallMenu,
+		);
+		await runOn(ap, 'ItemHands', 'VoidRecall');
+		await wait(1500);
+		const back = await ap.evaluate(() => ({
+			bea: InventoryGet(ChatRoomCharacter[1], 'ItemHandheld')?.Asset.Name || '',
+			ann: InventoryGet(Player, 'ItemHandheld')?.Asset.Name || '',
+		}));
+		check("Recall brings it back to Ann's hands", back.ann === 'QueensWrath' && back.bea === '', back);
+		check('and the lend ends', bea.state && bea.state.lent === 0, bea.state && bea.state.lent);
+		// In anyone else's hands it won't move, and they are told why.
+		const zed = await gamePage(browser, { me: [20, 'Zed'], other: [11, 'Ann'] });
+		await zed.page.waitForFunction(() => !!AssetGet('Female3DCG', 'ItemHandheld', 'QueensWrath') && !!window.VoidOrderModules?.actions, {
+			timeout: 30000,
 		});
+		await wait(2500);
+		await hold(zed.page, 'QueensWrath');
 		await wait(2000);
 		check(
 			"someone else holding it is told they aren't its worthy wielder",
 			/does not consider you its worthy wielder/.test(await zed.page.evaluate(() => window.local.join('\n'))),
 		);
-		const zedMenu = await zed.page.evaluate(() => ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemHands').map((a) => a.Activity.Name));
-		check('only its owner sees Lend', !zedMenu.includes('VoidLend'), zedMenu);
+		const zedMenu = await menuOn(zed.page, 'ItemHands');
+		check('only its owner sees Lend', !zedMenu.some((x) => x.startsWith('VoidLend')), zedMenu);
 		await runOn(zed.page, 'ItemTorso', 'VoidReap');
 		await wait(800);
 		const refused = await lineOf(zed.page);
 		check("in anyone else's hands it weighs two tons", /weighs two tons and will not budge/.test((refused && refused.text) || ''), refused);
+		check('no page errors with the Armory', armed.errors.length === 0 && zed.errors.length === 0, [...armed.errors, ...zed.errors]);
 		await armed.page.close();
 		await zed.page.close();
 		check('no page errors', errors.length === 0 && fay.errors.length === 0 && second.errors.length === 0, [

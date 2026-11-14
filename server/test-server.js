@@ -113,7 +113,7 @@ async function joined(member, name) {
 }
 
 (async () => {
-	await new Promise((r) => relayServer.listen(8799, '127.0.0.1', r));
+	await new Promise((r) => relayServer.listen(Number(process.env.RELAY_PORT) || 8799, '127.0.0.1', r));
 	const ann = await makePeer(11, 'Ann');
 
 	const forged = await connect(ann, { badSig: true });

@@ -307,7 +307,11 @@
 	}
 	const g = ctx.modules.guard;
 	if (g && typeof g.onProblem === 'function') {
-		g.onProblem((/** @type {string} */ feature, /** @type {any} */ error) => report(feature, error));
+		// guard.js hands over { feature, message, stack, at }.
+		g.onProblem((/** @type {any} */ p) => report(p.feature, { message: p.message, stack: p.stack }, p.at));
+		for (const p of g.problems && typeof g.problems.values === 'function' ? g.problems.values() : []) {
+			report(p.feature, { message: p.message, stack: p.stack }, p.at);
+		}
 	}
 	return { report, problems: () => [...seen.values()] };
 };
