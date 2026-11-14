@@ -1,0 +1,163 @@
+// Renders hand-held items across the game's arm poses: one row per item (and carry), one column per pose.
+// Run: BC_ROOT=<BondageClub folder> CHROME=<chrome.exe> node tools/render-poses.js <out name> <item[:carry][@weapon]>…
+// Writes shots/poses/<out name>.png, and <out name>-hands.png: the same, cropped to the hands at twice the size.
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const puppeteer = require('puppeteer-core');
+
+const ROOT = process.env.BC_ROOT;
+const CHROME = process.env.CHROME;
+const PORT = Number(process.env.WEB_PORT) || 8189;
+const HERE = path.join(__dirname, '..');
+const OUT = path.join(HERE, 'shots', 'poses');
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
+const web = http.createServer((req, res) => {
+	const url = decodeURIComponent(req.url.split('?')[0]);
+	const p = url.startsWith('/void-assets/')
+		? path.join(HERE, 'assets', url.slice('/void-assets/'.length))
+		: url.startsWith('/void-src/')
+			? path.join(HERE, 'src', url.slice('/void-src/'.length))
+			: path.join(ROOT, url);
+	fs.readFile(p, (err, data) => {
+		if (err) {
+			res.writeHead(404);
+			return res.end();
+		}
+		res.writeHead(200, { 'Content-Type': TYPES[path.extname(p).toLowerCase()] || 'application/octet-stream' });
+		res.end(data);
+	});
+});
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+/** The poses, as the game names them (BodyUpper, BodyHands and BodyFull ones; BaseUpper is no pose at all). */
+const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,BackBoxTie,BackElbowTouch,BackCuffs,Kneel,AllFours,Hogtied').split(',');
+
+(async () => {
+	if (!ROOT || !CHROME) {
+		console.error('Set BC_ROOT and CHROME.');
+		process.exit(2);
+	}
+	fs.mkdirSync(OUT, { recursive: true });
+	await new Promise((r) => web.listen(PORT, r));
+	const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 2000, height: 1000 });
+	await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'load', timeout: 120000 });
+	await page.waitForFunction(() => typeof Asset !== 'undefined' && Asset.length > 1000 && typeof Player !== 'undefined' && !!Player, {
+		timeout: 120000,
+	});
+	await wait(1000);
+	await page.evaluate(() => {
+		cancelAnimationFrame(GameAnimationFrameId);
+		GameRun = () => {};
+		window.VoidOrderServer = 'ws://127.0.0.1:9/ws';
+		window.VoidOrderAssets = `${location.origin}/void-assets/`;
+		window.VoidOrderSrc = `${location.origin}/void-src/`;
+		ServerSend = () => {};
+	});
+	await page.addScriptTag({ path: path.join(HERE, 'void.js') });
+	await page.waitForFunction(
+		() => window.VoidOrderModules && window.VoidOrderModules.overflow && !!AssetGet('Female3DCG', 'ItemHandheld', 'QueensWrath'),
+		{
+			timeout: 20000,
+		},
+	);
+	await page.evaluate(() => {
+		Player.Type = CharacterType.PLAYER;
+		Player.MemberNumber = 11;
+		Player.OnlineSharedSettings = { GameVersion };
+		CharacterAppearanceSetDefault(Player);
+		ChatRoomCharacter = [Player];
+		CurrentScreen = 'ChatRoom';
+	});
+	const [outName, ...specs] = process.argv.slice(2);
+	const rows = specs.map((spec) => {
+		const m = /^([A-Za-z]+)(?::(\d+))?(?:@(\d+))?$/.exec(spec);
+		return { spec, item: m[1], carry: Number(m[2] || 0), weapon: Number(m[3] || 0), layers: !!process.env.LAYERS, probe: process.env.PROBE || '' };
+	});
+	const full = [];
+	for (const row of rows) {
+		for (const pose of POSES) {
+			const shot = await page.evaluate(
+				async (row, pose) => {
+					window.LAYERS = row.layers;
+					CharacterAppearanceSetDefault(Player);
+					InventoryWear(Player, row.item, 'ItemHandheld');
+					const item = InventoryGet(Player, 'ItemHandheld');
+					const data = ModularItemDataLookup[`ItemHandheld${row.item}`];
+					if (data) {
+						const rec = { ...(item.Property?.TypeRecord || {}) };
+						if (data.modules.some((m) => m.Key === 'Position')) rec.Position = row.carry;
+						if (data.modules.some((m) => m.Key === 'w')) rec.w = row.weapon;
+						ExtendedItemSetOptionByRecord(Player, item, rec, { push: false, refresh: true });
+					}
+					PoseSetActive(Player, pose === 'BaseUpper' ? null : pose, true);
+					CharacterRefresh(Player, false);
+					for (let i = 0; i < 12; i++) {
+						CharacterLoadCanvas(Player);
+						await new Promise((r) => setTimeout(r, 150));
+					}
+					MainCanvas.fillStyle = '#2a2d3a';
+					MainCanvas.fillRect(0, 0, 2000, 1000);
+					DrawCharacter(Player, 750, 0, 1);
+					const cut = (x, y, w, h, s) => {
+						const c = document.createElement('canvas');
+						c.width = w * s;
+						c.height = h * s;
+						c.getContext('2d').drawImage(MainCanvas.canvas, x, y, w, h, 0, 0, w * s, h * s);
+						return c.toDataURL('image/png');
+					};
+					return {
+						full: cut(500, 0, 1000, 1000, 0.5),
+						hands: cut(750 + 110, 300, 280, 280, 2),
+						got: ((Player.ActivePose || []).join('+') || 'BaseUpper') + (row.probe ? ` ${String(eval(row.probe))}` : ''),
+						layers: window.LAYERS
+							? Player.AppearanceLayers.map((l) => `${l.Asset.Group.Name}/${l.Asset.Name}/${l.Name || ''}:${l.Priority}`).join(' ')
+							: '',
+					};
+				},
+				row,
+				pose,
+			);
+			full.push({ ...shot, row: row.spec, pose });
+		}
+	}
+	for (const [name, key, size] of [
+		[outName, 'full', 500],
+		[`${outName}-hands`, 'hands', 560],
+	]) {
+		const sheet = await page.evaluate(
+			async (shots, cols, rows, key, size) => {
+				const c = document.createElement('canvas');
+				c.width = 160 + cols.length * size;
+				c.height = 40 + rows.length * size;
+				const g = c.getContext('2d');
+				g.fillStyle = '#1b1d26';
+				g.fillRect(0, 0, c.width, c.height);
+				g.fillStyle = '#ddd';
+				g.font = '18px sans-serif';
+				cols.forEach((l, i) => g.fillText(l, 160 + i * size + 6, 26));
+				rows.forEach((l, i) => g.fillText(l, 6, 40 + i * size + 24));
+				for (const s of shots) {
+					const img = new Image();
+					img.src = s[key];
+					await img.decode();
+					g.drawImage(img, 160 + cols.indexOf(s.pose) * size, 40 + rows.indexOf(s.row) * size, size, size);
+				}
+				return c.toDataURL('image/png');
+			},
+			full,
+			POSES,
+			rows.map((r) => r.spec),
+			key,
+			size,
+		);
+		fs.writeFileSync(path.join(OUT, `${name}.png`), Buffer.from(sheet.split(',')[1], 'base64'));
+	}
+	console.log(full.map((s) => `${s.row} ${s.pose} -> ${s.got} ${s.layers}`).join(String.fromCharCode(10)));
+	await browser.close();
+	web.close();
+})().catch((e) => {
+	console.error('FAILED', e);
+	process.exit(1);
+});

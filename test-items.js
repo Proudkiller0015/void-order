@@ -312,6 +312,60 @@ const playAround = (page) =>
 			return DialogInventory.filter((i) => /^(Void[A-Z]|QueensWrath$)/.test(i.Asset.Name)).length;
 		});
 		check('they are in the hand item list', listed === 12, listed);
+		// Poses: in hand while the arms rest; slung on the back (the 'Bound' layers) when the hands are tied, up or
+		// behind the back; nothing on all fours. Weapons with no back art (pistols) show nothing when bound.
+		const shown = await page.evaluate(() => {
+			const out = {};
+			for (const [item, rec] of [
+				['VoidRifles', { Position: 0 }],
+				['VoidRifles', { Position: 3 }],
+				['VoidPistols', { Position: 0 }],
+				['QueensWrath', { Position: 0 }],
+			]) {
+				for (const pose of ['BaseUpper', 'TapedHands', 'BackBoxTie', 'OverTheHead', 'AllFours']) {
+					CharacterAppearanceSetDefault(Player);
+					InventoryWear(Player, item, 'ItemHandheld');
+					const it = InventoryGet(Player, 'ItemHandheld');
+					ExtendedItemSetOptionByRecord(Player, it, { ...(it.Property?.TypeRecord || {}), ...rec }, { push: false, refresh: false });
+					PoseSetActive(Player, pose === 'BaseUpper' ? null : pose, true);
+					CharacterRefresh(Player, false);
+					const names = Player.AppearanceLayers.filter((l) => l.Asset.Name === item && l.HasImage !== false).map((l) => l.Name);
+					const kind =
+						names.length === 0
+							? 'none'
+							: names.every((n) => /Bound/.test(n))
+								? 'bound'
+								: names.some((n) => /Bound/.test(n))
+									? 'both'
+									: 'held';
+					out[`${item}:${rec.Position} ${pose}`] = kind;
+				}
+			}
+			PoseSetActive(Player, null, true);
+			CharacterAppearanceSetDefault(Player);
+			return out;
+		});
+		const want = {
+			'VoidRifles:0 BaseUpper': 'held',
+			'VoidRifles:0 TapedHands': 'bound',
+			'VoidRifles:0 BackBoxTie': 'bound',
+			'VoidRifles:0 OverTheHead': 'bound',
+			'VoidRifles:0 AllFours': 'none',
+			'VoidRifles:3 BaseUpper': 'held',
+			'VoidRifles:3 BackBoxTie': 'bound',
+			'VoidPistols:0 BaseUpper': 'held',
+			'VoidPistols:0 BackBoxTie': 'none',
+			'VoidPistols:0 TapedHands': 'none',
+			'QueensWrath:0 BaseUpper': 'held',
+			'QueensWrath:0 BackBoxTie': 'none',
+			'QueensWrath:0 TapedHands': 'none',
+		};
+		const wrong = Object.entries(want).filter(([k, v]) => shown[k] !== v);
+		check(
+			'in hand while the arms rest, slung on the back when the hands are bound, hidden on all fours',
+			wrong.length === 0,
+			wrong.map(([k, v]) => `${k}: ${shown[k]} (want ${v})`),
+		);
 		const widest = widestRight();
 		await page.evaluate((widest) => {
 			CharacterNaked(Player);

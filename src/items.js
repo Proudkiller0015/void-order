@@ -192,7 +192,10 @@
 			const def = JSON.parse(JSON.stringify(source));
 			if (def.PoseMapping && def.PoseMapping.__poseMapping) {
 				const { __poseMapping: from, ...rest } = def.PoseMapping;
-				def.PoseMapping = { ...((w.AssetPoseMapping && w.AssetPoseMapping[from]) || {}), ...rest };
+				// The game's AssetPoseMapping is a top-level const (not on window): read the group's own copy of it.
+				const group = typeof w.AssetGroupGet === 'function' ? w.AssetGroupGet('Female3DCG', from) : null;
+				const base = (w.AssetPoseMapping && w.AssetPoseMapping[from]) || (group && group.PoseMapping) || {};
+				def.PoseMapping = { ...base, ...rest };
 			}
 			if (!def.DefaultColor && def.Layer.some((/** @type {any} */ l) => Array.isArray(l.Color))) {
 				def.DefaultColor = def.Layer.filter((/** @type {any} */ l) => !l.CopyLayerColor && l.AllowColorize !== false).map(
@@ -212,8 +215,9 @@
 			if (m[1] === 'Preview' && !m[3]) {
 				return `${ITEMS}preview/${item.name}.png`;
 			}
+			// A pose's folder (the bound layers ask for TapedHands/) has the same picture: the art doesn't change by pose.
 			const file = `img/${item.source}_${m[3]}.png`;
-			return !m[1] && images.has(file) ? `${ITEMS}${file}` : EMPTY_PNG;
+			return images.has(file) ? `${ITEMS}${file}` : EMPTY_PNG;
 		}
 		/**
 		 * Sends the game's requests for Armory pictures to the add-on's copies (every picture the game draws is fetched
