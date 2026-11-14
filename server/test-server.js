@@ -19,9 +19,20 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
  */
 const relay = { calls: [], inGroup: new Set(), down: false, board: 'fixtures', boardHits: [] };
 const FIXTURES = ['hunt-board.html', 'hunt-board-2.html'].map((f) => require('fs').readFileSync(`${__dirname}/test/fixtures/${f}`, 'utf8'));
+const BOUNTIES = require('fs').readFileSync(`${__dirname}/test/fixtures/bounty-board.html`, 'utf8');
+const SHEET = require('fs').readFileSync(`${__dirname}/test/fixtures/order-sheet.csv`, 'utf8');
 const relayServer = require('http').createServer((req, res) => {
+	if (req.url.startsWith('/bounty-board')) {
+		relay.boardHits.push({ url: req.url, agent: req.headers['user-agent'], board: relay.board, at: Date.now() });
+		res.writeHead(200, { 'content-type': 'text/html' });
+		return res.end(BOUNTIES);
+	}
+	if (req.url.startsWith('/order-sheet.csv')) {
+		res.writeHead(200, { 'content-type': 'text/csv' });
+		return res.end(SHEET);
+	}
 	if (req.url.startsWith('/hunt-board')) {
-		relay.boardHits.push({ url: req.url, agent: req.headers['user-agent'], board: relay.board });
+		relay.boardHits.push({ url: req.url, agent: req.headers['user-agent'], board: relay.board, at: Date.now() });
 		res.writeHead(200, { 'content-type': 'text/html' });
 		return res.end(relay.board === 'junk' ? '<html><body>Under maintenance</body></html>' : FIXTURES[/[?&]p=2\b/.test(req.url) ? 1 : 0]);
 	}
@@ -576,7 +587,7 @@ async function joined(member, name) {
 		relay.boardHits.map((h) => h.url),
 	);
 	check(
-		relay.boardHits.every((h) => /^OculusNihili\//.test(h.agent || '')),
+		relay.boardHits.every((h) => /^VoidOrderAddon\//.test(h.agent || '')),
 		'naming the add-on, nothing else',
 		relay.boardHits[0],
 	);
@@ -597,6 +608,37 @@ async function joined(member, name) {
 		ivyBounty,
 	);
 	check(boardOf(late) && boardOf(late).contracts.length === 102, 'guests get the board too');
+	// The bounty board (escaped inmates) and the Order's own sheet, on the same board.
+	await wait(4000);
+	const full = (await c2.req({ t: 'hunt' })).board;
+	const one = full.escaped.find((x) => x.code === 'VOP-000408');
+	check(
+		full.escaped.length === 2 && one && one.member === 100101 && one.bounty === 217657242 && one.lastSeen === 'Room 1',
+		'the bounty board: its escaped inmates with member numbers, and where the hunt page last saw them',
+		full.escaped,
+	);
+	check(
+		full.order.map((x) => x.name).join() === 'Target Five,Target Four,Target One' && full.order[0].member === 100005,
+		'the Order’s bounties: only those with a member number and not expired',
+		full.order.map((x) => x.name),
+	);
+	const prison = relay.boardHits.filter((h) => h.at).map((h) => h.at);
+	check(
+		prison.every((t, i) => i === 0 || t - prison[i - 1] >= 250),
+		'the prison’s site is read one page at a time, spaced out',
+		prison.map((t, i) => (i ? t - prison[i - 1] : 0)),
+	);
+	check((await c2.req({ t: 'hidebounty', key: 'vop:VOP-000408' })).why === 'not allowed', 'a member can’t hide a bounty');
+	await a.req({ t: 'hidebounty', key: 'vop:VOP-000408' });
+	await a.req({ t: 'hidebounty', key: full.order[0].key });
+	const hid = (await c2.req({ t: 'hunt' })).board;
+	check(
+		hid.hidden.includes('vop:VOP-000408') && hid.hidden.includes(full.order[0].key),
+		'the Founder hides two bounties for everyone',
+		hid.hidden,
+	);
+	await a.req({ t: 'hidebounty', key: 'vop:VOP-000408', on: false });
+	check(!(await c2.req({ t: 'hunt' })).board.hidden.includes('vop:VOP-000408'), 'and shows one again');
 	// The site turns to junk; once a refresh has read it, the board is still the last good copy, from before.
 	await wait(2500);
 	relay.board = 'junk';

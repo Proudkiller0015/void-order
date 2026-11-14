@@ -21,15 +21,18 @@
  * Members who also run SlimeBeep are put in the Order's group chat there: the SlimeBeep relay makes an invite for
  * them (SLIMEBEEP_RELAY, with the SLIMEBEEP_LINK_KEY secret), and takes them out when they leave the Order.
  *
- * The hunt board: a copy of the Void Order Prison's public hunt board (vo-p.com), fetched at most every
- * HUNT_EVERY ms, one page per alarm (parsing a page takes most of an invocation's CPU on the free plan), kept in
- * 'hunt' and sent to everyone signed in. A page that fails to load or read keeps the last good copy of it.
+ * The hunt board: the Void Order Prison's hunting board (volunteers) and bounty board (escaped inmates), read from
+ * vo-p.com through vop-source.js, and the Holy Order of Void's own bounty sheet (order-sheet.js), read again at most
+ * every HUNT_EVERY ms, one page per alarm, kept in 'hunt' and 'sheet' and sent to everyone signed in. A page that
+ * fails to load or read keeps the last good copy of it.
  *
  * Free-plan limits: sockets hibernate and keep-alive pings get an auto-response without waking the object.
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import { HUNT_BOARD_URL, huntBoardPages, parseHuntBoard } from './hunt-board.js';
+import { HUNT_BOARD_URL } from './hunt-board.js';
+import { BOUNTY_BOARD_URL, fetchBounties, fetchHunting } from './vop-source.js';
+import { ORDER_SHEET_CSV, parseOrderSheet } from './order-sheet.js';
 import { addReport, clearReports, listReports } from './reports.js';
 import { badgeOf, setBadge } from './badges.js';
 import { lend, lentTo, loadLend, recall } from './lend.js';
@@ -79,6 +82,9 @@ const LIMITS = {
 	/** How often the hunt board is fetched again (ms), and the most pages fetched. */
 	huntEvery: 600000,
 	huntPages: 10,
+	/** The most pages of the bounty board read, and the least time between two reads of the prison's site (ms). */
+	bountyPages: 20,
+	huntGap: 60000,
 	/** A commendation's longest name and reason, and the most a member keeps (the newest). */
 	medalName: 40,
 	medalReason: 140,
@@ -388,6 +394,8 @@ export class Order extends DurableObject {
 			this.log = (await ctx.storage.get('log')) || [];
 			/** @type {{ pages: Record<number, any>, of: number, tried: number, next: string[] }} */
 			this.hunt = (await ctx.storage.get('hunt')) || { pages: {}, of: 0, tried: 0, next: [] };
+			/** @type {{ list: any[], at: number }} The Order's bounties, from its sheet. */
+			this.sheet = (await ctx.storage.get('sheet')) || { list: [], at: 0 };
 			await loadLend(this);
 		});
 	}
@@ -890,6 +898,8 @@ export class Order extends DurableObject {
 					return await this.issue(ws, me, p);
 				case 'carry':
 					return await this.carry(ws, me, p);
+				case 'hidebounty':
+					return await this.hideBounty(ws, me, p);
 				case 'badge':
 					return await setBadge(this, ws, me, p);
 				case 'lend':
@@ -1495,104 +1505,199 @@ export class Order extends DurableObject {
 		}
 	}
 
-	// ---- The hunt board
-	/** The board's address (a test server points HUNT_BOARD_URL elsewhere). */
+	// ---- The hunt board: three lists, read one page per alarm (parsing a page takes most of an invocation's CPU on the
+	// free plan), the Void Order Prison's pages at least HUNT_GAP apart. Each keeps its last good copy when a read fails.
+	//   the hunting board: the prison's volunteers (vo-p.com, pages of contracts)
+	//   the bounty board: the prison's escaped inmates, by bounty (vo-p.com, pages of 12)
+	//   the Order's bounties: the Holy Order of Void's own sheet (one CSV)
+	/** The hunting board's address (a test server points HUNT_BOARD_URL elsewhere). */
 	get huntUrl() {
 		return typeof this.env.HUNT_BOARD_URL === 'string' && this.env.HUNT_BOARD_URL ? this.env.HUNT_BOARD_URL : HUNT_BOARD_URL;
 	}
-	/** Starts fetching the board again (in an alarm) if the last try is older than HUNT_EVERY. */
+	/** The bounty board's address (BOUNTY_BOARD_URL for a test server). */
+	get bountyUrl() {
+		return typeof this.env.BOUNTY_BOARD_URL === 'string' && this.env.BOUNTY_BOARD_URL ? this.env.BOUNTY_BOARD_URL : BOUNTY_BOARD_URL;
+	}
+	/** The Order's sheet as CSV (ORDER_SHEET_URL for a test server). */
+	get sheetUrl() {
+		return typeof this.env.ORDER_SHEET_URL === 'string' && this.env.ORDER_SHEET_URL ? this.env.ORDER_SHEET_URL : ORDER_SHEET_CSV;
+	}
+	/** Starts reading the three lists again (in alarms) if the last time is older than HUNT_EVERY. */
 	huntCheck() {
 		const every = Number(this.env.HUNT_EVERY) || LIMITS.huntEvery;
 		if (Date.now() - this.hunt.tried < every) {
 			return;
 		}
 		this.hunt.tried = Date.now();
-		this.hunt.next = [this.huntUrl];
+		this.hunt.next = [{ k: 'sheet' }, { k: 'hunt', n: 1 }, { k: 'bounty', n: 1 }];
 		this.ctx.waitUntil(this.ctx.storage.put('hunt', this.hunt).then(() => this.ctx.storage.setAlarm(Date.now())));
 	}
 	/**
-	 * The board as clients get it: every page's contracts, and the most wanted and the casino's debtors once each
-	 * (every page repeats them); `at` is when the oldest page in it was read. Null before the first good read.
+	 * The board as clients get it: the hunting board's contracts (with its most wanted and the casino's debtors once
+	 * each), the bounty board's escaped inmates, the Order's bounties, and the keys the hierarchy has hidden (`hidden`:
+	 * Order bounties by their key, escaped inmates as "vop:<prison number>"). Null before anything was read.
 	 */
 	huntBoard() {
 		const pages = Object.keys(this.hunt.pages)
 			.map(Number)
 			.sort((a, b) => a - b)
 			.map((n) => this.hunt.pages[n]);
-		if (!pages.length) {
+		const bountyPages = Object.values((this.hunt.bounty && this.hunt.bounty.pages) || {});
+		const sheet = this.sheet || { list: [], at: 0 };
+		if (!pages.length && !bountyPages.length && !sheet.at) {
 			return null;
 		}
 		const once = (list) => [...new Map(list.map((x) => [x.code, x])).values()];
+		const wanted = once(pages.flatMap((p) => p.wanted));
+		const seen = new Map([...wanted, ...once(pages.flatMap((p) => p.debtors))].map((x) => [x.code, x]));
+		const escaped = once(bountyPages.flatMap((p) => p.inmates)).map((x) => {
+			const w = seen.get(x.code);
+			return w ? { ...x, lastSeen: w.lastSeen, sightings: w.sightings } : x;
+		});
 		return {
 			contracts: once(pages.flatMap((p) => p.contracts)),
-			wanted: once(pages.flatMap((p) => p.wanted)),
+			wanted,
 			debtors: once(pages.flatMap((p) => p.debtors)),
-			totals: pages[0].totals,
-			at: Math.min(...pages.map((p) => p.at)),
+			totals: pages.length ? pages[0].totals : null,
+			at: pages.length ? Math.min(...pages.map((p) => p.at)) : 0,
 			url: this.huntUrl,
+			escaped: escaped.sort((a, b) => (b.bounty || 0) - (a.bounty || 0)),
+			escapedAt: bountyPages.length ? Math.min(...bountyPages.map((p) => p.at)) : 0,
+			order: sheet.list,
+			orderAt: sheet.at,
+			hidden: Object.keys(this.hunt.hidden || {}),
 		};
 	}
+	/** Sends everyone signed in the board as it is now. */
+	huntSend() {
+		const out = this.huntBoard();
+		for (const { ws } of this.sockets()) {
+			this.send(ws, { t: 'hunt', board: out });
+		}
+	}
 	/**
-	 * Fetches and reads one page of the board: the first one queues the others. A page that fails keeps its last good
-	 * copy; one that reads cleanly replaces it, and everyone signed in gets the new board.
+	 * Hides a bounty from the board, or shows it again: { key, on } (the hierarchy's top, for players who asked out of
+	 * character to be left alone). `key` is an Order bounty's key or "vop:<prison number>".
+	 */
+	async hideBounty(ws, me, p) {
+		if (!this.isTop(me)) {
+			return this.no(ws, 'not allowed', p);
+		}
+		const key = typeof p.key === 'string' ? p.key.slice(0, 120) : '';
+		if (!key) {
+			return this.no(ws, 'no such bounty', p);
+		}
+		this.hunt.hidden ??= {};
+		if (p.on === false) {
+			delete this.hunt.hidden[key];
+		} else {
+			this.hunt.hidden[key] = { by: me, at: Date.now() };
+		}
+		await this.ctx.storage.put('hunt', this.hunt);
+		this.ok(ws, p);
+		this.huntSend();
+	}
+	/**
+	 * Reads one page of one list (the next in the queue): the first page of a board queues its others. Whatever reads
+	 * cleanly replaces its last copy, and everyone signed in gets the new board.
 	 */
 	async alarm() {
-		const url = this.hunt.next.shift();
-		if (!url) {
+		let job = this.hunt.next.shift();
+		if (!job) {
 			return;
 		}
+		// A queue from before the bounty board held the hunting board's addresses.
+		if (typeof job === 'string') {
+			job = { k: 'hunt', n: Number(new URL(job).searchParams.get('p')) || 1 };
+		}
 		await this.ctx.storage.put('hunt', this.hunt);
-		let html = '';
+		if (job.k === 'sheet') {
+			await this.readSheet();
+		} else if (job.k === 'bounty') {
+			await this.readBounties(job.n);
+		} else {
+			await this.readHunting(job.n);
+		}
+		await this.ctx.storage.put('hunt', this.hunt);
+		const next = this.hunt.next[0];
+		if (next) {
+			const gap = typeof next === 'object' && next.k === 'sheet' ? 1000 : Number(this.env.HUNT_GAP) || LIMITS.huntGap;
+			await this.ctx.storage.setAlarm(Date.now() + gap);
+		}
+	}
+	/** One page of the hunting board. */
+	async readHunting(n) {
+		const board = await fetchHunting(n, this.huntUrl);
+		const page = board.page ? board.page.n : 0;
+		if (!page || !(board.contracts.length || board.wanted.length)) {
+			console.warn('hunt board: page', n, 'did not read', board.problems.slice(0, 5));
+			return;
+		}
+		if (!board.ok) {
+			console.warn('hunt board: read with problems', board.problems.slice(0, 5));
+		}
+		this.hunt.pages[page] = {
+			contracts: board.contracts.map((c) => ({ ...c, photo: null })),
+			wanted: board.wanted,
+			debtors: board.debtors,
+			totals: board.totals,
+			at: Date.now(),
+		};
+		if (page === 1) {
+			this.hunt.of = Math.min(board.page.of, LIMITS.huntPages);
+			for (const k of Object.keys(this.hunt.pages)) {
+				if (Number(k) > this.hunt.of) {
+					delete this.hunt.pages[k];
+				}
+			}
+			const others = board.pages.filter((p) => p > 1 && p <= this.hunt.of).map((p) => ({ k: 'hunt', n: p }));
+			this.hunt.next = [...others, ...this.hunt.next];
+		}
+		this.huntSend();
+	}
+	/** One page of the bounty board. */
+	async readBounties(n) {
+		const board = await fetchBounties(n, this.bountyUrl);
+		if (!board.inmates.length) {
+			console.warn('bounty board: page', n, 'did not read', board.problems.slice(0, 5));
+			return;
+		}
+		this.hunt.bounty ??= { pages: {}, of: 0 };
+		const b = this.hunt.bounty;
+		b.pages[n] = { inmates: board.inmates.filter((x) => x.status === 'escaped' || !x.status), at: Date.now() };
+		if (n === 1) {
+			b.of = Math.min(board.page ? board.page.of : 1, LIMITS.bountyPages);
+			for (const k of Object.keys(b.pages)) {
+				if (Number(k) > b.of) {
+					delete b.pages[k];
+				}
+			}
+			for (let p = 2; p <= b.of; p++) {
+				this.hunt.next.push({ k: 'bounty', n: p });
+			}
+		}
+		this.huntSend();
+	}
+	/** The Order's sheet: kept in its own record, since it can be long. */
+	async readSheet() {
+		let text = '';
 		try {
-			const res = await fetch(url, {
-				headers: { 'User-Agent': 'OculusNihili/2 (the Void Order add-on)' },
-				signal: AbortSignal.timeout(15000),
-			});
-			html = res.ok ? await res.text() : '';
+			const res = await fetch(this.sheetUrl, { signal: AbortSignal.timeout(15000) });
+			text = res.ok ? await res.text() : '';
 			if (!res.ok) {
-				console.warn('hunt board: HTTP', res.status, url);
+				console.warn('order sheet: HTTP', res.status);
 			}
 		} catch (e) {
-			console.warn('hunt board: fetch failed', url, String(e));
+			console.warn('order sheet: fetch failed', String(e));
 		}
-		const board = html ? parseHuntBoard(html, this.huntUrl) : null;
-		const n = board && board.page ? board.page.n : 0;
-		if (board && n && (board.contracts.length || board.wanted.length)) {
-			if (!board.ok) {
-				console.warn('hunt board: read with problems', board.problems.slice(0, 5));
-			}
-			const strip = (c) => ({ ...c, photo: null });
-			this.hunt.pages[n] = {
-				contracts: board.contracts.map(strip),
-				wanted: board.wanted,
-				debtors: board.debtors,
-				totals: board.totals,
-				at: Date.now(),
-			};
-			if (n === 1) {
-				this.hunt.of = Math.min(board.page.of, LIMITS.huntPages);
-				for (const k of Object.keys(this.hunt.pages)) {
-					if (Number(k) > this.hunt.of) {
-						delete this.hunt.pages[k];
-					}
-				}
-				// The other pages, at this board's address (whatever the page's own links say).
-				const others = huntBoardPages(html, this.huntUrl)
-					.map((u) => Number(new URL(u).searchParams.get('p')))
-					.filter((p) => Number.isInteger(p) && p > 1 && p <= this.hunt.of);
-				this.hunt.next = [...new Set(others)].sort((a, b) => a - b).map((p) => `${this.huntUrl}?p=${p}`);
-			}
-			const out = this.huntBoard();
-			for (const { ws } of this.sockets()) {
-				this.send(ws, { t: 'hunt', board: out });
-			}
-		} else if (html) {
-			console.warn('hunt board: the page did not read', url, board ? board.problems.slice(0, 5) : []);
+		const sheet = text ? parseOrderSheet(text) : null;
+		if (!sheet || sheet.problems.length) {
+			console.warn('order sheet: did not read', sheet ? sheet.problems : []);
+			return;
 		}
-		await this.ctx.storage.put('hunt', this.hunt);
-		if (this.hunt.next.length) {
-			await this.ctx.storage.setAlarm(Date.now() + 1000);
-		}
+		this.sheet = { list: sheet.bounties, at: Date.now() };
+		await this.ctx.storage.put('sheet', this.sheet);
+		this.huntSend();
 	}
 
 	// ---- The Armory
