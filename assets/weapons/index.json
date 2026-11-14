@@ -1445,7 +1445,11 @@
 		"void": true,
 		"melee": true,
 		"kind": "Scythes",
-		"stats": [],
+		"stats": [
+			"2d100 + 50 Damage",
+			"+10 Speed",
+			"-25 Damage received"
+		],
 		"sprite": true,
 		"lore": "Slime Queen Samantha's signature scythe. It weighs 2 tons, and at its Queen's will anything from 5 kg to 1,000 tons; it casts spells and changes its form."
 	}

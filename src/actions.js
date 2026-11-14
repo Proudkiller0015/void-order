@@ -291,13 +291,28 @@
 		ctx.setPref('ammo', ammo);
 	};
 
-	// ---- Void dice from the weapon's stats: 1d6 plus its base damage
+	// ---- Void dice from the weapon's stats: 1d6 plus its base damage, or its own dice (Queen's Wrath: 2d100 + 50)
 	/** @type {any[] | null} */
 	let catalog = null;
 	fetch(`${ctx.assets}weapons/index.json?v=${encodeURIComponent(ctx.VERSION)}`)
 		.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
 		.then((list) => (catalog = Array.isArray(list) ? list : []))
 		.catch((e) => ctx.report('Weapon stats', e));
+	/**
+	 * The dice a weapon's attack rolls: a stat line like "2d100 + 50 Damage" gives its own dice (Queen's Wrath), any
+	 * other weapon rolls 1d6 plus its "+N Base damage".
+	 * @returns {{ dice: number[], mod: number }}
+	 */
+	function attackDice(/** @type {any} */ h) {
+		const name = nameOf(h);
+		const entry = catalog && catalog.find((x) => x.name === name || (h.weapon && x.name === h.weapon.name));
+		const own = entry && (entry.stats || []).map((s) => /^(\d+)d(\d+)\s*\+\s*(\d+)\s+Damage$/i.exec(s)).find(Boolean);
+		if (own) {
+			const count = Math.min(10, Number(own[1]));
+			return { dice: Array(count).fill(Number(own[2])), mod: Math.min(99, Number(own[3])) };
+		}
+		return { dice: [6], mod: baseDamage(h) };
+	}
 	function baseDamage(/** @type {any} */ h) {
 		const name = nameOf(h);
 		const entry = catalog && catalog.find((x) => x.name === name || (h.weapon && x.name === h.weapon.name));
@@ -424,7 +439,8 @@
 			}
 		});
 		if (d.attack && h && on('actionDice')) {
-			const why = await ctx.roll([6], baseDamage(h));
+			const roll = attackDice(h);
+			const why = await ctx.roll(roll.dice, roll.mod);
 			if (why) {
 				ctx.note(why);
 			}

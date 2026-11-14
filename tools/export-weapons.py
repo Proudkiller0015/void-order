@@ -36,6 +36,8 @@ QUEENS_WRATH_ART = Path('queens-wrath') / 'layers' / 'qw-default.png'
 QUEENS_WRATH_ENTRY = {
     'rarity': 'Legendary',
     'kind': 'Scythes',
+    # Far beyond every catalog weapon (the best, Kugarinn, rolls 1d6+45): Queen's Wrath rolls 2d100+50.
+    'stats': ['2d100 + 50 Damage', '+10 Speed', '-25 Damage received'],
     'lore': "Slime Queen Samantha's signature scythe. It weighs 2 tons, and at its Queen's will anything from 5 kg to "
             '1,000 tons; it casts spells and changes its form.',
 }
