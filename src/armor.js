@@ -125,6 +125,7 @@
 				}
 			}
 			powerArmor = data.powerArmor.filter((/** @type {string} */ n) => pieces.has(n));
+			hookUniforms(data.uniforms || {});
 			guard.hookGame('ValidationResolveRemoveDiff', 0, 'Keeping the armour on', keepOnRemove);
 			ctx.onSignIn(watchPowerArmor);
 		}
@@ -271,7 +272,190 @@
 			});
 		}
 
+		// ---- Void uniforms: the last row of the wardrobe's list of clothes. Its choices are each uniform's complete fit, then
+		// each of its items on its own; "Put on" wears the choice, in the uniform's colours.
+		/** @type {{ label: string, full: boolean, items: { Group: string, Name: string, Color: string | string[] }[] }[]} */
+		let uniformChoices = [];
+		let uniformChoice = 0;
+		/** Stands in for the row in the game's list of groups, so its pages reach it; the game's own loops skip it. */
+		const UNIFORM_ROW = Object.freeze({ Name: 'VoidUniforms', Description: 'Void uniforms', IsAppearance: () => false });
+		/** The row's place in the list, and its top on the screen when it is on the page shown (else -1). */
+		function uniformRowTop() {
+			const groups = w.CharacterAppearanceGroups;
+			const i = Array.isArray(groups) ? groups.indexOf(UNIFORM_ROW) : -1;
+			const offset = w.CharacterAppearanceOffset || 0;
+			const per = w.CharacterAppearanceNumGroupPerPage || 0;
+			if (i < 0 || i < offset || i >= offset + per || w.CharacterAppearanceMode !== '' || w.DialogFocusItem) {
+				return -1;
+			}
+			if (w.Layering && typeof w.Layering.IsActive === 'function' && w.Layering.IsActive()) {
+				return -1;
+			}
+			return 145 + (i - offset) * 95;
+		}
+		/**
+		 * Hooks the wardrobe: the row is added last when it opens, drawn after the game's rows, and its clicks are taken
+		 * before the game's.
+		 * @param {Record<string, any>} uniforms armor.json's uniforms: { id: { Description, Items } }
+		 */
+		function hookUniforms(uniforms) {
+			for (const u of Object.values(uniforms)) {
+				const items = (u.Items || []).filter((/** @type {any} */ x) => w.AssetGet('Female3DCG', x.Group, x.Name));
+				if (!items.length) {
+					continue;
+				}
+				uniformChoices.push({ label: `${u.Description} (full outfit)`, full: true, items });
+				for (const x of items) {
+					uniformChoices.push({
+						label: `${u.Description}: ${w.AssetGet('Female3DCG', x.Group, x.Name).Description}`,
+						full: false,
+						items: [x],
+					});
+				}
+			}
+			if (!uniformChoices.length || !['AppearanceLoad', 'AppearanceRun', 'AppearanceClick'].every((f) => guard.gameFunction(f))) {
+				return;
+			}
+			const feature = 'Void uniforms';
+			guard.hookGame('AppearanceLoad', 0, feature, (args, next) => {
+				const r = next(args);
+				const add = () => {
+					if (Array.isArray(w.CharacterAppearanceGroups) && !w.CharacterAppearanceGroups.includes(UNIFORM_ROW)) {
+						w.CharacterAppearanceGroups.push(UNIFORM_ROW);
+					}
+				};
+				return r instanceof Promise ? r.then((v) => (add(), v)) : (add(), r);
+			});
+			guard.hookGame('AppearanceRun', 0, feature, (args, next) => {
+				const r = next(args);
+				const top = uniformRowTop();
+				if (top >= 0 && w.CharacterAppearanceSelection) {
+					const choice = uniformChoices[uniformChoice] || uniformChoices[0];
+					const around = (/** @type {number} */ d) =>
+						uniformChoices[(uniformChoice + d + uniformChoices.length) % uniformChoices.length].label;
+					w.DrawBackNextButton(
+						1210,
+						top,
+						400,
+						65,
+						`Void uniforms: ${choice.label}`,
+						'#d9c8ff',
+						'',
+						() => around(-1),
+						() => around(1),
+					);
+					w.DrawButton(1635, top, 250, 65, 'Put on', 'White');
+				}
+				return r;
+			});
+			guard.hookGame('AppearanceClick', 0, feature, (args, next) => {
+				const top = uniformRowTop();
+				const C = w.CharacterAppearanceSelection;
+				if (top < 0 || !C || typeof w.MouseIn !== 'function') {
+					return next(args);
+				}
+				if (w.MouseIn(1210, top, 400, 65)) {
+					uniformChoice = (uniformChoice + (w.MouseX > 1410 ? 1 : -1) + uniformChoices.length) % uniformChoices.length;
+					return undefined;
+				}
+				if (w.MouseIn(1635, top, 250, 65)) {
+					const choice = uniformChoices[uniformChoice];
+					if (choice) {
+						wearUniform(C, choice);
+					}
+					return undefined;
+				}
+				return next(args);
+			});
+		}
+		/**
+		 * An item's colours from a uniform: one colour for every colourable layer, or one per layer of the asset (in its
+		 * layers' order, those that take no colour included), put in the asset's colour slots.
+		 * @param {any} asset
+		 * @param {string | string[]} color
+		 */
+		function uniformColors(asset, color) {
+			const count = asset.ColorableLayerCount || 0;
+			if (!count) {
+				return null;
+			}
+			if (typeof color === 'string') {
+				return Array(count).fill(color);
+			}
+			const colors = Array(count).fill('Default');
+			asset.Layer.forEach((/** @type {any} */ l, /** @type {number} */ i) => {
+				if (l.AllowColorize && !l.CopyLayerColor && Number.isInteger(l.ColorIndex) && typeof color[i] === 'string') {
+					colors[l.ColorIndex] = color[i];
+				}
+			});
+			return colors;
+		}
+		/** Whether C's item in that group may be changed here: the group isn't blocked to you and the item isn't locked. */
+		function mayChange(/** @type {any} */ C, /** @type {any} */ group) {
+			const now = w.InventoryGet(C, group.Name);
+			const blocked =
+				(typeof w.AppearanceGroupAllowed === 'function' && !w.AppearanceGroupAllowed(C, group.Name)) ||
+				(typeof w.WardrobeGroupAccessible === 'function' && !w.WardrobeGroupAccessible(C, group));
+			const locked =
+				!!now && ((now.Property && now.Property.LockedBy) || (typeof w.InventoryGetLock === 'function' && w.InventoryGetLock(now)));
+			return blocked ? 'blocked' : locked ? 'locked' : '';
+		}
+		/**
+		 * Puts a uniform choice on C in the wardrobe, as the wardrobe would: only what it offers for C, never in a group
+		 * C can't change here, never over a locked item. A full outfit also takes off C's other clothes (not underwear)
+		 * where it may, like a saved outfit. One redraw at the end; the wardrobe saves it all when accepted. The header
+		 * says what went on and what was left, and why.
+		 * @param {any} C
+		 * @param {{ label: string, full: boolean, items: { Group: string, Name: string, Color: string | string[] }[] }} choice
+		 */
+		function wearUniform(C, choice) {
+			const offered = w.CharacterAppearanceGroupedAssets;
+			const put = [];
+			const left = [];
+			let off = 0;
+			if (choice.full && Array.isArray(w.AssetGroup)) {
+				const mine = choice.items.map((x) => x.Group);
+				for (const g of w.AssetGroup) {
+					if (
+						g.Family === (C.AssetFamily || 'Female3DCG') &&
+						g.Clothing &&
+						!g.Underwear &&
+						g.AllowNone &&
+						!mine.includes(g.Name) &&
+						w.InventoryGet(C, g.Name) &&
+						!mayChange(C, g)
+					) {
+						w.CharacterAppearanceSetItem(C, g.Name, null);
+						off++;
+					}
+				}
+			}
+			for (const x of choice.items) {
+				const asset = w.AssetGet(C.AssetFamily || 'Female3DCG', x.Group, x.Name);
+				const group = w.AssetGroupGet(C.AssetFamily || 'Female3DCG', x.Group);
+				const name = asset ? asset.Description : x.Name;
+				const why = asset && group ? mayChange(C, group) : '';
+				if (!asset || !group) {
+					left.push(`${name} (not in this game)`);
+				} else if (why === 'blocked') {
+					left.push(`${name} (that slot is blocked)`);
+				} else if (why === 'locked') {
+					left.push(`${name} (${w.InventoryGet(C, x.Group).Asset.Description} is locked on)`);
+				} else if (!(offered instanceof Map) || !(offered.get(x.Group) || []).includes(asset)) {
+					left.push(`${name} (not in the wardrobe)`);
+				} else {
+					w.CharacterAppearanceSetItem(C, x.Group, asset, uniformColors(asset, x.Color));
+					put.push(name);
+				}
+			}
+			if ((put.length || off) && typeof w.CharacterRefresh === 'function') {
+				w.CharacterRefresh(C, false);
+			}
+			w.CharacterAppearanceHeaderText = `${put.length ? `Put on: ${put.join(', ')}.` : 'Nothing put on.'}${off ? ` Took off ${off} other clothes.` : ''}${left.length ? ` Left: ${left.join(', ')}.` : ''}`;
+			w.CharacterAppearanceHeaderTextTime = (typeof w.CommonTime === 'function' ? w.CommonTime() : Date.now()) + 6000;
+		}
+
 		start();
-		return { isArmor, wearsPowerArmor, armorPieces: pieces };
+		return { isArmor, wearsPowerArmor, armorPieces: pieces, uniformChoices: () => uniformChoices };
 	};
 })();

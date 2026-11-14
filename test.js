@@ -2355,6 +2355,173 @@ const openCardOf = async (page, name) => {
 			CharacterRefresh(Player, false);
 		});
 
+		// Void uniforms: the last row of the wardrobe. The full outfit puts on every item it may, in the uniform's colours;
+		// a locked item stays; each item can be put on by itself.
+		await page.evaluate(() => document.getElementById('void-panel')?.remove());
+		/** The wardrobe's rows as drawn: the labels of their back/next buttons, the uniform row's top on the page. */
+		const wardrobeRows = () =>
+			page.evaluate(() => {
+				const labels = [];
+				const real = DrawBackNextButton;
+				DrawBackNextButton = (...a) => {
+					labels.push(a[4]);
+					return real(...a);
+				};
+				MainCanvas.fillStyle = '#222';
+				MainCanvas.fillRect(0, 0, 2000, 1000);
+				AppearanceRun();
+				DrawBackNextButton = real;
+				const i = CharacterAppearanceGroups.findIndex((g) => g.Name === 'VoidUniforms');
+				return { labels, last: i === CharacterAppearanceGroups.length - 1, top: 145 + (i - CharacterAppearanceOffset) * 95 };
+			});
+		const opened = await page.evaluate(async () => {
+			for (const [n, g] of [
+				['MilitaryFatigue', 'Cloth'],
+				['MilitaryPants', 'ClothLower'],
+				['CombatBoots', 'Shoes'],
+			])
+				InventoryAdd(Player, n, g, false);
+			CharacterAppearanceSetDefault(Player);
+			const hat = AssetGroupGet('Female3DCG', 'Hat').Asset.find((a) => a.Name !== 'VoidPaladinHelmet' && a.Value >= 0);
+			InventoryWear(Player, hat.Name, 'Hat');
+			InventoryGet(Player, 'Hat').Property = { LockedBy: 'MetalPadlock', LockMemberNumber: 12 };
+			CharacterAppearanceSelection = Player;
+			await AppearanceLoad();
+			CharacterAppearanceMoveGroup(Player, -1);
+			return hat.Name;
+		});
+		const rows = await wardrobeRows();
+		check(
+			'the wardrobe ends with a Void uniforms row: the full Void Paladin outfit first',
+			rows.last && rows.labels[rows.labels.length - 1] === 'Void uniforms: Void Paladin (full outfit)',
+			rows,
+		);
+		await page.evaluate(() => document.querySelectorAll('body > :not(canvas)').forEach((el) => el.classList.add('vo-test-hidden')));
+		await page.addStyleTag({ content: '.vo-test-hidden { visibility: hidden !important; }' });
+		await shot(page, '25-wardrobe-uniforms');
+		const putOn = (top) =>
+			page.evaluate((top) => {
+				MouseX = 1700;
+				MouseY = top + 30;
+				AppearanceClick();
+				const get = (g) => {
+					const i = InventoryGet(Player, g);
+					return i ? [i.Asset.Name, i.Color] : null;
+				};
+				return {
+					header: CharacterAppearanceHeaderText,
+					cloth: get('Cloth'),
+					pants: get('ClothLower'),
+					boots: get('Shoes'),
+					hat: get('Hat'),
+					carrier: get('Necklace'),
+					gloves: get('Gloves'),
+					cloak: get('ClothAccessory'),
+					rig: get('Garters'),
+					others: Player.Appearance.filter(
+						(i) =>
+							i.Asset.Group.Clothing &&
+							!i.Asset.Group.Underwear &&
+							!['Cloth', 'ClothLower', 'Shoes', 'Hat', 'Necklace', 'Gloves', 'ClothAccessory', 'Garters'].includes(i.Asset.Group.Name),
+					).map((i) => i.Asset.Group.Name),
+				};
+			}, top);
+		const worn = await putOn(rows.top);
+		const allColored = (x, c) => !!x && [].concat(x[1]).every((v) => v === c);
+		check(
+			'the full outfit: the fatigues, pants and boots, and the armour, each in the uniform’s colours',
+			worn.cloth[0] === 'MilitaryFatigue' &&
+				allColored(worn.cloth, '#1E1F24') &&
+				worn.pants[0] === 'MilitaryPants' &&
+				allColored(worn.boots, '#18181C') &&
+				JSON.stringify(worn.carrier) === '["VoidPaladinPlateCarrier",["#262833","#17181D"]]' &&
+				JSON.stringify(worn.gloves) === '["VoidPaladinGloves",["#262833","#17181D"]]' &&
+				worn.cloak[0] === 'VoidPaladinCloak' &&
+				worn.rig[0] === 'VoidPaladinLegRig' &&
+				!worn.others.length,
+			worn,
+		);
+		check(
+			'the locked hat stays, and the header says why the helmet was left',
+			worn.hat[0] === opened && /Left: Void Paladin helmet \(.* is locked on\)/.test(worn.header),
+			worn,
+		);
+		// Each item on its own: the cloak again after taking it off.
+		await page.evaluate(() => InventoryRemove(Player, 'ClothAccessory'));
+		for (let i = 0; i < 12; i++) {
+			const r = await wardrobeRows();
+			if (/cloak/i.test(r.labels[r.labels.length - 1])) break;
+			await page.evaluate((top) => {
+				MouseX = 1500;
+				MouseY = top + 30;
+				AppearanceClick();
+			}, r.top);
+		}
+		const cloakRow = await wardrobeRows();
+		const cloakOn = await putOn(cloakRow.top);
+		check(
+			'one item of the uniform goes on by itself',
+			/Void Paladin: Void Paladin cloak/.test(cloakRow.labels[cloakRow.labels.length - 1]) &&
+				JSON.stringify(cloakOn.cloak) === '["VoidPaladinCloak",["#3A3C44","#101014","#3A3C44","#101014"]]',
+			{ label: cloakRow.labels[cloakRow.labels.length - 1], cloak: cloakOn.cloak },
+		);
+		// The whole set worn, standing and in two poses.
+		const wearAll = await page.evaluate(() => {
+			InventoryRemove(Player, 'Hat');
+			MouseX = 1700;
+			return true;
+		});
+		await page.evaluate(() => {
+			CharacterAppearanceMoveGroup(Player, 0);
+		});
+		const fullRows = await wardrobeRows();
+		for (let i = 0; i < 12; i++) {
+			const r = await wardrobeRows();
+			if (/full outfit/.test(r.labels[r.labels.length - 1])) break;
+			await page.evaluate((top) => {
+				MouseX = 1500;
+				MouseY = top + 30;
+				AppearanceClick();
+			}, r.top);
+		}
+		const full = await putOn((await wardrobeRows()).top);
+		check('with the hat unlocked, the helmet goes on too', wearAll && fullRows.last && full.hat[0] === 'VoidPaladinHelmet', full);
+		/** Draws Ann in a pose and saves that drawing (taken at once: the game's own loop redraws the screen after). */
+		const posed = async (pose, name) => {
+			const png = await page.evaluate(async (pose) => {
+				PoseSetActive(Player, pose, true);
+				CharacterRefresh(Player, false);
+				const draw = () => {
+					MainCanvas.fillStyle = '#2a2a33';
+					MainCanvas.fillRect(0, 0, 2000, 1000);
+					DrawCharacter(Player, 750, 0, 1);
+				};
+				for (let i = 0; i < 4; i++) {
+					draw();
+					await new Promise((r) => setTimeout(r, 250));
+				}
+				draw();
+				const c = document.createElement('canvas');
+				c.width = 500;
+				c.height = 1000;
+				c.getContext('2d').drawImage(MainCanvas.canvas, 750, 0, 500, 1000, 0, 0, 500, 1000);
+				return c.toDataURL('image/png');
+			}, pose);
+			if (process.env.SHOTS) {
+				fs.mkdirSync(path.join(__dirname, 'shots'), { recursive: true });
+				fs.writeFileSync(path.join(__dirname, 'shots', `${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
+			}
+		};
+		await posed(null, '26-uniform-worn');
+		await posed('Kneel', '27-uniform-kneel');
+		await posed('BackBoxTie', '28-uniform-arms-tied');
+		await page.evaluate(() => document.querySelectorAll('.vo-test-hidden').forEach((el) => el.classList.remove('vo-test-hidden')));
+		await page.evaluate(() => {
+			PoseSetActive(Player, null, true);
+			CharacterAppearanceSetDefault(Player);
+			CharacterRefresh(Player, false);
+		});
+
 		// Power armour: Fay wears the plate carrier and the helmet and may carry 4; out of it, back to 2.
 		for (const id of [1, 2, 3]) await bea.req({ t: 'issue', member: 15, weapon: id });
 		const fayLimit = () => bea.state.members.find((m) => m.n === 15)?.carryLimit;
