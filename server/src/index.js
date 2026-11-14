@@ -1331,6 +1331,7 @@ export class Order extends DurableObject {
 				places: m.places,
 				mon: m.mon,
 				founder: this.isFounder(m.n),
+				keeper: m.n === this.appAdmin,
 				bio: m.bio,
 				joined: m.joined,
 				medals: m.medals || [],

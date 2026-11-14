@@ -41,6 +41,11 @@
 	const ORDER_NAME = 'Holy Order of Void';
 	/** Queen's Wrath, the Keeper's signature scythe: a carry slot of its own, never counted. */
 	const QUEENS_WRATH = 100;
+	/**
+	 * The app admin's title: the Keeper of the Eye (the Eye is Oculus Nihili). It shows instead of Founder while she still
+	 * holds the Founder's place, which belongs to whoever she hands it to.
+	 */
+	const KEEPER = { name: 'Keeper of the Eye', sym: '𓁹‿𓁹', color: '#c9a8ff' };
 	const TIERS = 5;
 	const CHAPTER_FROM = 2;
 	const LEADS_FROM = 4;
@@ -417,7 +422,9 @@
 		if (s.motto) {
 			lines.push({ text: s.motto, cls: 'motto' });
 		}
-		if (founder) {
+		if (isKeeper(m)) {
+			lines.push({ text: KEEPER.name, sym: KEEPER.sym, color: KEEPER.color });
+		} else if (founder) {
 			lines.push({ text: s.founder.name, sym: s.founder.sym, color: s.founder.color });
 		}
 		if (m.mon) {
@@ -447,7 +454,9 @@
 	function placeSummary(/** @type {any} */ m) {
 		const s = structure();
 		const parts = [];
-		if (m.n === founderN()) {
+		if (isKeeper(m)) {
+			parts.push(KEEPER.name);
+		} else if (m.n === founderN()) {
 			parts.push(s.founder.name);
 		}
 		if (m.mon) {
@@ -461,6 +470,8 @@
 	// ---- Who stands where (the server decides; this only shows what you may do)
 	const isMember = () => !!state && state.status === 'member';
 	const founderN = () => (state && state.meta ? state.meta.founder : 0);
+	/** Whether a member (or their ID card) is the Keeper of the Eye, the app admin. */
+	const isKeeper = (/** @type {any} */ m) => !!m && (!!m.keeper || (!!state && !!state.appAdmin && m.n === state.appAdmin));
 	const memberOf = (/** @type {number} */ n) => (state && state.members ? state.members.find((/** @type {any} */ m) => m.n === n) : null);
 	/** The Founder or an admin: every power, everywhere. */
 	const isTop = (/** @type {any} */ m) => m.n === founderN() || !!m.admin;
@@ -1165,7 +1176,7 @@
 	function markOf(/** @type {any} */ m) {
 		const s = structure();
 		const b = m.places[0] && branchOf(m.places[0].b);
-		const x = m.n === founderN() ? s.founder : m.mon ? s.monsignor : b || { sym: '⸸', color: NEOPHYTE_COLOR };
+		const x = isKeeper(m) ? KEEPER : m.n === founderN() ? s.founder : m.mon ? s.monsignor : b || { sym: '⸸', color: NEOPHYTE_COLOR };
 		return { sym: x.sym || '⸸', color: isColor(x.color) ? x.color : '#b48cff' };
 	}
 	/** Whether the mouse is on the mark of a character drawn at x, y with zoom. */
@@ -2932,12 +2943,21 @@
 		body.append(make('p', 'dim', `${plural(state.members.length, 'member')}, ${on} online. Click someone for their ID card.`));
 		const byName = (/** @type {any} */ a, /** @type {any} */ b) => Number(!!b.on) - Number(!!a.on) || a.name.localeCompare(b.name);
 		const all = [...state.members].sort(byName);
-		const founder = all.filter((/** @type {any} */ m) => m.n === founderN());
+		const keeper = all.filter(isKeeper);
+		if (keeper.length) {
+			body.append(branchTitle(KEEPER));
+			for (const m of keeper) {
+				body.append(drawMemberRow(m, ''));
+			}
+		}
+		const founder = all.filter((/** @type {any} */ m) => m.n === founderN() && !isKeeper(m));
 		if (founder.length) {
 			body.append(branchTitle(s.founder));
 			for (const m of founder) {
 				body.append(drawMemberRow(m, ''));
 			}
+		} else if (isTop(state.me)) {
+			body.append(make('p', 'dim', `${s.founder.name}: not yet handed over`));
 		}
 		const mons = all.filter((/** @type {any} */ m) => m.mon);
 		if (mons.length) {
@@ -2971,7 +2991,7 @@
 				}
 			}
 		}
-		const waiting = all.filter((/** @type {any} */ m) => !m.places.length && !m.mon && m.n !== founderN());
+		const waiting = all.filter((/** @type {any} */ m) => !m.places.length && !m.mon && m.n !== founderN() && !isKeeper(m));
 		if (waiting.length) {
 			body.append(make('div', 'branch', `${NEOPHYTE} · ${waiting.length}`));
 			for (const m of waiting) {
