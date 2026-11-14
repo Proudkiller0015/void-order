@@ -67,6 +67,14 @@ tumble and land in a small tray. A roll is only played if it is the sender's own
 says when the roller had rolled again after it. Each member rolls at most 8 times a minute; the tray plays one roll at a
 time.
 
+## The Void mark
+
+In a chat room, members who run the add-on carry a small Void mark over their character, so members spot each other on
+sight: the Founder's 𓁹‿𓁹, a Monsignor's 🎇, or their branch's symbol (⸸ while they wait for a place). The mouse on it
+shows their place; clicking it opens their ID card. Each add-on tells the room it is there with a hidden message when it
+comes in, and the mark only shows for someone the Order knows as a member. Only members see the marks. _My card_ ›
+_Settings_ turns them off.
+
 ## The Order chat in SlimeBeep
 
 Members who also run [SlimeBeep](https://github.com/Proudkiller0015/slimebeep) are put in the Order's group chat there

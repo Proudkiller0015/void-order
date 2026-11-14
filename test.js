@@ -123,6 +123,7 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false }
 			Player.WhiteList = [];
 			Player.FriendList = [];
 			Player.ExtensionSettings = { ...settings };
+			Player.OnlineSharedSettings = { GameVersion };
 			CharacterAppearanceSetDefault(Player);
 			const them = CharacterLoadOnline(
 				{
@@ -615,6 +616,97 @@ const openCardOf = async (page, name) => {
 		check('six notes from one person in a moment play one roll', played.length === 1, played);
 		await slash(page, 'roll 2d7');
 		check('a die the Void has not is refused', await page.evaluate(() => window.local.some((l) => /The Void rolls d4, d6/.test(l))));
+
+		// The Void mark over members in the room who run the add-on (Fay's room: Fay, Ann, and Zed, who isn't a member).
+		const fp = fay.page;
+		check(
+			'a member tells the room she runs the add-on',
+			await fp.evaluate(() =>
+				window.sent.some(([, d]) => d.Type === 'Hidden' && d.Dictionary[0].here === true && d.Dictionary[0].reply === true),
+			),
+		);
+		await fp.evaluate(() => {
+			ChatRoomCharacter.push(
+				CharacterLoadOnline(
+					{
+						ID: 'z',
+						Name: 'Zed',
+						Nickname: 'Zed',
+						MemberNumber: 99,
+						AssetFamily: 'Female3DCG',
+						Appearance: [],
+						Title: '',
+						Ownership: null,
+						Lovership: [],
+						ItemPermission: 1,
+						BlockItems: [],
+						LimitedItems: [],
+						FavoriteItems: [],
+						WhiteList: [],
+						BlackList: [],
+						OnlineSharedSettings: {},
+						ArousalSettings: {},
+						Game: {},
+						Inventory: [],
+					},
+					15,
+				),
+			);
+			document.getElementById('void-panel')?.remove();
+		});
+		/** Draws a character's overlay at 0,0 on a cleared canvas, and whether the mark's middle got painted. */
+		const marked = (i) =>
+			fp.evaluate((i) => {
+				for (const c of ChatRoomCharacter) c.OnlineSharedSettings = { GameVersion, ...c.OnlineSharedSettings };
+				MainCanvas.clearRect(0, 0, 2000, 1000);
+				ChatRoomCharacterViewDrawOverlay(ChatRoomCharacter[i], 0, 0, 1);
+				return MainCanvas.getImageData(347, 97, 1, 1).data[3] > 0;
+			}, i);
+		check('Ann, who hasn’t said she is here, has no mark yet', !(await marked(1)));
+		await fp.evaluate(() => (window.sent = []));
+		const hello = (i) =>
+			fp.evaluate((i) => {
+				const h = ChatRoomMessageHandlers.find((x) => x.Description === 'The Void Order ID cards and dice');
+				h.Callback({ Type: 'Hidden', Content: 'VoidOrder', Dictionary: [{ here: true, reply: true }] }, ChatRoomCharacter[i], '', {});
+			}, i);
+		await hello(1);
+		await hello(2);
+		check('once she says so, Ann (the Founder) has the mark', await marked(1));
+		check(
+			'and is answered, so she sees Fay’s',
+			await fp.evaluate(() => window.sent.some(([, d]) => d.Type === 'Hidden' && d.Dictionary[0].here === true && !d.Dictionary[0].reply)),
+		);
+		check('Zed runs the add-on but is no member: no mark', !(await marked(2)));
+		check('Fay has her own mark', await marked(0));
+		await fp.evaluate(() => {
+			MainCanvas.fillStyle = '#1a1024';
+			MainCanvas.fillRect(0, 0, 2000, 1000);
+			CharacterAppearanceSetDefault(ChatRoomCharacter[1]);
+			DrawCharacter(ChatRoomCharacter[0], 250, 0, 1);
+			DrawCharacter(ChatRoomCharacter[1], 750, 0, 1);
+			MouseX = 750 + 347;
+			MouseY = 97;
+			ChatRoomCharacterViewDrawOverlay(ChatRoomCharacter[0], 250, 0, 1);
+			ChatRoomCharacterViewDrawOverlay(ChatRoomCharacter[1], 750, 0, 1);
+		});
+		// The login screen's page elements are still up in this fake room: hidden for the picture.
+		await fp.evaluate(() => document.querySelectorAll('body > :not(canvas)').forEach((el) => el.classList.add('vo-test-hidden')));
+		await fp.addStyleTag({ content: '.vo-test-hidden { visibility: hidden !important; }' });
+		await shot(fp, '14-room-marks');
+		await fp.evaluate(() => document.querySelectorAll('.vo-test-hidden').forEach((el) => el.classList.remove('vo-test-hidden')));
+		await fp.evaluate(() => ChatRoomCharacterViewClickCharacter(ChatRoomCharacter[1], 750, 0, 1, 347, 97));
+		await fp.waitForSelector('#void-card', { timeout: 5000 }).catch(() => {});
+		check(
+			"clicking Ann's mark opens her ID card",
+			/Ann[\s\S]*Member #11/.test(await fp.evaluate(() => document.getElementById('void-card')?.innerText || '')),
+		);
+		await fp.evaluate(() => {
+			document.getElementById('void-card')?.remove();
+			localStorage.setItem('voidorder.roomBadges', 'false');
+		});
+		check('the setting turns the marks off', !(await marked(1)));
+		await fp.evaluate(() => localStorage.removeItem('voidorder.roomBadges'));
+		await slash(fp, '');
 
 		// Someone showing their ID in the room: the card comes from the server.
 		await page.evaluate(() => {

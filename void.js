@@ -430,6 +430,21 @@
 		return lines;
 	}
 
+	/** A member's place in a few words: "Founder · Monsignor", "Warmage", "Paladin - Knight", "Awaiting placement". */
+	function placeSummary(/** @type {any} */ m) {
+		const s = structure();
+		const parts = [];
+		if (m.n === founderN()) {
+			parts.push(s.founder.name);
+		}
+		if (m.mon) {
+			parts.push(s.monsignor.name);
+		}
+		const title = hybridTitle(m);
+		parts.push(...(title ? [title] : m.places.map((/** @type {any} */ p) => placeText(p, m))));
+		return parts.join(' · ') || 'Awaiting placement';
+	}
+
 	// ---- Who stands where (the server decides; this only shows what you may do)
 	const isMember = () => !!state && state.status === 'member';
 	const founderN = () => (state && state.meta ? state.meta.founder : 0);
@@ -819,6 +834,12 @@
 				cardWanted.add(n);
 				ws.send(JSON.stringify({ t: 'card', member: n }));
 				setTimeout(() => cardWanted.delete(n), 10000);
+			} else if (d && d.here === true && n !== w.Player.MemberNumber) {
+				roomVoid.add(n);
+				if (d.reply === true && isMember() && Date.now() - (hereAnswered.get(n) || 0) > 10000) {
+					hereAnswered.set(n, Date.now());
+					sendHere(false);
+				}
 			} else if (d && typeof d.roll === 'string' && n !== w.Player.MemberNumber && pref('roomDice', true)) {
 				// At most one roll a second from each person, and a few waiting.
 				if (Date.now() - (roomRolls.get(n) || 0) < 1000 || diceQueue.length >= DICE_QUEUE) {
@@ -830,6 +851,146 @@
 		});
 		return false;
 	}
+	// ---- The Void mark over the members in the room
+	/** Where the mark sits on a character (in the game's unzoomed character space): under SlimeBeep's slime. */
+	const MARK = { x: 330, y: 80, size: 34 };
+	/** Members in this room who run the add-on: they said so with a hidden note when they came in. */
+	const roomVoid = new Set();
+	/** @type {Map<number, number>} When each person's "who's here" was last answered. */
+	const hereAnswered = new Map();
+	/** The room you are in, and the room you told you are here. */
+	let lastRoom = '';
+	let toldHere = '';
+	/** A hidden note to the room that you run the add-on; `reply` asks the others to say so too. */
+	const sendHere = (/** @type {boolean} */ reply) =>
+		w.ServerSend('ChatRoomChat', { Content: HIDDEN, Type: 'Hidden', Dictionary: [{ here: true, ...(reply ? { reply: true } : {}) }] });
+	/** Forgets who was here when you change rooms, and tells a new room you are here (members only). */
+	function hereTick() {
+		const room = w.CurrentScreen === 'ChatRoom' && w.ChatRoomData && w.ChatRoomData.Name ? String(w.ChatRoomData.Name) : '';
+		if (room !== lastRoom) {
+			lastRoom = room;
+			toldHere = '';
+			roomVoid.clear();
+		}
+		if (room && isMember() && toldHere !== room) {
+			toldHere = room;
+			sendHere(true);
+		}
+	}
+	/** The member under character C's mark, if it shows: they run the add-on, they are a member, and so are you. */
+	function markedMember(/** @type {any} */ C) {
+		if (!C || !C.MemberNumber || !isMember() || !pref('roomBadges', true)) {
+			return null;
+		}
+		if (typeof w.ChatRoomHideIconState === 'number' && w.ChatRoomHideIconState > 0) {
+			return null;
+		}
+		const n = C.MemberNumber;
+		const m = memberOf(n);
+		return m && !m.invited && (n === w.Player.MemberNumber || roomVoid.has(n)) ? m : null;
+	}
+	/** @type {Map<string, HTMLCanvasElement>} Drawn marks, by symbol and colour. */
+	const markImages = new Map();
+	/** A mark: the symbol in a dark violet disc with a glowing ring in the branch's colour. */
+	function markImage(/** @type {string} */ sym, /** @type {string} */ color) {
+		const k = `${sym}|${color}`;
+		let c = markImages.get(k);
+		if (!c) {
+			c = document.createElement('canvas');
+			c.width = c.height = 72;
+			const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+			const disc = g.createRadialGradient(36, 30, 4, 36, 36, 34);
+			disc.addColorStop(0, '#3a1d66');
+			disc.addColorStop(1, '#0b0614');
+			g.fillStyle = disc;
+			g.shadowColor = color;
+			g.shadowBlur = 8;
+			g.beginPath();
+			g.arc(36, 36, 30, 0, Math.PI * 2);
+			g.fill();
+			g.lineWidth = 3;
+			g.strokeStyle = color;
+			g.stroke();
+			g.shadowBlur = 6;
+			g.fillStyle = color;
+			g.textAlign = 'center';
+			g.textBaseline = 'middle';
+			let px = 34;
+			do {
+				g.font = `600 ${px}px Georgia, 'Segoe UI Symbol', 'Segoe UI Historic', serif`;
+				px -= 2;
+			} while (g.measureText(sym).width > 46 && px > 10);
+			g.fillText(sym, 36, 38);
+			markImages.set(k, c);
+		}
+		return c;
+	}
+	/** A member's mark: the Founder's, a Monsignor's, their main branch's, or the Order's ⸸ while they wait for a place. */
+	function markOf(/** @type {any} */ m) {
+		const s = structure();
+		const b = m.places[0] && branchOf(m.places[0].b);
+		const x = m.n === founderN() ? s.founder : m.mon ? s.monsignor : b || { sym: '⸸', color: '#b48cff' };
+		return { sym: x.sym || '⸸', color: isColor(x.color) ? x.color : '#b48cff' };
+	}
+	/** Whether the mouse is on the mark of a character drawn at x, y with zoom. */
+	const onMark = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) =>
+		typeof w.MouseIn === 'function' && w.MouseIn(x + MARK.x * zoom, y + MARK.y * zoom, MARK.size * zoom, MARK.size * zoom);
+	/** Draws the Void mark over a member in the room, and their place while the mouse is on it. */
+	function drawMark(/** @type {any} */ C, /** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) {
+		const m = markedMember(C);
+		// The game's own canvas (its MainCanvas variable isn't on window).
+		const g = /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
+		if (!m || !g) {
+			return;
+		}
+		const { sym, color } = markOf(m);
+		g.drawImage(markImage(sym, color), x + MARK.x * zoom, y + MARK.y * zoom, MARK.size * zoom, MARK.size * zoom);
+		if (onMark(x, y, zoom) && typeof w.DrawTextFit === 'function') {
+			w.DrawTextFit(placeSummary(m), x + 250 * zoom, y + (MARK.y + MARK.size / 2) * zoom, 150 * zoom, color, 'black');
+		}
+	}
+	/** A click on someone's mark opens their ID card; returns whether it was one. */
+	function clickMark(/** @type {any} */ C, /** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) {
+		const m = markedMember(C);
+		if (!m || !onMark(x, y, zoom)) {
+			return false;
+		}
+		guard(() => openCard(m.n, note));
+		return true;
+	}
+	/**
+	 * Hooks the room's character overlay through the game's mod SDK (so other add-ons' marks keep working): draws the
+	 * marks, and opens a card when one is clicked. A mark that fails to draw stops the marks, with one warning.
+	 */
+	function hookRoom() {
+		const sdk = w.bcModSdk;
+		if (!sdk || typeof sdk.registerMod !== 'function') {
+			return;
+		}
+		const mod = sdk.registerMod({
+			name: 'VoidOrder',
+			fullName: 'The Void Order',
+			version: VERSION,
+			repository: 'https://github.com/Proudkiller0015/void-order',
+		});
+		let broken = false;
+		mod.hookFunction('ChatRoomCharacterViewDrawOverlay', 0, (/** @type {any[]} */ args, /** @type {(a: any[]) => any} */ next) => {
+			const r = next(args);
+			if (!broken) {
+				try {
+					drawMark(args[0], args[1], args[2], args[3]);
+				} catch (e) {
+					broken = true;
+					report(e);
+				}
+			}
+			return r;
+		});
+		mod.hookFunction('ChatRoomCharacterViewClickCharacter', 0, (/** @type {any[]} */ args, /** @type {(a: any[]) => any} */ next) =>
+			!broken && clickMark(args[0], args[1], args[2], args[3]) ? undefined : next(args),
+		);
+	}
+
 	/** Looks up a roll shown in the room and plays it, if it is the sender's and fresh. */
 	async function fetchRoll(/** @type {string} */ id, /** @type {number} */ sender) {
 		const r = await req({ t: 'getroll', id });
@@ -1409,18 +1570,7 @@
 		if (!isMember()) {
 			return { guest: 'Not a member', invited: 'Invited', mismatch: 'Key not recognised' }[state.status] || '';
 		}
-		const me = state.me;
-		const s = structure();
-		const parts = [];
-		if (me.n === founderN()) {
-			parts.push(s.founder.name);
-		}
-		if (me.mon) {
-			parts.push(s.monsignor.name);
-		}
-		const title = hybridTitle(me);
-		parts.push(...(title ? [title] : me.places.map((/** @type {any} */ p) => placeText(p, me))));
-		return parts.join(' · ') || 'Awaiting placement';
+		return placeSummary(state.me);
 	}
 	/** An input bound to drafts[k]. */
 	function field(/** @type {string} */ k, /** @type {string} */ value, /** @type {number} */ max, tag = 'input') {
@@ -2648,6 +2798,7 @@
 			['shareRoom', 'Show the Order which public room I am in', true],
 			['roomCards', 'Open ID cards people show in my room', true],
 			['roomDice', 'Play the Void dice people roll in my room', true],
+			['roomBadges', 'Show the Void mark over members in my room', true],
 			['sideTab', 'Show the ⸸ tab on the left of the screen', true],
 		]) {
 			const l = check(` ${text}`, pref(String(k), dflt), (on) => {
@@ -2743,6 +2894,7 @@
 			roomTick();
 			remindTick();
 			chatTick();
+			hereTick();
 			drawTab();
 		});
 	}
@@ -2818,6 +2970,7 @@
 					}
 				}
 			});
+			hookRoom();
 			connect();
 			setInterval(tick, 2000);
 		});
