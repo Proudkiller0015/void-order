@@ -14,6 +14,8 @@
 	const VERSION = '2.0.0';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
 	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
+	/** Where the add-on's pictures are (a test page sets VoidOrderAssets). */
+	const ASSETS = w.VoidOrderAssets || 'https://proudkiller0015.github.io/void-order/assets/';
 	/** Where the key is kept in the account (Player.ExtensionSettings), synced to every device. */
 	const SETTINGS_KEY = 'VoidOrder';
 	/** Content of the hidden room messages that show an ID card or a dice roll to the room's Void Order users. */
@@ -657,6 +659,20 @@
 		#void-panel .contract .quote { font-style: italic; color: #e9dcff; margin: 4px 0; }
 		#void-panel .contract .notes { white-space: pre-wrap; margin: 4px 0; padding: 6px 8px; border-left: 2px solid #ff8a5c; background: #ff8a5c10; border-radius: 4px; }
 		#void-panel .contract a, #void-panel .hunt-head a { color: var(--v-accent); }
+		#void-panel .weapon { display: grid; grid-template-columns: 96px 1fr auto; gap: 10px; align-items: center; }
+		#void-panel .weapon .stats { font-size: 12px; color: #e9dcff; }
+		.void-sprite { display: flex; align-items: center; justify-content: center; border-radius: 10px; background: radial-gradient(circle at 50% 40%, #4a3270, #160d24); overflow: hidden; }
+		.void-sprite img { max-width: 92%; max-height: 92%; object-fit: contain; filter: drop-shadow(0 0 6px #8a4dff88); }
+		.void-sprite.none { border: 1px dashed #5b3d8f; color: #6a4aa0; font: 600 22px Georgia, serif; }
+		.void-rarity { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+		#void-card .carried { margin-top: 10px; }
+		#void-card .tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--v-line); color: var(--v-dim); white-space: nowrap; }
+		#void-card .carried .row { justify-content: center; gap: 4px; }
+		#void-card .carried .void-sprite { width: 100%; height: 150px; }
+		#void-card .carried .wname { font: 600 16px Georgia, serif; color: #fff; margin-top: 4px; }
+		#void-card .carried .stats { font-size: 12px; color: #e9dcff; }
+		#void-card .arms { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 6px; }
+		#void-card .arms .void-sprite { width: 44px; height: 44px; cursor: help; }
 		#void-panel .threat { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
 		#void-card .foot { margin-top: 12px; font-size: 11px; color: var(--v-dim); border-top: 1px solid #ffffff14; padding-top: 8px; display: flex; gap: 8px; align-items: center; justify-content: center; }
 		#void-card .copy { border: 1px solid #5b3d8f; border-radius: 999px; background: none; color: var(--v-dim); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
@@ -956,6 +972,7 @@
 				card.append(line);
 			}
 		}
+		card.append(cardArms(c));
 		const foot = make('div', 'foot');
 		foot.append(make('span', '', `${fromRoom ? 'Shown in this room · ' : ''}In the Order since ${date(c.joined)}`));
 		const copy = make('button', 'copy', 'Copy ID');
@@ -1143,6 +1160,219 @@
 		}
 		guard(() => openCard(m.n, note));
 		return true;
+	}
+
+	// ---- The Armory: the Order's catalog of weapons, and who has which
+	/** @type {any[] | null} The catalog (assets/weapons/index.json): { id, name, rarity, heroic, void, melee, kind, stats, sprite }. */
+	let catalog = null;
+	/** @type {Promise<any[]> | null} */
+	let catalogLoading = null;
+	/** Loads the catalog once; a failed load is tried again next time. */
+	function loadCatalog() {
+		catalogLoading =
+			catalogLoading ||
+			fetch(`${ASSETS}weapons/index.json`)
+				.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`the Armory's list: HTTP ${r.status}`))))
+				.then((list) => {
+					catalog = Array.isArray(list) ? list : [];
+					render();
+					return catalog;
+				})
+				.catch((e) => {
+					catalogLoading = null;
+					throw e;
+				});
+		return catalogLoading;
+	}
+	/** The app admin's own weapon, shown as a scythe and marked as hers. */
+	const SIGNATURE = 100;
+	const weaponOf = (/** @type {number} */ id) => (catalog || []).find((x) => x.id === id) || null;
+	/** A weapon's kind in the catalog's menu ("Shotguns", "Staffs"…). */
+	const kindOf = (/** @type {any} */ x) => (x.id === SIGNATURE ? 'Scythes' : x.kind || 'Other');
+	const RARITY = {
+		Common: '#c9c4d8',
+		Uncommon: '#7fd48a',
+		Rare: '#6fb3ff',
+		'Very rare': '#c08cff',
+		Cursed: '#ff6b6b',
+		Legendary: '#ffb84d',
+		Personal: '#ff7ad9',
+	};
+	/** A weapon's picture in a box, or a plain mark for one not drawn yet. */
+	function sprite(/** @type {any} */ x, /** @type {number} */ size) {
+		const box = make('div', `void-sprite${x.sprite ? '' : ' none'}`);
+		if (size) {
+			box.style.width = box.style.height = `${size}px`;
+		}
+		if (x.sprite) {
+			const img = make('img');
+			img.alt = x.name;
+			img.src = `${ASSETS}weapons/${x.id}.png`;
+			box.append(img);
+		} else {
+			box.textContent = '⸸';
+			box.title = 'Not drawn yet';
+		}
+		return box;
+	}
+	/** A weapon's rarity, Void Order and heroic marks, as tags. */
+	function weaponTags(/** @type {any} */ x) {
+		const row = make('span', 'row');
+		row.style.display = 'inline-flex';
+		const r = make('span', 'void-rarity', x.rarity);
+		r.style.color = RARITY[x.rarity] || '#c9c4d8';
+		row.append(r);
+		if (x.void) {
+			row.append(make('span', 'tag', '⸸ Void Order'));
+		}
+		if (x.heroic) {
+			row.append(make('span', 'tag', 'Heroic'));
+		}
+		if (x.id === SIGNATURE) {
+			row.append(make('span', 'tag', 'Signature weapon'));
+		}
+		return row;
+	}
+	/** A weapon's stats on one line ("+3 Base damage · +1 Speed"), or '' when it has none. */
+	const statsLine = (/** @type {any} */ x) => (Array.isArray(x.stats) ? x.stats.join(' · ') : '');
+	/** The weapons a member has, in the catalog's order. */
+	const armsOf = (/** @type {any} */ m) => (catalog || []).filter((x) => (m.weapons || []).includes(x.id));
+	/** The Armory tab: every weapon by kind, who has it, and carrying your own. */
+	function drawArmory(/** @type {HTMLElement} */ body) {
+		if (!catalog) {
+			body.append(make('p', 'dim', 'Opening the Armory…'));
+			guard(loadCatalog, panelSay);
+			return;
+		}
+		const me = state.me;
+		body.append(
+			make(
+				'p',
+				'dim',
+				'The Order’s catalog of weapons for its DnD games. The hierarchy issues them; you carry one of yours, and it shows on your ID card.',
+			),
+		);
+		const filter = field('w:filter', '', 40);
+		filter.placeholder = 'Find a weapon';
+		filter.addEventListener('input', () => render(true));
+		const kinds = [...new Set(catalog.map(kindOf))];
+		const kind = drafts['w:kind'] || '';
+		const row = make('div', 'row');
+		filter.classList.add('grow');
+		filter.style.width = 'auto';
+		row.append(
+			filter,
+			select([['', 'Every kind'], ['mine', 'Mine'], ...kinds.map((k) => /** @type {[string, string]} */ ([k, k]))], kind, (v) => {
+				drafts['w:kind'] = v;
+				render(true);
+			}),
+		);
+		body.append(row);
+		const q = String(drafts['w:filter'] || '').toLowerCase();
+		const mine = me.weapons || [];
+		const shown = catalog.filter(
+			(x) => (!q || x.name.toLowerCase().includes(q)) && (!kind || (kind === 'mine' ? mine.includes(x.id) : kindOf(x) === kind)),
+		);
+		for (const k of kinds) {
+			const list = shown.filter((x) => kindOf(x) === k);
+			if (!list.length) {
+				continue;
+			}
+			body.append(make('h3', '', `${k} · ${list.length}`));
+			for (const x of list) {
+				const box = make('div', 'box weapon');
+				box.id = `weapon-${x.id}`;
+				const text = make('div');
+				text.append(make('b', '', x.name), document.createTextNode(' '), weaponTags(x));
+				const stats = statsLine(x);
+				if (stats) {
+					text.append(make('div', 'stats', stats));
+				}
+				const holders = state.members
+					.filter((/** @type {any} */ m) => (m.weapons || []).includes(x.id))
+					.map((/** @type {any} */ m) => m.name);
+				text.append(make('div', 'dim', holders.length ? `Held by ${holders.join(', ')}` : 'Nobody has it yet'));
+				const side = make('div');
+				if (mine.includes(x.id)) {
+					side.append(
+						me.carry === x.id
+							? button('Put away', () => act({ t: 'carry', weapon: 0 }))
+							: button('Carry', () => act({ t: 'carry', weapon: x.id }), 'b main'),
+					);
+				}
+				box.append(sprite(x, 96), text, side);
+				body.append(box);
+			}
+		}
+		if (!shown.length) {
+			body.append(make('p', 'dim', 'No weapon matches.'));
+		}
+	}
+	/** The weapons part of an ID card: the one carried, big, and the rest in a row. Waits for the catalog if needed. */
+	function cardArms(/** @type {any} */ c) {
+		const wrap = make('div');
+		if (!(c.weapons || []).length) {
+			return wrap;
+		}
+		if (!catalog) {
+			loadCatalog()
+				.then(() => wrap.replaceWith(cardArms(c)))
+				.catch(() => {});
+			return wrap;
+		}
+		const carried = weaponOf(c.carry);
+		if (carried) {
+			const big = make('div', 'carried');
+			big.append(sprite(carried, 0), make('div', 'wname', carried.name), weaponTags(carried));
+			const stats = statsLine(carried);
+			if (stats) {
+				big.append(make('div', 'stats', stats));
+			}
+			wrap.append(big);
+		}
+		const rest = armsOf(c).filter((x) => x.id !== c.carry);
+		if (rest.length) {
+			const row = make('div', 'arms');
+			for (const x of rest) {
+				const s = sprite(x, 44);
+				s.title = `${x.name} (${x.rarity})${statsLine(x) ? `: ${statsLine(x)}` : ''}`;
+				row.append(s);
+			}
+			wrap.append(row);
+		}
+		return wrap;
+	}
+	/** Issuing weapons in Manage: the ones a member has (✕ takes one back), and a pick of the others to issue. */
+	function drawIssue(/** @type {any} */ m) {
+		const wrap = make('div', 'row');
+		wrap.style.marginTop = '6px';
+		if (!catalog) {
+			guard(loadCatalog, panelSay);
+			return wrap;
+		}
+		const has = armsOf(m);
+		wrap.append(make('span', 'dim', has.length ? 'Weapons:' : 'No weapons yet.'));
+		if (m.n !== state.appAdmin) {
+			for (const x of has) {
+				wrap.append(button(`${x.name} ✕`, () => act({ t: 'issue', member: m.n, weapon: x.id, on: false })));
+			}
+		} else {
+			wrap.append(make('span', 'dim', 'every one (early access)'));
+		}
+		const others = catalog.filter((x) => !has.includes(x));
+		if (others.length) {
+			const k = `iss:${m.n}`;
+			const sel = select(
+				others.map((x) => /** @type {[string, string]} */ ([String(x.id), `${x.name} (${x.rarity})`])),
+				drafts[k] || String(others[0].id),
+				(v) => (drafts[k] = v),
+			);
+			wrap.append(
+				sel,
+				button('Issue', () => act({ t: 'issue', member: m.n, weapon: Number(sel.value) })),
+			);
+		}
+		return wrap;
 	}
 
 	// ---- The hunt board: the Void Order Prison's public board, as the Order's server last read it
@@ -2211,6 +2441,7 @@
 			['members', 'Members'],
 			['order', 'The Order'],
 			['dice', 'Dice'],
+			['armory', 'Armory'],
 			['hunt', '🎯 Hunt board'],
 		];
 		if (manages()) {
@@ -2293,6 +2524,7 @@
 					join: drawJoin,
 					settings: drawSettings,
 					hunt: drawHunt,
+					armory: drawArmory,
 				};
 				draw[tab](body);
 			}
@@ -3064,6 +3296,9 @@
 				),
 			);
 			box.append(line);
+		}
+		if (topOver(me, m) || m.places.some((/** @type {any} */ p) => leaderOver(me, m, p.b))) {
+			box.append(drawIssue(m));
 		}
 		if (mayCommend(me, m)) {
 			box.append(drawCommend(m));

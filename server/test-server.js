@@ -21,7 +21,7 @@ const relay = { calls: [], inGroup: new Set(), down: false, board: 'fixtures', b
 const FIXTURES = ['hunt-board.html', 'hunt-board-2.html'].map((f) => require('fs').readFileSync(`${__dirname}/test/fixtures/${f}`, 'utf8'));
 const relayServer = require('http').createServer((req, res) => {
 	if (req.url.startsWith('/hunt-board')) {
-		relay.boardHits.push({ url: req.url, agent: req.headers['user-agent'] });
+		relay.boardHits.push({ url: req.url, agent: req.headers['user-agent'], board: relay.board });
 		res.writeHead(200, { 'content-type': 'text/html' });
 		return res.end(relay.board === 'junk' ? '<html><body>Under maintenance</body></html>' : FIXTURES[/[?&]p=2\b/.test(req.url) ? 1 : 0]);
 	}
@@ -516,6 +516,29 @@ async function joined(member, name) {
 	);
 	kim.close();
 
+	// The Armory: weapons from the catalog, issued by those over a member; the app admin has every one, early access.
+	check(listed(a, 11).weapons.length === 100 && listed(a, 11).weapons.includes(100), 'the app admin has every weapon');
+	check(
+		(await b.req({ t: 'issue', member: 13, weapon: 7 })).t === 'ok' && listed(a, 13).weapons.join() === '7',
+		'Bea issues a weapon to Cat',
+	);
+	check(
+		(await b.req({ t: 'issue', member: 14, weapon: 7 })).why === 'you can only issue weapons to members below you',
+		'not to Dan, a Priest',
+	);
+	check(
+		(await c2.req({ t: 'issue', member: 30, weapon: 7 })).why === 'you can only issue weapons to members below you',
+		'Cat issues nothing',
+	);
+	check((await b.req({ t: 'issue', member: 13, weapon: 999 })).why === 'no such weapon', 'only weapons in the catalog');
+	check((await c2.req({ t: 'carry', weapon: 8 })).why === 'that weapon is not yours', 'Cat cannot carry a weapon she lacks');
+	check((await c2.req({ t: 'carry', weapon: 7 })).t === 'ok' && listed(a, 13).carry === 7, 'she carries the one she has');
+	const armed = (await d.req({ t: 'card', member: 13 })).card;
+	check(armed.weapons.join() === '7' && armed.carry === 7, 'her card shows it');
+	await b.req({ t: 'issue', member: 13, weapon: 7, on: false });
+	check(listed(a, 13).weapons.length === 0 && listed(a, 13).carry === 0, 'taken back, she no longer carries it');
+	check((await a.req({ t: 'carry', weapon: 100 })).t === 'ok' && listed(b, 11).carry === 100, 'the app admin carries her own scythe');
+
 	// The hunt board: fetched one page at a time, joined, sent to everyone signed in, and kept when the site fails.
 	const boardOf = (c) => [...c.got].reverse().find((x) => x.t === 'hunt' && x.board)?.board;
 	check(
@@ -545,18 +568,18 @@ async function joined(member, name) {
 		ivyBounty,
 	);
 	check(boardOf(late) && boardOf(late).contracts.length === 102, 'guests get the board too');
-	// Whatever that request set going has finished; then the site turns to junk, and the next refresh reads that.
+	// The site turns to junk; once a refresh has read it, the board is still the last good copy, from before.
 	await wait(2500);
-	const good = (await c2.req({ t: 'hunt' })).board;
 	relay.board = 'junk';
-	await wait(2000);
+	const turned = Date.now();
+	await wait(4500);
 	await c2.req({ t: 'hunt' });
 	await wait(2500);
 	const stale = (await c2.req({ t: 'hunt' })).board;
 	check(
-		relay.boardHits.length >= 3 && stale && stale.contracts.length === 102 && stale.at === good.at,
+		relay.boardHits.some((h) => h.board === 'junk') && stale && stale.contracts.length === 102 && stale.at < turned,
 		'a page that no longer reads keeps the last good copy, and its time',
-		stale && [stale.contracts.length, stale.at, good.at],
+		stale && [stale.contracts.length, stale.at, turned],
 	);
 	relay.board = 'fixtures';
 

@@ -52,8 +52,10 @@ const relay = http.createServer((req, res) => {
 		res.end(JSON.stringify(req.url === '/link/invite' ? { code: `CODE${member}`, gid: 'g1' } : { removed: true }));
 	});
 });
+// The game from BC_ROOT, and the add-on's own pictures under /void-assets/.
 const web = http.createServer((req, res) => {
-	const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
+	const url = decodeURIComponent(req.url.split('?')[0]);
+	const p = url.startsWith('/void-assets/') ? path.join(__dirname, 'assets', url.slice('/void-assets/'.length)) : path.join(ROOT, url);
 	fs.readFile(p, (err, data) => {
 		if (err) {
 			res.writeHead(404);
@@ -180,6 +182,7 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false }
 			ChatRoomSendLocal = (text) => window.local.push(String(text));
 			ServerPlayerExtensionSettingsSync = (k) => window.synced.push(k);
 			window.VoidOrderServer = `${server}/ws?o=${order}`;
+			window.VoidOrderAssets = `${location.origin}/void-assets/`;
 			// Every dice tray that opens, in order.
 			window.trays = [];
 			new MutationObserver(() => {
@@ -333,7 +336,11 @@ const openCardOf = async (page, name) => {
 		await click(page, 'Found the Order');
 		await page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const tabs = await page.evaluate(() => [...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'));
-		check('founding gives the Founder every tab', tabs === 'Orders|Members|The Order|Dice|🎯 Hunt board|Manage|My card|⚙ Settings', tabs);
+		check(
+			'founding gives the Founder every tab',
+			tabs === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|Manage|My card|⚙ Settings',
+			tabs,
+		);
 
 		// Bea joins at once and waits for a place; Ann places her from Manage as a Paladin rank 5.
 		const bea = await peer(12, 'Bea');
@@ -525,6 +532,76 @@ const openCardOf = async (page, name) => {
 			.waitForFunction(() => window.local.some((l) => /Bea commended you: Steadfast/.test(l)), { timeout: 5000 })
 			.catch(() => {});
 		check('Fay hears she was commended', await fay.page.evaluate(() => window.local.some((l) => /Bea commended you: Steadfast/.test(l))));
+
+		// The Armory: the app admin has every weapon (early access) and carries her own; she issues one to Cat.
+		await click(page, 'Armory');
+		await page.waitForSelector('#weapon-100', { timeout: 10000 }).catch(() => {});
+		const arms = await page.evaluate(() => {
+			const box = (id) => document.getElementById(`weapon-${id}`);
+			return {
+				count: document.querySelectorAll('#void-panel .weapon').length,
+				wrath: box(100)?.innerText,
+				wrathKind: box(100)?.previousElementSibling?.textContent,
+				wabbajackStats: !!box(98)?.querySelector('.stats'),
+				wabbajackPlain: !!box(98)?.querySelector('.void-sprite.none'),
+				shotgun: box(1)?.innerText,
+				shotgunPicture: box(1)?.querySelector('.void-sprite img')?.getAttribute('src'),
+			};
+		});
+		check(
+			'the Armory lists the catalog: pictures, rarity, Void and stats; the app admin holds every weapon',
+			arms.count === 100 &&
+				/Queen's Wrath[\s\S]*Personal[\s\S]*Void Order[\s\S]*Signature weapon[\s\S]*Held by Ann/.test(arms.wrath) &&
+				/^Scythes · 1$/.test(arms.wrathKind || '') &&
+				!arms.wabbajackStats &&
+				arms.wabbajackPlain &&
+				/Old sawed-off shotgun[\s\S]*Common[\s\S]*\+3 Base damage · \+1 Speed/.test(arms.shotgun) &&
+				/\/void-assets\/weapons\/1\.png$/.test(arms.shotgunPicture || ''),
+			arms,
+		);
+		await page.evaluate(() => [...document.querySelectorAll('#weapon-100 button')].find((b) => b.textContent === 'Carry').click());
+		await wait(500);
+		check('Ann carries her Queen’s Wrath', bea.state.members.find((m) => m.n === 11)?.carry === 100);
+		await page.evaluate(() => document.getElementById('weapon-1').scrollIntoView());
+		await page
+			.waitForFunction(() => [...document.querySelectorAll('#void-panel img')].slice(0, 6).every((i) => i.complete), { timeout: 5000 })
+			.catch(() => {});
+		await shot(page, '20-armory');
+		await click(page, 'Manage');
+		await page.waitForFunction(() => !!document.querySelector('#void-panel .box select'), { timeout: 5000 }).catch(() => {});
+		await page.evaluate(() => {
+			const box = [...document.querySelectorAll('#void-panel .box')].find((b) =>
+				b.querySelector('.row .grow')?.textContent.startsWith('Cat #'),
+			);
+			const issue = [...box.querySelectorAll('button')].find((b) => b.textContent === 'Issue');
+			const sel = issue.previousElementSibling;
+			sel.value = '7';
+			sel.dispatchEvent(new Event('change'));
+			issue.click();
+		});
+		await wait(500);
+		await cat.req({ t: 'carry', weapon: 7 });
+		check('Ann issues a weapon to Cat from Manage', (cat.state.me.weapons || []).join() === '7');
+		await click(page, 'Members');
+		await openCardOf(page, 'Ann');
+		await page.waitForSelector('#void-card .carried img', { timeout: 5000 }).catch(() => {});
+		check(
+			'the ID card shows the weapon carried, big, and the rest in a row',
+			await page.evaluate(
+				() =>
+					/Queen's Wrath/.test(document.querySelector('#void-card .carried')?.innerText || '') &&
+					document.querySelectorAll('#void-card .arms .void-sprite').length === 99,
+			),
+		);
+		await page.evaluate(() => document.getElementById('void-card')?.remove());
+		await openCardOf(page, 'Cat');
+		await page.waitForFunction(() => document.querySelector('#void-card .carried img')?.complete, { timeout: 5000 }).catch(() => {});
+		check(
+			"Cat's card shows her weapon",
+			/\+/.test(await page.evaluate(() => document.querySelector('#void-card .carried .stats')?.textContent || '')),
+		);
+		await shot(page, '21-card-weapon');
+		await page.evaluate(() => document.getElementById('void-card')?.remove());
 
 		// A branch leader's Manage: only the Paladins below her, and those awaiting a place.
 		const eve = await peer(17, 'Eve');
@@ -1028,7 +1105,7 @@ const openCardOf = async (page, name) => {
 		);
 		check(
 			'another device with the same account signs in as the same member',
-			tabs2 === 'Orders|Members|The Order|Dice|🎯 Hunt board|Manage|My card|⚙ Settings',
+			tabs2 === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|Manage|My card|⚙ Settings',
 			tabs2,
 		);
 		const noteOnLogin = await second.page.evaluate(() => window.local.join('\n'));

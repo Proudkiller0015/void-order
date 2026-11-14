@@ -83,6 +83,15 @@ shows their place; clicking it opens their ID card. Each add-on tells the room i
 comes in, and the mark only shows for someone the Order knows as a member. Only members see the marks. _⚙ Settings_
 turns them off.
 
+## The Armory
+
+The **Armory** tab is the Order's catalog of weapons for its DnD games: each with its picture (a plain mark for those
+not drawn yet), rarity, the Void Order mark, its stats, and who has it. The Founder, admins and branch leaders issue
+weapons to the members below them (_Manage_ › their name), and take them back. You carry one of yours (_Carry_): it
+shows big on your ID card, the others in a row under it. The member who runs the app has every weapon, as early access.
+
+The pictures and the list are in `assets/weapons/`; `tools/export-weapons.py` makes them again as more are finished.
+
 ## The hunt board
 
 The **🎯 Hunt board** tab is a copy of the Void Order Prison's public [hunt board](https://vo-p.com/hunt-board): the

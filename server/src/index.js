@@ -30,6 +30,7 @@
 
 import { DurableObject } from 'cloudflare:workers';
 import { HUNT_BOARD_URL, huntBoardPages, parseHuntBoard } from './hunt-board.js';
+import WEAPONS from '../../assets/weapons/index.json';
 
 const LIMITS = {
 	/** Longest Order or member name, and the longest element. */
@@ -89,6 +90,8 @@ const PLACES = 2;
 const FORMS = ['f', 'm', 'n'];
 /** The pictures a commendation can carry (the client draws them). */
 const MEDALS = ['eye', 'scythe', 'star', 'flame', 'moon', 'crown', 'shield', 'rose', 'skull', 'chain', 'key', 'heart'];
+/** The Armory: every weapon in the Order's catalog, by id (the client shows them from the same index). */
+const WEAPON_IDS = WEAPONS.map((x) => x.id);
 /** Who sees a member's public room: everyone in the Order, only those over them, or nobody. */
 const ROOM_FOR = ['all', 'over', 'none'];
 const DICE = [4, 6, 8, 10, 12, 20, 100];
@@ -127,6 +130,7 @@ const ORIGINS = [
  *   `places`: the first is their main branch. `mon`: a Monsignor. `pub` is null until a member brought in joins.
  *   `roomFor`: who sees the public room they are in (ROOM_FOR; everyone when unset). `medals`: their commendations
  *   (see Medal), oldest first.
+ *   `weapons`: the Armory's weapons issued to them; `carry`: the one they carry (0 for none).
  * @typedef {{ id: string, icon: string, name: string, reason: string, by: number, byName: string, at: number }} Medal
  */
 
@@ -640,6 +644,8 @@ export class Order extends DurableObject {
 			form: m.form,
 			el: m.el,
 			places: m.places,
+			weapons: this.weaponsOf(m.n),
+			carry: m.carry || 0,
 			...(m.mon ? { mon: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
@@ -769,9 +775,9 @@ export class Order extends DurableObject {
 
 	/**
 	 * A client message (JSON with `t`). Before sign-in only 'auth'. Anyone signed in: 'card', 'room', 'roll',
-	 * 'getroll'. Guests: 'join', and 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave', and with
-	 * the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add', 'about', 'award', 'unaward',
-	 * 'order', 'unorder', 'founder'. A request may carry a number `rid`, sent back with its 'ok' or 'error'.
+	 * 'getroll', 'hunt'. Guests: 'join', and 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave',
+	 * 'chat', 'carry', and with the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add',
+	 * 'about', 'award', 'unaward', 'issue', 'order', 'unorder', 'founder'. A request may carry a number `rid`, sent back with its 'ok' or 'error'.
 	 */
 	async webSocketMessage(ws, raw) {
 		const a = ws.deserializeAttachment();
@@ -860,6 +866,10 @@ export class Order extends DurableObject {
 					return await this.award(ws, me, p);
 				case 'unaward':
 					return await this.unaward(ws, me, p);
+				case 'issue':
+					return await this.issue(ws, me, p);
+				case 'carry':
+					return await this.carry(ws, me, p);
 				default:
 					return this.no(ws, 'unknown', p);
 			}
@@ -1317,6 +1327,8 @@ export class Order extends DurableObject {
 				bio: m.bio,
 				joined: m.joined,
 				medals: m.medals || [],
+				weapons: this.weaponsOf(m.n),
+				carry: m.carry || 0,
 				pic,
 				order: this.meta ? this.meta.name : '',
 			},
@@ -1554,6 +1566,53 @@ export class Order extends DurableObject {
 		if (this.hunt.next.length) {
 			await this.ctx.storage.setAlarm(Date.now() + 1000);
 		}
+	}
+
+	// ---- The Armory
+	/** The weapons member n has: those issued to them; every one for the app admin (early access). */
+	weaponsOf(n) {
+		const m = this.members[n];
+		return n === this.appAdmin ? WEAPON_IDS : (m && m.weapons) || [];
+	}
+	/**
+	 * Issues a weapon to a member, or takes it back: { member, weapon, on }. The Founder and admins to anyone they act
+	 * on (themselves too), a leader to those below them.
+	 */
+	async issue(ws, me, p) {
+		const m = this.target(ws, p);
+		if (!m) {
+			return;
+		}
+		if (!this.topOver(me, m.n) && !m.places.some((x) => this.leaderOver(me, m.n, x.b))) {
+			return this.no(ws, 'you can only issue weapons to members below you', p);
+		}
+		const w = WEAPONS.find((x) => x.id === p.weapon);
+		if (!w) {
+			return this.no(ws, 'no such weapon', p);
+		}
+		const had = (m.weapons || []).filter((id) => id !== w.id);
+		m.weapons = p.on === false ? had : [...had, w.id];
+		if (p.on === false && m.carry === w.id && m.n !== this.appAdmin) {
+			m.carry = 0;
+		}
+		await this.putMember(m.n);
+		await this.note(
+			me,
+			`${this.nameOf(me)} ${p.on === false ? 'took back' : 'issued'} ${w.name} ${p.on === false ? 'from' : 'to'} ${this.nameOf(m.n)}`,
+		);
+		this.ok(ws, p);
+		this.broadcast();
+	}
+	/** The weapon you carry, one of yours: { weapon } (0 to carry none). */
+	async carry(ws, me, p) {
+		const id = Number(p.weapon) || 0;
+		if (id && !this.weaponsOf(me).includes(id)) {
+			return this.no(ws, 'that weapon is not yours', p);
+		}
+		this.members[me].carry = id;
+		await this.putMember(me);
+		this.ok(ws, p);
+		this.broadcast();
 	}
 
 	// ---- Commendations
