@@ -25,6 +25,8 @@
 		const images = new Set();
 		/** @type {Map<string, string>} The items' texts, by the game's text key. */
 		const texts = new Map();
+		/** @type {Map<string, string>} The items' layer names (LayerNames.csv keys), for the Layering and colour screens. */
+		const layerNames = new Map();
 		/** @type {(() => void)[]} Called once the items are registered. */
 		const whenReady = [];
 		let ready = false;
@@ -39,6 +41,53 @@
 		};
 		/** Whether an asset is one of the Armory's. */
 		const isArmory = (/** @type {any} */ asset) => !!asset && !!asset.Group && asset.Group.Name === GROUP && items.has(asset.Name);
+		/**
+		 * Gives the game's LayerNames text our layers' names ("Blade", "Guard", "Hand layer"…), which its Layering and
+		 * colour screens show: in every LayerNames cache already built, and in each one built later (the colour screen
+		 * makes its own). The game's TextCache is a top-level class, not on window, so it can't be hooked like a
+		 * function: its cacheLines is wrapped, and the wrapper only ever adds names after the game's own work.
+		 */
+		/* global TextCache, TextAllScreenCache, ItemColorLayerNames -- the game's top-level declarations */
+		function nameLayers() {
+			const feature = 'Weapon layer names';
+			const T = typeof TextCache === 'function' ? TextCache : null;
+			if (!T || !T.prototype || typeof T.prototype.cacheLines !== 'function' || !layerNames.size) {
+				guard.problem(feature, 'the game keeps its texts differently now');
+				return;
+			}
+			const add = (/** @type {any} */ cache) => {
+				if (cache && cache.cache && /LayerNames\.csv$/.test(String(cache.path))) {
+					for (const [k, v] of layerNames) {
+						cache.cache[k] ??= v;
+					}
+				}
+			};
+			const original = T.prototype.cacheLines;
+			if (!original.voidOrder) {
+				const wrapped = function (/** @type {any[]} */ ...args) {
+					// @ts-ignore - the game's own method, on its own cache
+					const r = original.apply(this, args);
+					try {
+						add(this);
+					} catch (e) {
+						guard.problem(feature, e);
+					}
+					return r;
+				};
+				wrapped.voidOrder = true;
+				T.prototype.cacheLines = wrapped;
+			}
+			try {
+				if (typeof TextAllScreenCache !== 'undefined' && TextAllScreenCache instanceof Map) {
+					for (const cache of TextAllScreenCache.values()) {
+						add(cache);
+					}
+				}
+				add(typeof ItemColorLayerNames !== 'undefined' ? ItemColorLayerNames : null);
+			} catch (e) {
+				guard.problem(feature, e);
+			}
+		}
 		/** The item C wears of this asset. */
 		const wornIn = (/** @type {any} */ C, /** @type {any} */ asset) =>
 			Array.isArray(C.Appearance) ? C.Appearance.find((/** @type {any} */ i) => i && i.Asset === asset) : null;
@@ -178,8 +227,12 @@
 				for (const [k, v] of Object.entries(item.texts || {})) {
 					texts.set(k, String(v));
 				}
+				for (const [k, v] of Object.entries(item.layerNames || {})) {
+					layerNames.set(k, String(v));
+				}
 			}
 			guard.hookGame('ValidationResolveRemoveDiff', 0, 'Keeping weapons on', keepOnRemove);
+			nameLayers();
 			if (guard.gameFunction('CharacterAppearanceBuildMasks')) {
 				guard.hookGame('CharacterAppearanceBuildMasks', 0, 'Hand layer', (args, next) => {
 					const masks = next(args);

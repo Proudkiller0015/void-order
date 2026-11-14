@@ -30,7 +30,9 @@ const web = http.createServer((req, res) => {
 });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 /** The poses, as the game names them (BodyUpper, BodyHands and BodyFull ones; BaseUpper is no pose at all). */
-const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,BackBoxTie,BackElbowTouch,BackCuffs,Kneel,AllFours,Hogtied').split(',');
+const POSES = (
+	process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,BackBoxTie,BackElbowTouch,BackCuffs,Kneel,AllFours,Hogtied'
+).split(',');
 
 (async () => {
 	if (!ROOT || !CHROME) {
@@ -73,7 +75,18 @@ const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,Back
 	const [outName, ...specs] = process.argv.slice(2);
 	const rows = specs.map((spec) => {
 		const m = /^([A-Za-z]+)(?::(\d+))?(?:@(\d+))?$/.exec(spec);
-		return { spec, item: m[1], carry: Number(m[2] || 0), weapon: Number(m[3] || 0), layers: !!process.env.LAYERS, probe: process.env.PROBE || '', wear: (process.env.WEAR || '').split(',').filter(Boolean), nogl: !!process.env.NOGL, prop: process.env.PROP ? JSON.parse(process.env.PROP) : null };
+		return {
+			spec,
+			item: m[1],
+			carry: Number(m[2] || 0),
+			weapon: Number(m[3] || 0),
+			layers: !!process.env.LAYERS,
+			probe: process.env.PROBE || '',
+			wear: (process.env.WEAR || '').split(',').filter(Boolean),
+			nogl: !!process.env.NOGL,
+			prop: process.env.PROP ? JSON.parse(process.env.PROP) : null,
+			color: process.env.COLOR ? JSON.parse(process.env.COLOR) : null,
+		};
 	});
 	const full = [];
 	for (const row of rows) {
@@ -98,6 +111,7 @@ const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,Back
 						if (data.modules.some((m) => m.Key === 'w')) rec.w = row.weapon;
 						ExtendedItemSetOptionByRecord(Player, item, rec, { push: false, refresh: true });
 						if (row.prop) Object.assign(item.Property, row.prop);
+						if (row.color) item.Color = row.color;
 					}
 					PoseSetActive(Player, pose === 'BaseUpper' ? null : pose, true);
 					CharacterRefresh(Player, false);
@@ -128,6 +142,38 @@ const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,Back
 				pose,
 			);
 			full.push({ ...shot, row: row.spec, pose });
+			if (process.env.LAYERING) {
+				// The game's Layering screen on this item, as a player opens it from the item's menu.
+				await page.evaluate(async () => {
+					document.querySelectorAll('body > input, body > select, body > button').forEach((e) => (e.style.display = 'none'));
+					MainCanvas.fillStyle = '#2a2d3a';
+					MainCanvas.fillRect(0, 0, 2000, 1000);
+					DrawCharacter(Player, 0, 0, 1);
+					await Layering.Init(InventoryGet(Player, 'ItemHandheld'), Player);
+				});
+				await wait(2500);
+				await page.evaluate(() => Layering.Resize?.(true));
+				await wait(500);
+				const file = path.join(OUT, `${outName}-layering-${row.spec.replace(/[^A-Za-z0-9@]/g, '_')}.png`);
+				const info = await page.evaluate(() => {
+					const r = document.getElementById(Layering.ID.root);
+					// The login screen's own fields sit over it here (the render page never leaves login): out of the way.
+					document
+						.querySelectorAll('body > input, body > select, body > button, #InputName, #InputPassword')
+						.forEach((e) => (e.style.display = 'none'));
+					return r ? { text: r.innerText, rect: r.getBoundingClientRect().toJSON() } : null;
+				});
+				console.log('layering', JSON.stringify(info));
+				await page.screenshot({ path: file });
+				await page.evaluate(() => {
+					try {
+						Layering.Exit?.();
+					} catch (e) {
+						console.warn('layering exit', e);
+					}
+					document.getElementById('layering')?.remove();
+				});
+			}
 		}
 	}
 	for (const [name, key, size] of [

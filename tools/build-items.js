@@ -21,6 +21,8 @@ const PAGES = 'https://proudkiller0015.github.io/void-order/assets/items';
 const GROUP = 'ItemHandheld';
 /** The checkout's carry options (the Weapons item's Position module), by number: what each is, for the add-on's lines. */
 const CARRY_IDS = ['trigger', 'portarms', 'shoulder', 'back'];
+/** Kinds whose metal comes in parts (blade, guard, pommel): their "Metal" colour is the blade's. */
+const PARTS_KINDS = ['Swords', 'GlowingBlades', 'ShortBlades'];
 /** Blades, maces and staffs say "Held" where guns say "Hand on the trigger". */
 const BLADE_KINDS = ['Swords', 'GlowingBlades', 'ShortBlades', 'Blunt', 'Staffs'];
 /** Queen's Wrath's carry options, by number. */
@@ -57,6 +59,24 @@ const POSE_MAPPING = '__poseMapping';
 /** Marks a reference to one of the game's functions, which the add-on doesn't use. */
 const GAME_FUNCTION = '__gameFunction';
 
+/**
+ * A hidden colour holder (no picture; the drawn layers copy its colour) with a type no weapon or carry has, so the
+ * game's Layering screen doesn't list it beside the layers that draw: it stays a colour of the item all the same
+ * (colours are counted per item, not per shown layer).
+ */
+const unlisted = (/** @type {any} */ l) =>
+	l.HasImage === false && !l.AllowTypes && !l.TextureMask ? { ...l, AllowTypes: { [NEVER.key]: NEVER.value } } : l;
+/** The type no item has: a 'w' (weapon) or 'Position' (Queen's Wrath's carry) option far past the last. */
+const NEVER = { key: 'Position', value: 999 };
+/** A colour part's name in an item: a blade's metal is its blade; only a gun has a stock. */
+const partName = (/** @type {string} */ cat, /** @type {string} */ zone, /** @type {string} */ name) => {
+	if (PARTS_KINDS.includes(cat) && zone === 'Metal') {
+		return 'Blade';
+	}
+	return zone === 'Grip' && !GUN_KINDS.includes(cat) ? 'Grip' : name;
+};
+/** The kinds that are guns (a grip and a stock). */
+const GUN_KINDS = ['Pistols', 'SMGs', 'Rifles', 'SniperRifles', 'Shotguns', 'Crossbows'];
 const git = (...args) => execFileSync('git', ['-C', SRC, ...args], { maxBuffer: 256 * 1024 * 1024 });
 const show = (file) => git('show', `${REF}:BondageClub/${file}`).toString('utf8');
 
@@ -243,6 +263,20 @@ function main() {
 			layers.push({ ...layer, AllowTypes: { w: numbers.length === 1 ? numbers[0] : numbers, ...rest } });
 			copyImage(path.join(art, `Weapons_${layer.Name}.png`), `img/Weapons_${layer.Name}.png`);
 		}
+		// The colours: the hidden holder layers this item's drawn layers copy, in the checkout's order (a gun has no
+		// guard or pommel colour); each weapon's default colours keep the same ones.
+		const holders = weaponsDef.Layer.filter((l) => !l.AllowTypes && l.HasImage === false).map((l) => l.Name);
+		const usedZones = new Set(layers.map((l) => l.CopyLayerColor).filter(Boolean));
+		const keep = holders.map((n, i) => (usedZones.has(n) ? i : -1)).filter((i) => i >= 0);
+		for (let i = layers.length - 1; i >= 0; i--) {
+			if (!layers[i].AllowTypes && layers[i].HasImage === false && !usedZones.has(layers[i].Name)) {
+				layers.splice(i, 1);
+			}
+		}
+		const optionOf = (/** @type {any} */ o) =>
+			o && o.Property && Array.isArray(o.Property.DefaultColor)
+				? { ...o, Property: { ...o.Property, DefaultColor: keep.map((i) => o.Property.DefaultColor[i] ?? 'Default') } }
+				: o;
 		// The carries this item's weapons have pictures for, numbered from 0 in the item (swords: held, on the back).
 		const used = [
 			...new Set(layers.flatMap((l) => (l.AllowTypes && 'Position' in l.AllowTypes ? allowed(l.AllowTypes.Position) : []))),
@@ -287,7 +321,7 @@ function main() {
 			weapons: weapons.map((w) => ({ key: w.key, name: w.name, cat: w.cat })),
 			carries: carried ? used.map((n) => (n === 0 && BLADE_KINDS.includes(cat) ? 'held' : CARRY_IDS[n])) : [],
 			source: 'Weapons',
-			def: { Name: name, ...base, Layer: layers },
+			def: { Name: name, ...base, Layer: layers.map(unlisted) },
 			extended: {
 				...weaponsExt,
 				ScriptHooks: undefined,
@@ -296,18 +330,25 @@ function main() {
 						Name: 'Weapon',
 						Key: 'w',
 						DrawImages: true,
-						Options: weapons.map((w) => w.option),
+						Options: weapons.map((w) => optionOf(w.option)),
 						DrawData: { elementData: weapons.map((w) => ({ imagePath: `${PAGES}/options/${w.key}.png` })) },
 					},
 					...(carried ? [{ ...position, Options: used.map((n) => position.Options[n]) }] : []),
 				],
 			},
 			texts,
-			layerNames: Object.fromEntries(
-				Object.entries(layerNames)
+			// Every layer named for what it is (the Layering screen lists them): a drawn layer as its part.
+			layerNames: Object.fromEntries([
+				...Object.entries(layerNames)
 					.filter(([k]) => k.startsWith(`${GROUP}Weapons`))
-					.map(([k, v]) => [k.replace(`${GROUP}Weapons`, prefix), v]),
-			),
+					.map(([k, v]) => [k.replace(`${GROUP}Weapons`, prefix), partName(cat, k.slice(`${GROUP}Weapons`.length), v)]),
+				...layers
+					.filter((l) => l.CopyLayerColor)
+					.map((l) => [
+						`${prefix}${l.Name}`,
+						partName(cat, l.CopyLayerColor, layerNames[`${GROUP}Weapons${l.CopyLayerColor}`] || l.CopyLayerColor),
+					]),
+			]),
 		});
 	}
 
@@ -321,7 +362,7 @@ function main() {
 		weapons: [{ key: 'QueensWrath', name: "Queen's Wrath", cat: 'Scythes' }],
 		carries: WRATH_CARRY_IDS,
 		source: 'QueensWrath',
-		def: wrathDef,
+		def: { ...wrathDef, Layer: wrathDef.Layer.map(unlisted) },
 		extended: { ...wrathExt, ScriptHooks: undefined },
 		texts: Object.fromEntries(Object.entries(wrathStrings).filter(([k]) => /(Select|Module|Option|Set)/.test(k))),
 		layerNames: Object.fromEntries(Object.entries(layerNames).filter(([k]) => k.startsWith(`${GROUP}QueensWrath`))),

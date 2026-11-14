@@ -531,6 +531,99 @@ const playAround = (page) =>
 			check(`${path}: the mask costs little (10 builds)`, r.msOn <= r.msOff * 1.5 + 20, r);
 		}
 		check('the WebGL path was tested', !!hand.webgl, hand.gl);
+		// Parts: each colour of a sword (blade, grip, glow, guard, pommel) and of Queen's Wrath (with its butt spike)
+		// colours its own part; a gun has only its three; the Layering screen lists the parts, not the hidden colour
+		// holders, under their names.
+		const partsCheck = await page.evaluate(async () => {
+			const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+			const draw = async (item, rec, color) => {
+				CharacterAppearanceSetDefault(Player);
+				InventoryWear(Player, item, 'ItemHandheld');
+				const it = InventoryGet(Player, 'ItemHandheld');
+				ExtendedItemSetOptionByRecord(Player, it, { ...(it.Property?.TypeRecord || {}), ...rec }, { push: false, refresh: false });
+				if (color) it.Color = color;
+				PoseSetActive(Player, null, true);
+				CharacterRefresh(Player, false);
+				const c = Player.Canvas.getContext('2d');
+				let last = null;
+				for (let i = 0, still = 0; i < 80 && still < 3; i++) {
+					CharacterAppearanceBuildCanvas(Player);
+					await wait(100);
+					const d = c.getImageData(0, 0, Player.Canvas.width, Player.Canvas.height).data;
+					let h = 0;
+					for (let k = 0; k < d.length; k += 16) h = (h * 31 + d[k] + d[k + 1] * 3) | 0;
+					still = h === last ? still + 1 : 0;
+					last = h;
+				}
+				return c.getImageData(0, 0, Player.Canvas.width, Player.Canvas.height).data;
+			};
+			const changed = (a, b) => {
+				let n = 0;
+				for (let i = 0; i < a.length; i += 4)
+					if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 60) n++;
+				return n;
+			};
+			const out = {};
+			for (const [item, rec] of [
+				['VoidSwords', { w: 0, Position: 0 }],
+				['QueensWrath', { Position: 1 }],
+			]) {
+				const asset = AssetGet('Female3DCG', 'ItemHandheld', item);
+				const slots = ItemColorGetColorableLayers({ Asset: asset }).map((l) => l.Name);
+				const base = await draw(item, rec, null);
+				const colours = [...InventoryGet(Player, 'ItemHandheld').Color];
+				out[item] = {};
+				for (let i = 0; i < slots.length; i++) {
+					const c = colours.map((x, k) => (k === i ? '#00FF00' : x));
+					out[item][slots[i]] = changed(base, await draw(item, rec, c));
+				}
+			}
+			out.rifleSlots = ItemColorGetColorableLayers({ Asset: AssetGet('Female3DCG', 'ItemHandheld', 'VoidRifles') }).map((l) => l.Name);
+			// The Layering screen on a held sword: its entries and headings.
+			await draw('VoidSwords', { w: 0, Position: 0 }, null);
+			await Layering.Init(InventoryGet(Player, 'ItemHandheld'), Player);
+			await wait(1500);
+			const root = document.getElementById(Layering.ID.root);
+			out.entries = root
+				? [...root.querySelectorAll('.layering-pair:not([hidden]) .layering-pair-text')].map((e) => e.textContent.replace(/­/g, ''))
+				: null;
+			out.headings = root ? [...root.querySelectorAll('[data-layering-group]')].map((e) => e.innerText) : null;
+			try {
+				Layering.Exit?.();
+			} catch (e) {
+				console.warn(e);
+			}
+			root?.remove();
+			CharacterAppearanceSetDefault(Player);
+			CharacterRefresh(Player, false);
+			return out;
+		});
+		console.log('parts', JSON.stringify(partsCheck));
+		const sword = partsCheck.VoidSwords || {};
+		check(
+			"a sword's blade, grip, guard and pommel each take their own colour",
+			['Metal', 'Grip', 'Guard', 'Pommel'].every((k) => sword[k] > 30) && Object.keys(sword).length === 5,
+			sword,
+		);
+		const wrath = partsCheck.QueensWrath || {};
+		check(
+			"Queen's Wrath's parts each take their own colour, the butt spike too",
+			Object.keys(wrath).length === 9 && Object.values(wrath).every((n) => n > 10),
+			wrath,
+		);
+		check('a rifle keeps its three colours', partsCheck.rifleSlots.join() === 'Metal,Grip,Glow', partsCheck.rifleSlots);
+		check(
+			'the Layering screen lists the parts, not the hidden colour holders',
+			!!partsCheck.entries &&
+				partsCheck.entries.length > 0 &&
+				!partsCheck.entries.some((e) => ['Metal', 'Grip', 'Glow', 'Guard', 'Pommel'].includes(e)),
+			partsCheck.entries,
+		);
+		check(
+			'and names them',
+			!!partsCheck.headings && ['Blade', 'Guard', 'Pommel and fittings', 'Hand layer'].every((h) => partsCheck.headings.includes(h)),
+			partsCheck.headings,
+		);
 		const want = {
 			'VoidRifles:0 BaseUpper': 'held',
 			'VoidRifles:0 TapedHands': 'bound',
