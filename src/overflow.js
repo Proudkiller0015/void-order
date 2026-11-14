@@ -38,11 +38,16 @@
 					if (!gl || typeof gl.scissor !== 'function' || !ours(args[0])) {
 						return next(args);
 					}
-					const k = (gl.drawingBufferWidth || 1000) / 1000;
+					// The two pictures each take half the canvas, whatever its width: 1000 in the game, wider when another add-on
+					// (Echo) widens it and moves the character in. Clip to the half this draw is in, never to a guessed box.
+					const width = (gl.canvas && gl.canvas.width) || gl.drawingBufferWidth || 1000;
+					const k = (gl.drawingBufferWidth || width) / width;
+					const half = width / 2;
+					const start = (Number(args[5]) || 0) >= half ? half : 0;
 					const was = gl.isEnabled(gl.SCISSOR_TEST);
 					const box = gl.getParameter(gl.SCISSOR_BOX);
 					gl.enable(gl.SCISSOR_TEST);
-					gl.scissor(Math.round((Number(args[5]) || 0) * k), 0, Math.round(500 * k), gl.drawingBufferHeight);
+					gl.scissor(Math.round(start * k), 0, Math.round(half * k), gl.drawingBufferHeight);
 					try {
 						return next(args);
 					} finally {

@@ -43,6 +43,7 @@ const POSES = (
 	await new Promise((r) => web.listen(PORT, r));
 	const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 	const page = await browser.newPage();
+	if (process.env.FUSAM) page.on('pageerror', (e) => console.log('pageerror', String(e).slice(0, 160)));
 	await page.setViewport({ width: 2000, height: 1000 });
 	await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'load', timeout: 120000 });
 	await page.waitForFunction(() => typeof Asset !== 'undefined' && Asset.length > 1000 && typeof Player !== 'undefined' && !!Player, {
@@ -57,6 +58,34 @@ const POSES = (
 		window.VoidOrderSrc = `${location.origin}/void-src/`;
 		ServerSend = () => {};
 	});
+	if (process.env.FUSAM) {
+		// ADD-ONS: the owner's own FUSAM list (and extra script URLs), loaded before Oculus Nihili as in their browser.
+		await page.evaluate((list) => {
+			localStorage.setItem('fusam.settings', JSON.stringify({ enabledDistributions: JSON.parse(list) }));
+			Player.AccountName = 'TEST';
+			Player.Name = 'Test';
+			Player.MemberNumber = 11;
+		}, process.env.FUSAM);
+		// PRE: scripts that must run before FUSAM (ER, as in the owner's browser): local paths or URLs.
+		for (const u of (process.env.PRE || '').split(' ').filter(Boolean))
+			await page.addScriptTag(/^https?:/.test(u) ? { url: u } : { path: u }).catch((e) => console.log('pre', u, e.message));
+		await page
+			.addScriptTag({ url: 'https://sidiousious.gitlab.io/bc-addon-loader/fusam.js', type: 'module' })
+			.catch((e) => console.log('fusam', e.message));
+		for (const u of (process.env.SCRIPTS || '').split(' ').filter(Boolean)) await page.addScriptTag({ url: u }).catch((e) => console.log('script', u, e.message));
+		await wait(Number(process.env.ADDON_WAIT) || 30000);
+		console.log('mods', await page.evaluate(() => (window.bcModSdk ? bcModSdk.getModsInfo().map((m) => m.name + ' ' + m.version).join(', ') : 'no sdk')));
+		console.log('fusam', await page.evaluate(() => JSON.stringify(window.FUSAM ? Object.entries(FUSAM.addons || {}).map(([k, v]) => k + ':' + (v.status || '')) : 'none')));
+	}
+	if (process.env.HOOKINFO) {
+		console.log('hooks', await page.evaluate(() => {
+			const out = [];
+			for (const [name, info] of bcModSdk.getPatchingInfo()) {
+				if (/GL|DrawImage|Canvas|AppearanceBuild|DrawCharacter/.test(name)) out.push(name + ' <- ' + [...info.hookedByMods, ...Object.keys(info.patchedByMods || {})].join('/'));
+			}
+			return out.join(' | ') + ' || GLDrawCanvas ' + (window.GLDrawCanvas ? GLDrawCanvas.width + 'x' + GLDrawCanvas.height : '?');
+		}));
+	}
 	await page.addScriptTag({ path: path.join(HERE, 'void.js') });
 	await page.waitForFunction(
 		() => window.VoidOrderModules && window.VoidOrderModules.overflow && !!AssetGet('Female3DCG', 'ItemHandheld', 'QueensWrath'),
@@ -72,6 +101,11 @@ const POSES = (
 		ChatRoomCharacter = [Player];
 		CurrentScreen = 'ChatRoom';
 	});
+	if (process.env.NOHAND) {
+		await page.evaluate(() => {
+			for (const a of Asset) if (a.Group.Name === 'ItemHandheld') a.Layer = a.Layer.filter((l) => l.Name !== 'Hand');
+		});
+	}
 	const [outName, ...specs] = process.argv.slice(2);
 	const rows = specs.map((spec) => {
 		const m = /^([A-Za-z]+)(?::(\d+))?(?:@(\d+))?$/.exec(spec);
