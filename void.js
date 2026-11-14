@@ -3213,7 +3213,7 @@
 			make(
 				'p',
 				'dim',
-				'Click dice to add them, then roll. The Order’s server rolls them, so nobody can fake a roll; in a chat room everyone sees it, and Void Order users watch the dice fall.',
+				'Click dice to add them, then roll. In a chat room everyone sees the result, and Oculus Nihili users watch the dice fall.',
 			),
 		);
 		const pool = /** @type {number[]} */ (drafts['d:pool'] ? JSON.parse(drafts['d:pool']) : []);

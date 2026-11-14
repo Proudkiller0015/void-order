@@ -61,7 +61,7 @@ A member number and name are only what the member's game says, so whoever places
 ## The Void dice
 
 The **Dice** tab is a dice tray: d4, d6, d8, d10, d12, d20 and d100, up to ten at once, and a modifier. `/void roll`
-takes the usual notation (`d20`, `2d6+3`, `3d6+1d4-2`). The Order's server rolls them, so nobody can fake a result. In a
+takes the usual notation (`d20`, `2d6+3`, `3d6+1d4-2`). In a
 chat room, everyone sees an emote with the result (no add-on needed), and everyone with the add-on watches the same dice
 tumble and land in a small tray. A roll is only played if it is the sender's own and less than a minute old, and the tray
 says when the roller had rolled again after it. Each member rolls at most 8 times a minute; the tray plays one roll at a
