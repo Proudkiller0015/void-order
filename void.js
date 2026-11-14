@@ -28,6 +28,8 @@
 		room: 40,
 		dice: 10,
 		mod: 99,
+		medalName: 40,
+		medalReason: 140,
 	};
 	/** Ranks in a branch, the lowest rank that joins a chapter and that leads the branch, and branches per member. */
 	const TIERS = 5;
@@ -343,6 +345,10 @@
 		} else if (x.t === 'unorder') {
 			orders.delete(x.id);
 			render();
+		} else if (x.t === 'medal' && x.medal) {
+			const text = `🎖 ${x.medal.byName} commended you: ${x.medal.name}`;
+			note(`${text}${x.medal.reason ? ` (${x.medal.reason})` : ''}`);
+			toast(text, () => openCard(w.Player.MemberNumber, note));
 		} else if (x.t === 'card' && x.card && cardWanted.has(x.member)) {
 			cardWanted.delete(x.member);
 			showCard(x.card, true);
@@ -484,6 +490,8 @@
 		(topOver(me, m) ||
 			(!m.mon && (placesNew(me, m) || (m.places.length > 0 && m.places.every((/** @type {any} */ p) => leaderOver(me, m, p.b))))));
 	const mayReset = (/** @type {any} */ me, /** @type {any} */ m) => commands(me, m) || placesNew(me, m);
+	/** Whether `me` may commend m: the Founder and admins anyone they act on, a leader those below them. */
+	const mayCommend = (/** @type {any} */ me, /** @type {any} */ m) => commands(me, m);
 	const mayOrder = () => isMember() && (isTop(state.me) || leadsAny(state.me));
 	/** Whether member m is in an order's group: 'priest', 'priest/3', 'priest:vox-nihil', 'monsignor' or 'unplaced'. */
 	function inGroup(/** @type {string} */ g, /** @type {any} */ m) {
@@ -631,8 +639,18 @@
 		#void-card .ln.hybrid { font: 600 18px Georgia, serif; color: #fff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 14px #b48cffaa; }
 		#void-card .ln.chapter { font: italic 14px Georgia, serif; color: #d9c8ff; }
 		#void-card .bio { margin-top: 10px; white-space: pre-wrap; font-size: 13px; color: #d6cdee; }
+		#void-card .medals { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+		#void-card .medals svg { cursor: help; filter: drop-shadow(0 0 4px #e05cff66); }
+		#void-card .commend { display: flex; gap: 8px; align-items: center; text-align: left; margin-top: 6px; font-size: 12px; color: #d6cdee; }
+		#void-card .commend b { color: #fff; }
+		#void-card .commend .dim { color: var(--v-dim); }
+		#void-card .commend button { margin-left: auto; border: 1px solid #5b3d8f; border-radius: 999px; background: none; color: var(--v-bad); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
+		#void-card h4 { margin: 12px 0 2px; font: 600 11px system-ui, sans-serif; letter-spacing: 2px; text-transform: uppercase; color: var(--v-accent); text-align: left; }
+		#void-panel .medal-pick { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+		#void-panel .medal-pick button { border: 1px solid var(--v-line); border-radius: 8px; background: #ffffff08; padding: 2px 4px; cursor: pointer; }
+		#void-panel .medal-pick button.on { border-color: var(--v-accent); background: #9b59ff33; }
 		#void-card .foot { margin-top: 12px; font-size: 11px; color: var(--v-dim); border-top: 1px solid #ffffff14; padding-top: 8px; display: flex; gap: 8px; align-items: center; justify-content: center; }
-		#void-card .copy { border: 1px solid #5b3d8f; border-radius: 999px; background: none; color: var(--v-dim); font-size: 11px; padding: 1px 8px; cursor: pointer; }
+		#void-card .copy { border: 1px solid #5b3d8f; border-radius: 999px; background: none; color: var(--v-dim); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
 		.void-toast { position: fixed; z-index: 2147483003; right: 16px; width: 300px; padding: 10px 14px; border-radius: 12px; cursor: pointer;
 			border: 1px solid #7a52c4; background: #12091fee; box-shadow: 0 8px 30px #000c; transition: opacity .4s; }
 		#void-tab { position: fixed; z-index: 2147483000; left: 0; top: 50%; transform: translateY(-50%); width: 26px; height: 54px; border: 1px solid #5b3d8f; border-left: 0;
@@ -744,6 +762,109 @@
 		}, 9000);
 	}
 
+	// ---- Commendations: a medal on a ribbon, with one of the Order's pictures
+	const SVG_NS = 'http://www.w3.org/2000/svg';
+	/**
+	 * The pictures, drawn in 24×24: shapes filled in the medal's dark ink ('hole' cuts back to the gold).
+	 * @type {Record<string, { name: string, shapes: [string, Record<string, string | number>][] }>}
+	 */
+	const MEDAL_ICONS = {
+		eye: {
+			name: 'The Eye',
+			shapes: [
+				['path', { d: 'M2 12 Q12 3 22 12 Q12 21 2 12 Z', fill: 'none', 'stroke-width': 2 }],
+				['circle', { cx: 12, cy: 12, r: 3.5 }],
+			],
+		},
+		scythe: {
+			name: 'Scythe',
+			shapes: [
+				['path', { d: 'M6 22 L15 5', fill: 'none', 'stroke-width': 2.2 }],
+				['path', { d: 'M15 5 Q8 1 2 6 Q9 4.5 13.5 8.5 Z' }],
+			],
+		},
+		star: {
+			name: 'Star',
+			shapes: [['path', { d: 'M12 2 L14.9 8.6 L22 9.3 L16.6 14 L18.2 21 L12 17.3 L5.8 21 L7.4 14 L2 9.3 L9.1 8.6 Z' }]],
+		},
+		flame: { name: 'Flame', shapes: [['path', { d: 'M12 2 C15 7 19 9 18 15 A6 6 0 0 1 6 15 C5.5 11 8.5 9 9 6 C10.5 8.5 12 9 12 2 Z' }]] },
+		moon: { name: 'Moon', shapes: [['path', { d: 'M15 3 A9 9 0 1 0 21 15 A7 7 0 1 1 15 3 Z' }]] },
+		crown: { name: 'Crown', shapes: [['path', { d: 'M3 18 L5 7 L9.5 12 L12 5 L14.5 12 L19 7 L21 18 Z' }]] },
+		shield: { name: 'Shield', shapes: [['path', { d: 'M12 2 L20 5 V11 C20 16 16.5 19.5 12 22 C7.5 19.5 4 16 4 11 V5 Z' }]] },
+		rose: {
+			name: 'Rose',
+			shapes: [
+				['circle', { cx: 12, cy: 8.5, r: 5.5 }],
+				['path', { d: 'M12 8.5 m-2.5 0 a2.5 2.5 0 1 0 5 0', fill: 'none', stroke: 'hole', 'stroke-width': 1.4 }],
+				['path', { d: 'M12 14 V22 M12 18.5 Q8.5 16 6.5 18', fill: 'none', 'stroke-width': 2 }],
+			],
+		},
+		skull: {
+			name: 'Skull',
+			shapes: [
+				['path', { d: 'M12 2 A8 8 0 0 0 4 10 C4 13 5.5 15 8 16 V21 H16 V16 C18.5 15 20 13 20 10 A8 8 0 0 0 12 2 Z' }],
+				['circle', { cx: 8.8, cy: 10.5, r: 2.2, fill: 'hole' }],
+				['circle', { cx: 15.2, cy: 10.5, r: 2.2, fill: 'hole' }],
+				['path', { d: 'M10.5 18 V21 M13.5 18 V21', fill: 'none', stroke: 'hole', 'stroke-width': 1.2 }],
+			],
+		},
+		chain: {
+			name: 'Chain',
+			shapes: [
+				['ellipse', { cx: 8, cy: 12, rx: 5.5, ry: 3.4, fill: 'none', 'stroke-width': 2.4, transform: 'rotate(-35 8 12)' }],
+				['ellipse', { cx: 16, cy: 12, rx: 5.5, ry: 3.4, fill: 'none', 'stroke-width': 2.4, transform: 'rotate(-35 16 12)' }],
+			],
+		},
+		key: {
+			name: 'Key',
+			shapes: [
+				['circle', { cx: 7, cy: 12, r: 4.2, fill: 'none', 'stroke-width': 2.4 }],
+				['path', { d: 'M11 12 H21 M17.5 12 V16 M20.5 12 V15', fill: 'none', 'stroke-width': 2.4 }],
+			],
+		},
+		heart: {
+			name: 'Heart',
+			shapes: [['path', { d: 'M12 21 C5 15 2 11.5 2 7.5 A4.5 4.5 0 0 1 12 6 A4.5 4.5 0 0 1 22 7.5 C22 11.5 19 15 12 21 Z' }]],
+		},
+	};
+	const MEDAL_KEYS = Object.keys(MEDAL_ICONS);
+	const GOLD = '#d9b45a';
+	const INK = '#2a1648';
+	/** A medal `size` pixels tall: a violet ribbon, a gold disc, and the picture on it. */
+	function medalSvg(/** @type {string} */ icon, /** @type {number} */ size) {
+		const el = (/** @type {string} */ tag, /** @type {Record<string, string | number>} */ attrs) => {
+			const e = document.createElementNS(SVG_NS, tag);
+			for (const [k, v] of Object.entries(attrs)) {
+				e.setAttribute(k, String(v));
+			}
+			return e;
+		};
+		const svg = el('svg', { viewBox: '0 0 28 36', width: Math.round((size * 28) / 36), height: size });
+		svg.append(
+			el('polygon', { points: '7,0 21,0 18,13 10,13', fill: '#5b2bc4' }),
+			el('polygon', { points: '12.5,0 15.5,0 14.8,13 13.2,13', fill: '#e05cff' }),
+			el('circle', { cx: 14, cy: 23, r: 12, fill: GOLD, stroke: '#fff1c2', 'stroke-width': 1.4 }),
+		);
+		const g = el('g', {
+			transform: 'translate(5 14) scale(0.75)',
+			fill: INK,
+			stroke: INK,
+			'stroke-linecap': 'round',
+			'stroke-linejoin': 'round',
+		});
+		for (const [tag, attrs] of (MEDAL_ICONS[icon] || MEDAL_ICONS.star).shapes) {
+			const a = { ...attrs };
+			for (const k of ['fill', 'stroke']) {
+				if (a[k] === 'hole') {
+					a[k] = GOLD;
+				}
+			}
+			g.append(el(tag, a));
+		}
+		svg.append(g);
+		return svg;
+	}
+
 	// ---- ID cards
 	/** Member numbers whose card was asked for by the room (a hidden "show ID"), shown when they arrive. */
 	const cardWanted = new Set();
@@ -782,8 +903,49 @@
 			make('div', 'num', `Member #${c.n}`),
 			id,
 		);
+		const medals = [...(c.medals || [])].reverse();
+		if (medals.length) {
+			const row = make('div', 'medals');
+			for (const md of medals) {
+				const svg = medalSvg(md.icon, 46);
+				const tip = document.createElementNS(SVG_NS, 'title');
+				tip.textContent = `${md.name}${md.reason ? `: ${md.reason}` : ''} (from ${md.byName}, ${date(md.at)})`;
+				svg.prepend(tip);
+				row.append(svg);
+			}
+			card.append(row);
+		}
 		if (c.bio) {
 			card.append(make('div', 'bio', c.bio));
+		}
+		if (medals.length) {
+			card.append(make('h4', '', 'Commendations'));
+			const holder = memberOf(c.n);
+			for (const md of medals) {
+				const line = make('div', 'commend');
+				const text = make('div');
+				text.append(
+					make('b', '', md.name),
+					document.createTextNode(md.reason ? ` · ${md.reason}` : ''),
+					make('div', 'dim', `from ${md.byName}, ${date(md.at)}`),
+				);
+				line.append(medalSvg(md.icon, 26), text);
+				if (isMember() && (md.by === state.me.n || (holder && topOver(state.me, holder)))) {
+					const back = make('button', '', 'Take back');
+					back.addEventListener('click', () =>
+						guard(async () => {
+							const r = await req({ t: 'unaward', member: c.n, id: md.id });
+							if (r.t === 'ok') {
+								await openCard(c.n, note);
+							} else {
+								back.textContent = r.why;
+							}
+						}),
+					);
+					line.append(back);
+				}
+				card.append(line);
+			}
 		}
 		const foot = make('div', 'foot');
 		foot.append(make('span', '', `${fromRoom ? 'Shown in this room · ' : ''}In the Order since ${date(c.joined)}`));
@@ -2711,6 +2873,9 @@
 			);
 			box.append(line);
 		}
+		if (mayCommend(me, m)) {
+			box.append(drawCommend(m));
+		}
 		const row = make('div', 'row');
 		row.style.marginTop = '6px';
 		row.append(make('span', 'grow'));
@@ -2750,6 +2915,56 @@
 			);
 		}
 		return box;
+	}
+	/** Commending a member: a button that opens the form (a picture, a name and a reason). */
+	function drawCommend(/** @type {any} */ m) {
+		const k = `md:${m.n}`;
+		const wrap = make('div');
+		if (!drafts[`${k}:open`]) {
+			const open = button('🎖 Commend', () => {
+				drafts[`${k}:open`] = '1';
+				render(true);
+			});
+			open.style.marginTop = '6px';
+			wrap.append(open);
+			return wrap;
+		}
+		const icon = drafts[`${k}:icon`] || MEDAL_KEYS[0];
+		const pick = make('div', 'medal-pick');
+		for (const id of MEDAL_KEYS) {
+			const b = make('button', id === icon ? 'on' : '');
+			b.title = MEDAL_ICONS[id].name;
+			b.dataset.icon = id;
+			b.append(medalSvg(id, 30));
+			b.addEventListener('click', () => {
+				drafts[`${k}:icon`] = id;
+				render(true);
+			});
+			pick.append(b);
+		}
+		const name = field(`${k}:name`, '', LIMITS.medalName);
+		name.placeholder = 'Name, e.g. Shield of the Void';
+		const reason = field(`${k}:reason`, '', LIMITS.medalReason);
+		reason.placeholder = 'Why (optional)';
+		const row = make('div', 'row');
+		row.append(
+			button(
+				'Award',
+				() =>
+					act({ t: 'award', member: m.n, icon, name: drafts[`${k}:name`] || '', reason: drafts[`${k}:reason`] || '' }, () => {
+						forget(k);
+						panelSay(`Commended ${m.name}.`);
+						render(true);
+					}),
+				'b main',
+			),
+			button('Cancel', () => {
+				forget(k);
+				render(true);
+			}),
+		);
+		wrap.append(label(`Commend ${m.name}`), pick, name, reason, row);
+		return wrap;
 	}
 	function drawManage(/** @type {HTMLElement} */ body) {
 		const me = state.me;

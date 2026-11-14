@@ -67,6 +67,14 @@ tumble and land in a small tray. A roll is only played if it is the sender's own
 says when the roller had rolled again after it. Each member rolls at most 8 times a minute; the tray plays one roll at a
 time.
 
+## Commendations
+
+The Founder and admins commend anyone they act on, and branch leaders the members below them: _Manage_ › their name ›
+_🎖 Commend_, with one of the Order's pictures (the Eye, a scythe, a star, a flame, the moon, a crown, a shield, a rose,
+a skull, a chain, a key or a heart), a name and a reason. The medals show on the member's ID card, in a row (the mouse on
+one shows what it is for, who gave it and when) and in a list under their bio. Whoever gave one, the Founder or an admin
+takes it back from the card. A member keeps their newest 30.
+
 ## The Void mark
 
 In a chat room, members who run the add-on carry a small Void mark over their character, so members spot each other on

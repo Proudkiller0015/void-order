@@ -190,6 +190,11 @@ async function joined(member, name) {
 			placesOf(a, 13) === 'paladin2:salvatoris',
 		'Bea puts Cat in the Salvatoris chapter',
 	);
+	check(
+		a.state.log.some((l) => /placed Cat \(13\): Paladin - Knight/.test(l.text)),
+		'the log names the rank: Paladin - Knight',
+		a.state.log.slice(-3),
+	);
 
 	// A leader can't touch Priests, or Paladins at or above her rank.
 	await a.req({ t: 'place', member: 14, branch: 'priest', tier: 3 });
@@ -433,6 +438,49 @@ async function joined(member, name) {
 	const faces = tries.slice(0, 8).flatMap((r) => r.roll.dice.map((x) => x.v));
 	check(new Set(faces).size === 6, 'eighty d6 show every face', [...new Set(faces)]);
 
+	// Commendations: the Founder and admins give them to anyone they act on, a leader to those below her.
+	const md = await b.req({ t: 'award', member: 13, icon: 'shield', name: 'Shield of the Void', reason: 'Held the line.' });
+	await wait(200);
+	check(md.t === 'ok' && c2.got.some((x) => x.t === 'medal' && x.medal.name === 'Shield of the Void'), 'Bea commends Cat, who hears of it');
+	check(
+		(await b.req({ t: 'award', member: 14, icon: 'star', name: 'x' })).why === 'you can only commend members below you',
+		'but not Dan, a Priest',
+	);
+	check((await b.req({ t: 'award', member: 12, icon: 'star', name: 'x' })).why === 'you can only commend members below you', 'nor herself');
+	check(
+		(await c2.req({ t: 'award', member: 30, icon: 'star', name: 'x' })).why === 'you can only commend members below you',
+		'Cat commends nobody',
+	);
+	check(
+		(await b.req({ t: 'award', member: 13, icon: 'banana', name: 'x' })).why === 'a commendation needs a picture and a name',
+		'only the Order’s pictures',
+	);
+	check(
+		(await b.req({ t: 'award', member: 13, icon: 'star', name: ' ' })).why === 'a commendation needs a picture and a name',
+		'and a name',
+	);
+	const catCard = (await d.req({ t: 'card', member: 13 })).card;
+	check(
+		catCard.medals.length === 1 &&
+			catCard.medals[0].icon === 'shield' &&
+			catCard.medals[0].reason === 'Held the line.' &&
+			catCard.medals[0].byName === 'Bea',
+		'her card shows it: picture, name, reason, who and when',
+		catCard.medals,
+	);
+	check((await f.req({ t: 'unaward', member: 13, id: md.id })).why, 'Fay cannot take back Bea’s commendation');
+	check((await b.req({ t: 'unaward', member: 13, id: md.id })).t === 'ok', 'Bea takes hers back');
+	await a.req({ t: 'award', member: 13, icon: 'eye', name: 'First' });
+	for (let i = 0; i < 30; i++) await a.req({ t: 'award', member: 13, icon: 'star', name: `Star ${i}` });
+	const kept = (await d.req({ t: 'card', member: 13 })).card.medals;
+	check(kept.length === 30 && kept[0].name === 'Star 0' && kept[29].name === 'Star 29', 'a member keeps the newest 30', kept.length);
+	const fromAnn = kept[29].id;
+	await b.req({ t: 'award', member: 13, icon: 'rose', name: 'Rose' });
+	const roseId = (await d.req({ t: 'card', member: 13 })).card.medals.find((x) => x.name === 'Rose').id;
+	check((await d.req({ t: 'unaward', member: 13, id: roseId })).why, 'Dan, no longer an admin, takes nothing back');
+	check((await a.req({ t: 'unaward', member: 13, id: roseId })).t === 'ok', 'an admin takes back anyone’s');
+	check((await a.req({ t: 'unaward', member: 13, id: fromAnn })).t === 'ok', 'and her own');
+
 	// The Order's group chat in SlimeBeep: the server asks the relay for an invite, and takes leavers out.
 	const inv = await c2.req({ t: 'chat' });
 	check(inv.t === 'ok' && inv.code === 'CODE13' && inv.gid === 'g1', 'a member gets an invite to the Order chat', inv);
@@ -468,8 +516,8 @@ async function joined(member, name) {
 	const bAgain = a.state.members.find((x) => x.n === 12);
 	check(bAgain && placesOf(a, 12) === 'paladin4', 'Bea is still a Paladin rank 4');
 	check(
-		a.state.log && a.state.log.some((l) => /placed Cat \(13\): Paladin - Knight/.test(l.text)),
-		'the log names the rank: Paladin - Knight',
+		a.state.log && a.state.log.some((l) => /Bea \(12\) commended Cat \(13\): Rose/.test(l.text)),
+		'the log records commendations',
 		a.state.log.slice(-5),
 	);
 

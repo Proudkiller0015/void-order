@@ -446,6 +446,74 @@ const openCardOf = async (page, name) => {
 		);
 		await page.evaluate(() => document.getElementById('void-card').remove());
 
+		// Commendations: Ann commends Cat from Manage; the card shows the medal, and Ann takes it back from there.
+		await click(page, 'Manage');
+		/** Clicks a button in a member's box in Manage: the one whose text starts with `text`, or the medal picture `icon`. */
+		const inBox = (name, text, icon = '') =>
+			page.evaluate(
+				(name, text, icon) => {
+					const box = [...document.querySelectorAll('#void-panel .box')].find((b) =>
+						b.querySelector('.row .grow')?.textContent.startsWith(`${name} #`),
+					);
+					const b = icon
+						? box.querySelector(`.medal-pick button[data-icon="${icon}"]`)
+						: [...box.querySelectorAll('button')].find((x) => x.textContent.startsWith(text));
+					b.click();
+				},
+				name,
+				text,
+				icon,
+			);
+		await inBox('Cat', '🎖 Commend');
+		await inBox('Cat', '', 'shield');
+		await page.evaluate(() => {
+			const box = [...document.querySelectorAll('#void-panel .box')].find((b) =>
+				b.querySelector('.row .grow')?.textContent.startsWith('Cat #'),
+			);
+			const [name, reason] = box.querySelectorAll('input:not([type])');
+			name.value = 'Shield of the Void';
+			name.dispatchEvent(new Event('input'));
+			reason.value = 'Held the gate <b>alone</b>.';
+			reason.dispatchEvent(new Event('input'));
+		});
+		await inBox('Cat', 'Award');
+		await wait(500);
+		await click(page, 'Members');
+		await openCardOf(page, 'Cat');
+		const medalCard = await page.evaluate(() => {
+			const card = document.getElementById('void-card');
+			return {
+				row: card.querySelectorAll('.medals svg').length,
+				tip: card.querySelector('.medals svg title')?.textContent,
+				text: card.innerText,
+				bold: !!card.querySelector('.commend b b'),
+			};
+		});
+		check(
+			'the card shows the medal and its commendation, text as written',
+			medalCard.row === 1 &&
+				/^Shield of the Void: Held the gate <b>alone<\/b>\. \(from Ann, /.test(medalCard.tip || '') &&
+				/COMMENDATIONS[\s\S]*Shield of the Void · Held the gate <b>alone<\/b>\.[\s\S]*from Ann/.test(medalCard.text) &&
+				!medalCard.bold,
+			medalCard,
+		);
+		await shot(page, '17-card-commendations');
+		await page.evaluate(() =>
+			[...document.querySelectorAll('#void-card .commend button')].find((b) => b.textContent === 'Take back').click(),
+		);
+		await page.waitForFunction(() => !document.querySelector('#void-card .medals'), { timeout: 5000 }).catch(() => {});
+		check(
+			'Ann takes it back from the card',
+			await page.evaluate(() => !!document.getElementById('void-card') && !document.querySelector('#void-card .medals')),
+		);
+		await page.evaluate(() => document.getElementById('void-card')?.remove());
+		await fay.page.evaluate(() => (window.local = []));
+		await bea.req({ t: 'award', member: 15, icon: 'star', name: 'Steadfast' });
+		await fay.page
+			.waitForFunction(() => window.local.some((l) => /Bea commended you: Steadfast/.test(l)), { timeout: 5000 })
+			.catch(() => {});
+		check('Fay hears she was commended', await fay.page.evaluate(() => window.local.some((l) => /Bea commended you: Steadfast/.test(l))));
+
 		// A branch leader's Manage: only the Paladins below her, and those awaiting a place.
 		const eve = await peer(17, 'Eve');
 		peers.push(eve);

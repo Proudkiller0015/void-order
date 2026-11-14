@@ -67,6 +67,10 @@ const LIMITS = {
 	rollsPerMinute: 8,
 	rollMinutes: 10,
 	rolls: 1000,
+	/** A commendation's longest name and reason, and the most a member keeps (the newest). */
+	medalName: 40,
+	medalReason: 140,
+	medals: 30,
 };
 /** Ranks in a branch, and the lowest rank that joins a chapter and that leads the branch. */
 const TIERS = 5;
@@ -75,6 +79,8 @@ const LEADS_FROM = 4;
 /** Most branches one member holds. */
 const PLACES = 2;
 const FORMS = ['f', 'm', 'n'];
+/** The pictures a commendation can carry (the client draws them). */
+const MEDALS = ['eye', 'scythe', 'star', 'flame', 'moon', 'crown', 'shield', 'rose', 'skull', 'chain', 'key', 'heart'];
 /** Who sees a member's public room: everyone in the Order, only those over them, or nobody. */
 const ROOM_FOR = ['all', 'over', 'none'];
 const DICE = [4, 6, 8, 10, 12, 20, 100];
@@ -111,7 +117,9 @@ const ORIGINS = [
  * @typedef {{ n: number, name: string, pub: { x: string, y: string } | null, joined: number, bio: string,
  *   form: string, el: string, places: Place[], mon: boolean, roomFor?: string, reset?: { code: string, exp: number } }} Member
  *   `places`: the first is their main branch. `mon`: a Monsignor. `pub` is null until a member brought in joins.
- *   `roomFor`: who sees the public room they are in (ROOM_FOR; everyone when unset).
+ *   `roomFor`: who sees the public room they are in (ROOM_FOR; everyone when unset). `medals`: their commendations
+ *   (see Medal), oldest first.
+ * @typedef {{ id: string, icon: string, name: string, reason: string, by: number, byName: string, at: number }} Medal
  */
 
 /** A rank name with the same word in every form. */
@@ -752,7 +760,7 @@ export class Order extends DurableObject {
 	/**
 	 * A client message (JSON with `t`). Before sign-in only 'auth'. Anyone signed in: 'card', 'room', 'roll',
 	 * 'getroll'. Guests: 'join', and 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave', and with
-	 * the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add', 'about',
+	 * the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add', 'about', 'award', 'unaward',
 	 * 'order', 'unorder', 'founder'. A request may carry a number `rid`, sent back with its 'ok' or 'error'.
 	 */
 	async webSocketMessage(ws, raw) {
@@ -835,6 +843,10 @@ export class Order extends DurableObject {
 					return await this.setFounder(ws, me, p);
 				case 'chat':
 					return await this.chatInvite(ws, me, p);
+				case 'award':
+					return await this.award(ws, me, p);
+				case 'unaward':
+					return await this.unaward(ws, me, p);
 				default:
 					return this.no(ws, 'unknown', p);
 			}
@@ -1286,6 +1298,7 @@ export class Order extends DurableObject {
 				founder: this.isFounder(m.n),
 				bio: m.bio,
 				joined: m.joined,
+				medals: m.medals || [],
 				pic,
 				order: this.meta ? this.meta.name : '',
 			},
@@ -1423,6 +1436,67 @@ export class Order extends DurableObject {
 		for (const { ws: w } of seen) {
 			this.send(w, { t: 'unorder', id: o.id });
 		}
+	}
+
+	// ---- Commendations
+	/**
+	 * Whether `by` may commend member n: the Founder and admins anyone they act on, a leader those below them in a
+	 * branch they lead; never themselves.
+	 */
+	mayCommend(by, n) {
+		const m = this.members[n];
+		return !!m && by !== n && (this.topOver(by, n) || m.places.some((p) => this.leaderOver(by, n, p.b)));
+	}
+	/** A commendation for a member: { member, icon, name, reason }. They keep the newest LIMITS.medals. */
+	async award(ws, me, p) {
+		const m = this.target(ws, p);
+		if (!m) {
+			return;
+		}
+		if (!this.mayCommend(me, m.n)) {
+			return this.no(ws, 'you can only commend members below you', p);
+		}
+		const name = clean(p.name, LIMITS.medalName);
+		if (!MEDALS.includes(p.icon) || !name) {
+			return this.no(ws, 'a commendation needs a picture and a name', p);
+		}
+		/** @type {Medal} */
+		const medal = {
+			id: newId(8),
+			icon: p.icon,
+			name,
+			reason: clean(p.reason, LIMITS.medalReason),
+			by: me,
+			byName: this.members[me].name,
+			at: Date.now(),
+		};
+		m.medals = [...(m.medals || []), medal].slice(-LIMITS.medals);
+		await this.putMember(m.n);
+		await this.note(me, `${this.nameOf(me)} commended ${this.nameOf(m.n)}: ${name}`);
+		this.ok(ws, p, { id: medal.id });
+		for (const { ws: w, a } of this.sockets()) {
+			if (a.member === m.n && this.statusOf(a) === 'member') {
+				this.send(w, { t: 'medal', medal });
+			}
+		}
+	}
+	/** Takes a commendation back: { member, id }. Whoever gave it, or the Founder and admins (over the member). */
+	async unaward(ws, me, p) {
+		const m = this.target(ws, p);
+		if (!m) {
+			return;
+		}
+		const medal = (m.medals || []).find((x) => x.id === p.id);
+		if (!medal) {
+			return this.no(ws, 'no such commendation', p);
+		}
+		if (medal.by !== me && !this.topOver(me, m.n)) {
+			return this.no(ws, 'only whoever gave it, the Founder or an admin can take it back', p);
+		}
+		m.medals = m.medals.filter((x) => x.id !== p.id);
+		await this.putMember(m.n);
+		await this.note(me, `${this.nameOf(me)} took back ${this.nameOf(m.n)}'s ${medal.name}`);
+		this.ok(ws, p);
 	}
 
 	// ---- The Order's group chat in SlimeBeep
