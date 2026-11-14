@@ -242,6 +242,7 @@
 	ctx.addTab({
 		id: 'reports',
 		label: '🐞 Reports',
+		admin: true,
 		show: () => ctx.appAdmin(),
 		draw: (/** @type {HTMLElement} */ body) => {
 			if (!list) {

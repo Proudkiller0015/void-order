@@ -689,6 +689,86 @@
 		#void-card .commend .dim { color: var(--v-dim); }
 		#void-card .commend button { margin-left: auto; border: 1px solid #5b3d8f; border-radius: 999px; background: none; color: var(--v-bad); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
 		#void-card h4 { margin: 12px 0 2px; font: 600 11px system-ui, sans-serif; letter-spacing: 2px; text-transform: uppercase; color: var(--v-accent); text-align: left; }
+		#void-panel header .icon { border: 1px solid transparent; background: none; color: var(--v-dim); font-size: 18px; line-height: 1; padding: 4px 6px; border-radius: 8px; cursor: pointer; }
+		#void-panel header .icon:hover, #void-panel header .icon.on { color: var(--v-text); border-color: var(--v-line); background: #ffffff0a; }
+		#void-panel .me-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 46%; padding: 2px 10px 2px 2px; border: 1px solid var(--v-line); border-radius: 999px;
+			background: #ffffff08; color: var(--v-text); cursor: pointer; font: inherit; }
+		#void-panel .me-chip:hover, #void-panel .me-chip.on { border-color: var(--v-accent); }
+		#void-panel .me-chip .status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		#void-panel .av { --c: #7a52c4; flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+			background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 70%, #fff 10%), #12091f 90%); border: 1px solid var(--c); color: #fff; font: 600 13px/1 Georgia, serif; }
+		#void-panel .av::before { content: attr(data-i); }
+		#void-panel .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+		#void-panel .chip { --c: var(--v-accent); border: 1px solid var(--v-line); border-radius: 999px; background: #ffffff08; color: var(--v-text); padding: 5px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+		#void-panel .chip:hover { border-color: var(--c); }
+		#void-panel .chip.on { border-color: var(--c); background: color-mix(in srgb, var(--c) 28%, transparent); color: #fff; }
+		#void-panel .chip.toggle::before { content: '○ '; opacity: .7; }
+		#void-panel .chip.toggle.on::before { content: '● '; opacity: 1; }
+		#void-panel .chip .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 6px; border-radius: 9px; background: var(--v-hot); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+		#void-panel .subnav { margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--v-line); }
+		#void-panel .mlist h3 { margin-top: 12px; }
+		#void-panel .mrow { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; margin: 0 0 4px; border: 1px solid transparent; border-radius: 12px; background: #ffffff06;
+			color: var(--v-text); font: inherit; text-align: left; cursor: pointer; flex-wrap: wrap; }
+		#void-panel .mrow:hover { border-color: var(--v-line); background: #ffffff0d; }
+		#void-panel .mrow .who { min-width: 110px; }
+		#void-panel .mrow .nm { font-weight: 600; }
+		#void-panel .mrow .num { color: var(--v-dim); font-size: 12px; }
+		#void-panel .mrow .go { margin-left: auto; color: var(--v-dim); font-size: 18px; }
+		#void-panel .pills { display: inline-flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+		#void-panel .pill { --c: #8d7bb8; font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: 999px; white-space: nowrap; color: #fff;
+			background: color-mix(in srgb, var(--c) 35%, transparent); border: 1px solid color-mix(in srgb, var(--c) 70%, transparent); }
+		#void-panel .pill.soft { background: none; color: color-mix(in srgb, var(--c) 60%, #fff); }
+		#void-panel .pill.hybrid { --c: #e9dcff; font-family: Georgia, serif; letter-spacing: 1px; text-transform: uppercase; }
+		#void-panel .sheet-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+		#void-panel .sheet-head .nm { font: 600 18px Georgia, serif; }
+		#void-panel .idprev { margin: 0 0 6px; padding: 10px 8px; border-radius: 12px; text-align: center; border: 1px solid #7a52c455;
+			background: radial-gradient(140% 120% at 50% 0%, #2c1650 0%, #12091f 70%); }
+		#void-panel .idprev .ln { font: 600 15px/1.5 Georgia, serif; }
+		#void-panel .idprev .ln .sym { font-size: 12px; opacity: .85; margin: 0 6px; }
+		#void-panel .idprev .ln.motto { font: italic 600 13px Georgia, serif; color: #e9dcff; }
+		#void-panel .idprev .ln.hybrid { font-size: 16px; letter-spacing: 2px; text-transform: uppercase; color: #fff; }
+		#void-panel .idprev .ln.chapter { font: italic 13px Georgia, serif; color: #d9c8ff; }
+		#void-panel .sec { margin: 14px 0 0; padding-top: 2px; }
+		#void-panel .sec.danger { margin-top: 22px; padding: 10px 12px; border: 1px solid #ff7a9055; border-radius: 12px; background: #ff7a900a; }
+		#void-panel .sec.danger h3 { color: var(--v-bad); }
+		#void-panel .pl { border: 1px solid var(--v-line); border-radius: 12px; padding: 8px 10px; margin: 0 0 8px; background: #ffffff05; }
+		#void-panel .branch.sm { margin: 0; font-size: 14px; }
+		#void-panel button.b.sm { padding: 2px 10px; font-size: 12px; }
+		#void-panel .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin: 6px 0 8px; }
+		#void-panel .tile { --c: var(--v-accent); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: 14px; cursor: pointer;
+			border: 1px solid var(--v-line); background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--c) 22%, transparent), #0d0618 80%); color: var(--v-text); font: inherit; }
+		#void-panel .tile .sym { font-size: 16px; color: var(--c); letter-spacing: 1px; white-space: nowrap; }
+		#void-panel .tile .nm { font: 600 13px Georgia, serif; }
+		#void-panel .tile:hover { border-color: var(--c); }
+		#void-panel .tile.on { border-color: var(--c); box-shadow: 0 0 0 1px var(--c), 0 0 14px color-mix(in srgb, var(--c) 40%, transparent); }
+		#void-panel .stepper { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; }
+		#void-panel .stepper .step { width: 32px; height: 32px; padding: 0; font-size: 18px; line-height: 1; }
+		#void-panel .steps { display: flex; gap: 4px; }
+		#void-panel .st { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--v-line); background: #05020a; color: var(--v-dim); font: 600 14px Georgia, serif; cursor: pointer; }
+		#void-panel .st.below { background: #9b59ff22; color: var(--v-text); }
+		#void-panel .st.on { background: linear-gradient(180deg, #8a4dff, #5b2bc4); border-color: #b48cff; color: #fff; }
+		#void-panel .st:disabled { opacity: .3; cursor: default; }
+		#void-panel .rank-name { font: 600 15px Georgia, serif; margin-left: 4px; }
+		#void-panel .save { margin-top: 10px; }
+		#void-panel .wtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; margin: 6px 0; }
+		#void-panel .wtile { --c: #c9c4d8; position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px; border-radius: 12px;
+			border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); background: #ffffff06; color: var(--v-text); font: inherit; font-size: 11px; text-align: center; }
+		#void-panel .wtile .nm { line-height: 1.2; }
+		#void-panel .wtile.pickable { cursor: pointer; }
+		#void-panel .wtile.pickable:hover { border-color: var(--c); background: #ffffff0f; }
+		#void-panel .wtile .off { position: absolute; top: 2px; right: 2px; border: 0; background: #0009; color: var(--v-bad); border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 11px; }
+		#void-panel .picker { border: 1px solid var(--v-line); border-radius: 12px; padding: 8px; margin-top: 6px; max-height: 360px; overflow: auto; background: #05020a88; }
+		#void-panel .picker .kind { margin: 8px 0 2px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--v-dim); }
+		#void-panel .commend { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+		#void-panel .form label { margin-top: 10px; }
+		#void-panel .logline { display: flex; gap: 10px; padding: 4px 0; border-bottom: 1px solid #ffffff0a; font-size: 13px; }
+		#void-panel .logline .when { color: var(--v-dim); white-space: nowrap; font-weight: 400; }
+		@media (max-width: 520px) {
+			#void-panel .me-chip .status { display: none; }
+			#void-panel .me-chip { padding: 2px; }
+			#void-panel .mrow .pills { order: 3; width: 100%; padding-left: 38px; }
+			#void-panel .st { width: 30px; height: 30px; }
+		}
 		#void-panel .medal-pick { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
 		#void-panel .medal-pick button { border: 1px solid var(--v-line); border-radius: 8px; background: #ffffff08; padding: 2px 4px; cursor: pointer; }
 		#void-panel .medal-pick button.on { border-color: var(--v-accent); background: #9b59ff33; }
@@ -725,6 +805,20 @@
 			font: bold 11px/14px system-ui, sans-serif; text-align: center; border: 2px solid #12091f; text-shadow: none; }
 		#void-tab { position: fixed; z-index: 2147483000; left: 0; top: 50%; transform: translateY(-50%); width: 26px; height: 54px; border: 1px solid #5b3d8f; border-left: 0;
 			border-radius: 0 10px 10px 0; background: #12091fdd; color: #c9a8ff; font: 600 16px Georgia, serif; cursor: pointer; padding: 0; text-shadow: 0 0 8px #9b59ff; }
+		#void-panel.placed { transform: none; }
+		#void-panel header { cursor: move; touch-action: none; user-select: none; }
+		#void-panel .v-rs { position: absolute; z-index: 3; touch-action: none; }
+		#void-panel .v-rs[data-rs="n"], #void-panel .v-rs[data-rs="s"] { left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+		#void-panel .v-rs[data-rs="e"], #void-panel .v-rs[data-rs="w"] { top: 14px; bottom: 14px; width: 6px; cursor: ew-resize; }
+		#void-panel .v-rs[data-rs="nw"], #void-panel .v-rs[data-rs="ne"], #void-panel .v-rs[data-rs="sw"], #void-panel .v-rs[data-rs="se"] { width: 14px; height: 14px; }
+		#void-panel .v-rs[data-rs="n"], #void-panel .v-rs[data-rs="nw"], #void-panel .v-rs[data-rs="ne"] { top: 0; }
+		#void-panel .v-rs[data-rs="s"], #void-panel .v-rs[data-rs="sw"], #void-panel .v-rs[data-rs="se"] { bottom: 0; }
+		#void-panel .v-rs[data-rs="w"], #void-panel .v-rs[data-rs="nw"], #void-panel .v-rs[data-rs="sw"] { left: 0; }
+		#void-panel .v-rs[data-rs="e"], #void-panel .v-rs[data-rs="ne"], #void-panel .v-rs[data-rs="se"] { right: 0; }
+		#void-panel .v-rs[data-rs="nw"], #void-panel .v-rs[data-rs="se"] { cursor: nwse-resize; }
+		#void-panel .v-rs[data-rs="ne"], #void-panel .v-rs[data-rs="sw"] { cursor: nesw-resize; }
+		#void-tab { touch-action: none; }
+		#void-tab.dragging { cursor: grabbing; opacity: .8; }
 		#void-tab.right { left: auto; right: 0; border-left: 1px solid #5b3d8f; border-right: 0; border-radius: 10px 0 0 10px; }
 		#void-panel .setting { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }
 		#void-panel .setting .hint { flex-basis: 100%; margin: -2px 0 0 26px; }
@@ -990,19 +1084,7 @@
 			pic.style.backgroundImage = `url("${c.pic}")`;
 		}
 		const lines = idLines(c, c.founder);
-		const id = make('div', 'id');
-		for (const l of lines) {
-			const ln = make('div', `ln${l.cls ? ` ${l.cls}` : ''}`);
-			if (l.sym) {
-				ln.append(make('span', 'sym', l.sym), document.createTextNode(l.text), make('span', 'sym', l.sym));
-			} else {
-				ln.textContent = l.text;
-			}
-			if (isColor(l.color)) {
-				ln.style.color = l.color;
-			}
-			id.append(ln);
-		}
+		const id = idBlock(lines);
 		if (c.badge && /^[a-z0-9-]{1,40}$/.test(c.badge)) {
 			const b = make('img', 'badge');
 			b.src = `${ASSETS}badges/${c.badge}-160.png`;
@@ -1069,6 +1151,23 @@
 		foot.append(copy);
 		card.append(foot);
 		document.body.append(card);
+	}
+	/** The ID lines of a card, as drawn on it (also the live preview in a member's sheet). */
+	function idBlock(/** @type {{ text: string, sym?: string, color?: string, cls?: string }[]} */ lines, cls = 'id') {
+		const id = make('div', cls);
+		for (const l of lines) {
+			const ln = make('div', `ln${l.cls ? ` ${l.cls}` : ''}`);
+			if (l.sym) {
+				ln.append(make('span', 'sym', l.sym), document.createTextNode(l.text), make('span', 'sym', l.sym));
+			} else {
+				ln.textContent = l.text;
+			}
+			if (isColor(l.color)) {
+				ln.style.color = l.color;
+			}
+			id.append(ln);
+		}
+		return id;
 	}
 	/** Looks up a member's card on the server and opens it; `say` gets why it couldn't. */
 	async function openCard(/** @type {number} */ n, say = panelSay) {
@@ -1514,38 +1613,6 @@
 	/** The weapons a member carries: `carried`, or the one `carry` of an older server. */
 	const carriedOf = (/** @type {any} */ m) => (Array.isArray(m.carried) ? m.carried : m.carry ? [m.carry] : []);
 	/** Issuing weapons in Manage: the ones a member has (✕ takes one back), and a pick of the others to issue. */
-	function drawIssue(/** @type {any} */ m) {
-		const wrap = make('div', 'row');
-		wrap.style.marginTop = '6px';
-		if (!catalog) {
-			guard(loadCatalog, panelSay);
-			return wrap;
-		}
-		const has = armsOf(m);
-		wrap.append(make('span', 'dim', has.length ? 'Weapons:' : 'No weapons yet.'));
-		if (m.n !== state.appAdmin) {
-			for (const x of has) {
-				wrap.append(button(`${x.name} ✕`, () => act({ t: 'issue', member: m.n, weapon: x.id, on: false })));
-			}
-		} else {
-			wrap.append(make('span', 'dim', 'every one (early access)'));
-		}
-		const others = catalog.filter((x) => !has.includes(x));
-		if (others.length) {
-			const k = `iss:${m.n}`;
-			const sel = select(
-				others.map((x) => /** @type {[string, string]} */ ([String(x.id), `${x.name} (${x.rarity})`])),
-				drafts[k] || String(others[0].id),
-				(v) => (drafts[k] = v),
-			);
-			wrap.append(
-				sel,
-				button('Issue', () => act({ t: 'issue', member: m.n, weapon: Number(sel.value) })),
-			);
-		}
-		return wrap;
-	}
-
 	// ---- The hunt board: the Void Order Prison's public board, as the Order's server last read it
 	/** @type {any} The board: { contracts, wanted, debtors, totals, at, url }, or null before the first copy. */
 	let huntBoard = null;
@@ -1856,6 +1923,7 @@
 			return;
 		}
 		let broken = false;
+		let logosBroken = false;
 		mod.hookFunction('ChatRoomCharacterViewDrawOverlay', 0, (/** @type {any[]} */ args, /** @type {(a: any[]) => any} */ next) => {
 			const r = next(args);
 			if (!broken) {
@@ -1867,6 +1935,14 @@
 					report(e, undefined, 'Room marks');
 				}
 			}
+			if (!logosBroken) {
+				try {
+					drawLogo(args[0], args[1], args[2], args[3]);
+				} catch (e) {
+					logosBroken = true;
+					report(e, undefined, 'Add-on logos');
+				}
+			}
 			return r;
 		});
 		mod.hookFunction('ChatRoomCharacterViewClickCharacter', 0, (/** @type {any[]} */ args, /** @type {(a: any[]) => any} */ next) =>
@@ -1874,6 +1950,41 @@
 		);
 	}
 
+	// ---- The add-on's logo over everyone in the room who runs Oculus Nihili (member or not), with their version: left of
+	// SlimeBeep's slime (x 330, y 42), above the Void mark (x 330, y 80), never on either, and inside the screen.
+	const LOGO = { x: 292, y: 42, size: 34 };
+	/** The Oculus Nihili version a character runs, from their shared settings ('' when they don't). */
+	function addOnVersion(/** @type {any} */ C) {
+		if (C && w.Player && C.MemberNumber === w.Player.MemberNumber) {
+			return VERSION;
+		}
+		const v = C && C.OnlineSharedSettings && C.OnlineSharedSettings.OculusNihili;
+		return typeof v === 'string' && /^[\w.+-]{1,24}$/.test(v) ? v : '';
+	}
+	/** A version short enough to sit under the logo: a beta by its number ("2.0.0-beta.2.5" → "b2.5"), a release whole. */
+	const shortVersion = (/** @type {string} */ v) => (/-beta\.(.+)$/.exec(v) || [])[1]?.replace(/^/, 'b') || v;
+	/** @type {HTMLCanvasElement | null} The logo: the add-on's Void eye, drawn once. */
+	let logoImage = null;
+	/** Draws the logo over C at x, y with zoom; the full name and version while the mouse is on it. Not clickable. */
+	function drawLogo(/** @type {any} */ C, /** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) {
+		const v = addOnVersion(C);
+		const g = /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
+		if (!opts.logos || !v || !g || (typeof w.ChatRoomHideIconState === 'number' && w.ChatRoomHideIconState > 0)) {
+			return;
+		}
+		const size = LOGO.size * zoom;
+		const left = x + LOGO.x * zoom;
+		// The top row of a room starts at the screen's edge: the logo is kept below it.
+		const top = Math.max(2, y + LOGO.y * zoom);
+		logoImage ??= eyeCanvas();
+		g.drawImage(logoImage, left, top, size, size);
+		if (typeof w.DrawTextFit === 'function') {
+			w.DrawTextFit(shortVersion(v), left + size / 2, top + size + 7 * zoom, size + 4 * zoom, '#c9a8ff', 'black');
+			if (typeof w.MouseIn === 'function' && w.MouseIn(left, top, size, size)) {
+				w.DrawTextFit(`Oculus Nihili ${v}`, left + size / 2, top - 10 * zoom, 200 * zoom, '#e8defc', 'black');
+			}
+		}
+	}
 	/** Looks up a roll shown in the room and plays it, if it is the sender's and fresh. */
 	async function fetchRoll(/** @type {string} */ id, /** @type {number} */ sender) {
 		const r = await req({ t: 'getroll', id });
@@ -2313,6 +2424,165 @@
 		document.getElementById('void-panel')?.remove();
 		drawTab();
 	};
+	// ---- The panel's window: moved by its header, resized from its edges and corners, kept on screen. Where it is and how
+	// big are kept per browser once moved or resized; until then it sits in the middle at its usual size.
+	const WIN = { minW: 360, minH: 300, margin: 8 };
+	/** The usual size: what the panel has before it is ever resized. */
+	const usualSize = () => ({ w: Math.min(820, Math.round(innerWidth * 0.96)), h: Math.min(680, Math.round(innerHeight * 0.92)) });
+	/** @type {{ x: number, y: number, w: number, h: number } | null} */
+	let win = pref('win', null);
+	const fit = (/** @type {number} */ v, /** @type {number} */ lo, /** @type {number} */ hi) => Math.max(lo, Math.min(hi, v));
+	/** Puts the panel where it was left, inside the window whatever its size or zoom now. */
+	function placePanel() {
+		const p = document.getElementById('void-panel');
+		if (!p) {
+			return;
+		}
+		if (!win) {
+			p.classList.remove('placed');
+			p.style.left = p.style.top = p.style.width = p.style.height = '';
+			return;
+		}
+		const m = WIN.margin;
+		const width = fit(win.w, Math.min(WIN.minW, innerWidth - 2 * m), innerWidth - 2 * m);
+		const height = fit(win.h, Math.min(WIN.minH, innerHeight - 2 * m), innerHeight - 2 * m);
+		p.classList.add('placed');
+		p.style.left = `${fit(win.x, m, innerWidth - width - m)}px`;
+		p.style.top = `${fit(win.y, m, innerHeight - height - m)}px`;
+		p.style.width = `${width}px`;
+		p.style.height = `${height}px`;
+	}
+	/** Keeps where the panel is (or null: back to the middle at its usual size) for next time. */
+	function setWin(/** @type {{ x: number, y: number, w: number, h: number } | null} */ v) {
+		win = v;
+		setPref('win', v);
+		placePanel();
+	}
+	/** The panel's resize edges and corners, added again after each redraw. */
+	function addHandles(/** @type {HTMLElement} */ p) {
+		for (const d of ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se']) {
+			const h = make('div', 'v-rs');
+			h.dataset.rs = d;
+			h.title = 'Drag to resize (double-click: usual size)';
+			p.append(h);
+		}
+	}
+	/** Moving and resizing by pointer (mouse, pen or touch), wired once on the panel. */
+	function wirePanel(/** @type {HTMLElement} */ p) {
+		/** @type {{ mode: string, x0: number, y0: number, r: DOMRect } | null} */
+		let op = null;
+		p.addEventListener('pointerdown', (e) => {
+			const t = /** @type {HTMLElement} */ (e.target);
+			const handle = /** @type {HTMLElement | null} */ (t.closest('.v-rs'));
+			const head = t.closest('header');
+			if (e.button !== 0 || (!handle && (!head || t.closest('button, input, select, a')))) {
+				return;
+			}
+			e.preventDefault();
+			op = { mode: handle ? handle.dataset.rs || 'se' : 'move', x0: e.clientX, y0: e.clientY, r: p.getBoundingClientRect() };
+			try {
+				p.setPointerCapture(e.pointerId);
+			} catch (err) {
+				/* works without capture */
+			}
+		});
+		p.addEventListener('pointermove', (e) => {
+			if (!op) {
+				return;
+			}
+			const m = WIN.margin;
+			const dx = fit(e.clientX, 0, innerWidth) - op.x0;
+			const dy = fit(e.clientY, 0, innerHeight) - op.y0;
+			const r = op.r;
+			let { left, top, right, bottom } = r;
+			if (op.mode === 'move') {
+				left = fit(r.left + dx, m, innerWidth - r.width - m);
+				top = fit(r.top + dy, m, innerHeight - r.height - m);
+				right = left + r.width;
+				bottom = top + r.height;
+			} else {
+				if (op.mode.includes('w')) {
+					left = fit(r.left + dx, m, right - WIN.minW);
+				}
+				if (op.mode.includes('e')) {
+					right = fit(r.right + dx, left + WIN.minW, innerWidth - m);
+				}
+				if (op.mode.includes('n')) {
+					top = fit(r.top + dy, m, bottom - WIN.minH);
+				}
+				if (op.mode.includes('s')) {
+					bottom = fit(r.bottom + dy, top + WIN.minH, innerHeight - m);
+				}
+			}
+			win = { x: Math.round(left), y: Math.round(top), w: Math.round(right - left), h: Math.round(bottom - top) };
+			placePanel();
+		});
+		const end = () => {
+			if (op) {
+				op = null;
+				setWin(win);
+			}
+		};
+		p.addEventListener('pointerup', end);
+		p.addEventListener('pointercancel', end);
+		p.addEventListener('lostpointercapture', end);
+		p.addEventListener('dblclick', (e) => {
+			if (/** @type {HTMLElement} */ (e.target).closest('.v-rs')) {
+				const r = p.getBoundingClientRect();
+				setWin({ x: Math.round(r.left), y: Math.round(r.top), ...usualSize() });
+			}
+		});
+	}
+	/** Puts the side tab where it was dragged along its edge. */
+	function placeTab() {
+		const t = document.getElementById('void-tab');
+		if (t) {
+			t.style.top = `${fit(pref('tabY', 0.5), 0.06, 0.94) * 100}%`;
+		}
+	}
+	/** The side tab: a click opens the panel, a drag moves it up or down its edge. */
+	function wireTab(/** @type {HTMLElement} */ t) {
+		/** @type {{ y0: number, moved: boolean } | null} */
+		let drag = null;
+		t.addEventListener('pointerdown', (e) => {
+			if (e.button !== 0) {
+				return;
+			}
+			drag = { y0: e.clientY, moved: false };
+			try {
+				t.setPointerCapture(e.pointerId);
+			} catch (err) {
+				/* works without capture */
+			}
+		});
+		t.addEventListener('pointermove', (e) => {
+			if (!drag || (!drag.moved && Math.abs(e.clientY - drag.y0) < 8)) {
+				return;
+			}
+			drag.moved = true;
+			t.classList.add('dragging');
+			setPref('tabY', fit(e.clientY / innerHeight, 0.06, 0.94));
+			placeTab();
+		});
+		const end = (/** @type {boolean} */ open) => {
+			if (!drag) {
+				return;
+			}
+			const moved = drag.moved;
+			drag = null;
+			t.classList.remove('dragging');
+			if (open && !moved) {
+				guard(() => openPanel());
+			}
+		};
+		t.addEventListener('pointerup', () => end(true));
+		t.addEventListener('pointercancel', () => end(false));
+	}
+	addEventListener('resize', () => {
+		placePanel();
+		placeTab();
+	});
+
 	function openPanel(/** @type {string | undefined} */ which) {
 		style();
 		if (which) {
@@ -2322,10 +2592,12 @@
 			const p = make('div');
 			p.id = 'void-panel';
 			keepKeys(p);
+			wirePanel(p);
 			document.body.append(p);
 			lastMsg = '';
 		}
 		render(true);
+		placePanel();
 	}
 	// ---- Settings: one list for the panel's ⚙ tab and the game's Settings > Extensions page
 	/** Accent colours to pick from. */
@@ -2369,6 +2641,14 @@
 			hint: 'No pop-ups or sounds; everything is still listed.',
 		},
 		{ k: 'roomBadges', group: 'Rooms', label: 'Void mark over members in my room', kind: 'bool', dflt: true },
+		{
+			k: 'logos',
+			group: 'Rooms',
+			label: 'Oculus Nihili logo over its users',
+			kind: 'bool',
+			dflt: true,
+			hint: 'Over everyone in the room who runs the add-on, with their version.',
+		},
 		{ k: 'roomCards', group: 'Rooms', label: 'Open ID cards shown in my room', kind: 'bool', dflt: true },
 		{ k: 'roomDice', group: 'Rooms', label: 'Play dice others roll in my room', kind: 'bool', dflt: true },
 		{
@@ -2473,12 +2753,6 @@
 		applyLook();
 		drawTab();
 		render(true);
-	}
-	/** The next choice of a setting, going round (for the Extensions page's buttons). */
-	function nextChoice(/** @type {(typeof SETTINGS)[number]} */ s) {
-		const list = s.choices || [];
-		const i = list.findIndex(([c]) => c === getSetting(s));
-		return list[(i + 1) % list.length][0];
 	}
 	/** The lighter look, and the accent colour, over the Void dark one. */
 	const LIGHT_CSS = `
@@ -2614,10 +2888,17 @@
 			guard(() => f(body), panelSay);
 		}
 		body.append(
+			button('Reset window position', () => {
+				setWin(null);
+				setPref('tabY', null);
+				placeTab();
+			}),
+		);
+		body.append(
 			make(
 				'p',
 				'dim',
-				'Kept in this browser, except who sees your room, which the Order keeps. The same settings are in the game’s Settings › Extensions.',
+				'Kept in this browser, except who sees your room, which the Order keeps. Settings › Extensions in the game opens this tab.',
 			),
 			make(
 				'p',
@@ -2626,8 +2907,10 @@
 			),
 		);
 	}
-	/** The Void eye, drawn: the add-on's picture on the game's Extensions page. */
-	function eyeIcon() {
+	/** The Void eye as a picture's address: the add-on's picture on the game's Extensions page. */
+	const eyeIcon = () => eyeCanvas().toDataURL('image/png');
+	/** The Void eye, drawn on a 64 px canvas: the add-on's picture, and its logo in rooms. */
+	function eyeCanvas() {
 		const c = document.createElement('canvas');
 		c.width = c.height = 64;
 		const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
@@ -2650,12 +2933,11 @@
 		g.beginPath();
 		g.arc(32, 32, 4.5, 0, Math.PI * 2);
 		g.fill();
-		return c.toDataURL('image/png');
+		return c;
 	}
 	/**
-	 * Registers the add-on's page in the game's Settings > Extensions, drawn on the game's canvas with its own checkbox
-	 * and button helpers: the on/off settings on the left, the others as buttons on the right (a click moves to the
-	 * next choice), and a button that opens the panel.
+	 * Registers the add-on in the game's Settings > Extensions. Choosing it opens the panel's ⚙ Settings tab and leaves the
+	 * game on its list of extensions, so the settings live in one place.
 	 */
 	function registerExtension() {
 		if (typeof w.PreferenceRegisterExtensionSetting !== 'function') {
@@ -2664,114 +2946,64 @@
 		if (w.PreferenceExtensionsSettings && w.PreferenceExtensionsSettings.OculusNihili) {
 			return;
 		}
-		/** @typedef {[number, number, number, number]} Rect x, y, width, height on the canvas */
-		/** @type {Rect} */
-		const EXIT = [1815, 75, 90, 90];
-		const LEFT = 400;
-		const TOP = 170;
-		const ROW = 72;
-		const bools = () => SETTINGS.filter((s) => s.kind === 'bool' && shownSetting(s));
-		const others = () => SETTINGS.filter((s) => s.kind !== 'bool' && shownSetting(s));
-		/** @returns {Rect} */
-		const buttonAt = (/** @type {number} */ i) => [1240, TOP + i * ROW, 560, 64];
-		const mouse = (/** @type {Rect} */ r) => typeof w.MouseIn === 'function' && w.MouseIn(...r);
-		const canvas = () => /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
-		let drawFailed = false;
+		/** Back to the game's list of extensions, once the game has finished choosing this one. */
+		const back = () => setTimeout(() => guard(() => w.PreferenceSubscreenExtensionsClear?.()), 0);
 		w.PreferenceRegisterExtensionSetting({
 			Identifier: 'OculusNihili',
 			ButtonText: 'Oculus Nihili',
 			Image: eyeIcon(),
 			load: () => {
-				pickingKey = false;
+				guard(() => openPanel('settings'));
+				back();
 			},
-			run: () => {
-				const g = canvas();
-				try {
-					if (g) {
-						g.textAlign = 'left';
-					}
-					w.DrawText(`- Oculus Nihili Settings - v${VERSION}`, LEFT, 125, 'Black', 'Gray');
-					bools().forEach((s, i) => w.DrawCheckbox(LEFT, TOP + i * ROW, 64, 64, s.label, !!getSetting(s)));
-					// The game centres button labels with the current textAlign.
-					if (g) {
-						g.textAlign = 'center';
-					}
-					others().forEach((s, i) => w.DrawButton(...buttonAt(i), `${s.label}: ${settingText(s)}`, 'White'));
-					w.DrawButton(...buttonAt(others().length), 'Open the Oculus Nihili panel', 'White');
-					w.DrawButton(...EXIT, '', 'White', 'Icons/Exit.png');
-				} catch (e) {
-					// Never throw inside the game's draw loop; say so once.
-					if (!drawFailed) {
-						drawFailed = true;
-						report(e, undefined, 'Extensions page');
-					}
-				} finally {
-					if (g) {
-						g.textAlign = 'center';
-					}
-				}
-			},
-			click: () =>
-				guard(() => {
-					if (mouse(EXIT)) {
-						pickingKey = false;
-						w.PreferenceSubscreenExtensionsClear?.();
-						return;
-					}
-					bools().forEach((s, i) => {
-						if (mouse([LEFT, TOP + i * ROW, 64, 64])) {
-							setSetting(s, !getSetting(s));
-						}
-					});
-					others().forEach((s, i) => {
-						if (mouse(buttonAt(i))) {
-							if (s.kind === 'key') {
-								pickingKey = !pickingKey;
-							} else {
-								setSetting(s, nextChoice(s));
-							}
-						}
-					});
-					if (mouse(buttonAt(others().length))) {
-						openPanel('settings');
-					}
-				}),
-			exit: () => {
-				pickingKey = false;
-				return true;
-			},
+			// Only for the moment before the game goes back to its list.
+			run: () => {},
+			click: back,
+			exit: () => true,
 		});
 	}
 
 	/** Whether you may manage anyone: the Founder, admins and branch leaders. */
 	const manages = () => isMember() && (isTop(state.me) || leadsAny(state.me));
-	/** The tabs you have, in order. */
+	/**
+	 * The tabs along the top, in order. Managing (members, bringing people in, the about page, reports) sits under one
+	 * Admin tab for those who may; My card and ⚙ Settings are in the header.
+	 */
 	function tabs() {
 		/** @type {[string, string][]} */
-		const extra = moduleTabs.filter((x) => guarded(x.show, false)).map((x) => [x.id, x.label]);
-		if (!isMember()) {
-			return [
-				['join', state && state.meta ? 'The Order' : 'Found'],
-				['dice', 'Dice'],
-				['hunt', '🎯 Hunt board'],
-				...extra,
-				['settings', '⚙ Settings'],
-			];
-		}
+		const extra = moduleTabs.filter((x) => !x.admin && guarded(x.show, false)).map((x) => [x.id, x.label]);
 		/** @type {[string, string][]} */
-		const t = [
+		const admin = adminViews().length ? [['admin', '🛡 Admin']] : [];
+		if (!isMember()) {
+			return [['join', state && state.meta ? 'The Order' : 'Found'], ['dice', 'Dice'], ['hunt', '🎯 Hunt board'], ...extra, ...admin];
+		}
+		return [
 			['orders', 'Orders'],
 			['members', 'Members'],
 			['order', 'The Order'],
 			['dice', 'Dice'],
 			['armory', 'Armory'],
 			['hunt', '🎯 Hunt board'],
+			...extra,
+			...admin,
 		];
-		if (manages()) {
-			t.push(['manage', 'Manage']);
+	}
+	/** The parts of the Admin tab you may use: [id, label]. */
+	function adminViews() {
+		/** @type {[string, string][]} */
+		const v = [];
+		if (isMember() && manages()) {
+			v.push(['manage', 'Manage'], ['bring', 'Bring in']);
 		}
-		t.push(['me', 'My card'], ...extra, ['settings', '⚙ Settings']);
-		return t;
+		if (isMember() && isTop(state.me)) {
+			v.push(['about', 'About page'], ['log', 'Recent changes']);
+		}
+		for (const x of moduleTabs) {
+			if (x.admin && guarded(x.show, false)) {
+				v.push([x.id, x.label]);
+			}
+		}
+		return v;
 	}
 	/** Whether a redraw waits for the field being typed in to lose focus. */
 	let redrawLater = false;
@@ -2785,7 +3017,7 @@
 			drawTab();
 			return;
 		}
-		if (tab === 'reports') {
+		if (tab === 'admin' && adminView === 'reports') {
 			unseenReports = 0;
 		}
 		const active = document.activeElement;
@@ -2814,24 +3046,39 @@
 		x.title = 'Close';
 		x.addEventListener('click', closePanel);
 		const head = make('header');
-		head.append(make('h2', '', state && state.meta ? ORDER_NAME : 'Oculus Nihili'), make('span', 'status', statusLine()), x);
+		head.append(make('h2', '', state && state.meta ? ORDER_NAME : 'Oculus Nihili'));
+		const go = (/** @type {string} */ id) => {
+			tab = id;
+			lastMsg = '';
+			render(true);
+		};
+		if (isMember()) {
+			// Your place, behind your initial: it opens your card.
+			const me = make('button', `me-chip${tab === 'me' ? ' on' : ''}`);
+			me.title = 'My card';
+			me.append(avatar(state.me), make('span', 'status', statusLine()));
+			me.addEventListener('click', () => go('me'));
+			head.append(me);
+		} else {
+			head.append(make('span', 'status', statusLine()));
+		}
+		const gear = make('button', `icon${tab === 'settings' ? ' on' : ''}`, '⚙');
+		gear.title = 'Settings';
+		gear.addEventListener('click', () => go('settings'));
+		head.append(gear, x);
 		p.append(head);
 		const list = tabs();
-		if (!list.some(([id]) => id === tab)) {
+		if (!list.some(([id]) => id === tab) && tab !== 'settings' && !(tab === 'me' && isMember())) {
 			tab = list[0][0];
 		}
 		const nav = make('nav');
 		for (const [id, label] of list) {
 			const b = make('button', id === tab ? 'on' : '', label);
-			const count = id === 'orders' ? openOrders() : id === 'manage' ? unplacedFor().length : 0;
+			const count = id === 'orders' ? openOrders() : id === 'admin' ? unplacedFor().length : 0;
 			if (count) {
 				b.append(make('span', 'badge', String(count)));
 			}
-			b.addEventListener('click', () => {
-				tab = id;
-				lastMsg = '';
-				render(true);
-			});
+			b.addEventListener('click', () => go(id));
 			nav.append(b);
 		}
 		p.append(nav);
@@ -2845,7 +3092,7 @@
 					members: drawMembers,
 					order: drawOrder,
 					dice: drawDice,
-					manage: drawManage,
+					admin: drawAdmin,
 					me: drawMe,
 					join: drawJoin,
 					settings: drawSettings,
@@ -2865,6 +3112,7 @@
 			}
 		}
 		body.scrollTop = scroll;
+		addHandles(p);
 		drawTab();
 	}
 	const openOrders = () => [...orders.values()].filter(waitsForMe).length;
@@ -3534,118 +3782,384 @@
 	const resetCodes = new Map();
 	/** @type {{ codes: { n: number, name: string, code: string }[], days: number } | null} The join codes just made. */
 	let broughtIn = null;
-	/** Options for a rank select: the ranks given, named as member m would hold them. */
-	const tierOptions = (/** @type {any} */ b, /** @type {number[]} */ tiers, /** @type {any} */ m, c = '') =>
-		/** @type {[string, string][]} */ (
-			tiers.map((t) => [String(t), `${t}. ${word(tierForms(b, t, t >= CHAPTER_FROM ? c : ''), m.form, m.el)}`])
-		);
-	const chapterOptions = (/** @type {any} */ b) =>
-		/** @type {[string, string][]} */ ([['', 'No chapter'], ...b.chapters.map((/** @type {any} */ c) => [c.id, c.name])]);
-	/** One member's box: their places (rank and chapter you may change), adding a branch, Monsignor, admin, codes. */
-	function memberBox(/** @type {any} */ m) {
-		const me = state.me;
-		const box = make('div', 'box');
-		const head = make('div', 'row');
-		head.append(make('span', 'grow', `${m.name} #${m.n}${m.n === me.n ? ' (you)' : ''}`));
+	/** A member's initial in a circle, in the colour of their first branch. */
+	function avatar(/** @type {any} */ m, size = 0) {
+		const a = make('span', 'av');
+		a.dataset.i = (String(m.name || '?').trim()[0] || '?').toUpperCase();
+		const b = m.places && m.places[0] && branchOf(m.places[0].b);
+		if (b && isColor(b.color)) {
+			a.style.setProperty('--c', b.color);
+		}
+		if (size) {
+			a.style.width = a.style.height = `${size}px`;
+			a.style.fontSize = `${Math.round(size * 0.45)}px`;
+		}
+		return a;
+	}
+	/** A member's place as coloured pills: Keeper or Founder, Monsignor, hybrid title, each branch's rank and chapter. */
+	function memberPills(/** @type {any} */ m) {
+		const row = make('span', 'pills');
+		const pill = (/** @type {string} */ text, /** @type {string} */ color, cls = '') => {
+			const x = make('span', `pill${cls ? ` ${cls}` : ''}`, text);
+			if (isColor(color)) {
+				x.style.setProperty('--c', color);
+			}
+			row.append(x);
+		};
+		const s = structure();
+		if (isKeeper(m)) {
+			pill(`${KEEPER.sym} ${KEEPER.name}`, KEEPER.color);
+		} else if (m.n === founderN()) {
+			pill(`${s.founder.sym} ${s.founder.name}`, s.founder.color);
+		}
+		if (m.mon) {
+			pill(`${s.monsignor.sym} ${s.monsignor.name}`, s.monsignor.color);
+		}
 		const title = hybridTitle(m);
 		if (title) {
-			head.append(make('span', 'tag', title));
+			pill(title, '', 'hybrid');
 		}
-		if (m.invited) {
-			head.append(make('span', 'tag', 'Invited'));
-		}
-		if (topOver(me, m)) {
-			head.append(check(` ${structure().monsignor.name}`, !!m.mon, (on) => act({ t: 'monsignor', member: m.n, on })));
-			loadBadges();
-			if (badges && badges.length) {
-				const opts = /** @type {[string, string][]} */ ([['', 'No badge'], ...badges.map((b) => [b.id, `Badge: ${b.name}`])]);
-				head.append(select(opts, m.badge || '', (v) => act({ t: 'badge', member: m.n, badge: v })));
-			}
-		}
-		if ((me.n === founderN() || me.n === state.appAdmin) && m.n !== state.appAdmin && m.n !== founderN() && !m.invited) {
-			head.append(check(' Admin', !!m.admin, (on) => act({ t: 'admin', member: m.n, on })));
-		}
-		box.append(head);
 		for (const p of m.places) {
 			const b = branchOf(p.b);
-			if (!b) {
-				continue;
+			if (b) {
+				pill(`${b.sym} ${rankName(p, m)}`, b.color);
+				if (p.c) {
+					pill(chapterName(p), b.color, 'soft');
+				}
 			}
-			const line = make('div', 'place');
-			line.append(branchTitle(b, ''));
-			const tiers = givableTiers(me, m, b.id);
-			if (!tiers.length) {
-				line.append(make('span', '', rankName(p, m)), make('span', 'dim', chapterName(p)), make('span', ''));
-			} else {
-				const place = (/** @type {number} */ t, /** @type {string} */ c) =>
-					act({ t: 'place', member: m.n, branch: b.id, tier: t, chapter: t >= CHAPTER_FROM ? c : '' });
-				const ch = select(chapterOptions(b), p.c, (c) => place(p.t, c), '');
-				ch.disabled = p.t < CHAPTER_FROM;
-				line.append(
-					select(tierOptions(b, tiers, m, p.c), String(p.t), (t) => place(Number(t), p.c), ''),
-					ch,
-					button('Take out', () => act({ t: 'unplace', member: m.n, branch: b.id }), 'b bad'),
-				);
-			}
-			box.append(line);
 		}
-		const open = structure().branches.filter((/** @type {any} */ b) => tierOf(m, b.id) === 0 && givableTiers(me, m, b.id).length);
-		if (m.places.length < PLACES && open.length) {
-			const k = `add:${m.n}`;
-			const b = branchOf(drafts[`${k}:b`]) || open[0];
-			const tiers = givableTiers(me, m, b.id);
-			const t = tiers.includes(Number(drafts[`${k}:t`])) ? Number(drafts[`${k}:t`]) : tiers[0];
-			const c = t >= CHAPTER_FROM ? drafts[`${k}:c`] || '' : '';
-			const line = make('div', 'place');
-			const ch = select(
-				chapterOptions(b),
-				c,
-				(v) => {
-					drafts[`${k}:c`] = v;
+		if (!m.places.length && !m.mon && m.n !== founderN() && !isKeeper(m)) {
+			pill(NEOPHYTE, NEOPHYTE_COLOR);
+		}
+		if (m.admin) {
+			pill('Admin', '', 'soft');
+		}
+		if (m.invited) {
+			pill('Invited', '', 'soft');
+		}
+		return row;
+	}
+	/** Branches as big tiles to tap: `pick` gets the branch id ('' for the `none` tile, when given). */
+	function branchTiles(/** @type {any[]} */ list, /** @type {string} */ on, /** @type {(id: string) => any} */ pick, none = '') {
+		const wrap = make('div', 'tiles');
+		const tile = (/** @type {string} */ id, /** @type {string} */ sym, /** @type {string} */ name, /** @type {string} */ color) => {
+			const t = make('button', `tile${id === on ? ' on' : ''}`);
+			t.dataset.branch = id;
+			t.append(make('span', 'sym', sym), make('span', 'nm', name));
+			if (isColor(color)) {
+				t.style.setProperty('--c', color);
+			}
+			t.addEventListener('click', () => guard(() => pick(id), panelSay));
+			wrap.append(t);
+		};
+		if (none) {
+			tile('', '·', none, '');
+		}
+		for (const b of list) {
+			tile(b.id, b.sym || '⸸', b.name, b.color);
+		}
+		return wrap;
+	}
+	/** Rank 1 to 5 in branch b as steps to tap, with − and +; only the ranks in `tiers` can be picked. */
+	function rankStepper(
+		/** @type {any} */ b,
+		/** @type {number[]} */ tiers,
+		/** @type {number} */ t,
+		/** @type {any} */ m,
+		/** @type {string} */ c,
+		/** @type {(t: number) => any} */ change,
+	) {
+		const wrap = make('div', 'stepper');
+		const i = tiers.indexOf(t);
+		const down = button('−', () => change(tiers[i - 1]), 'b step');
+		down.disabled = i <= 0;
+		down.title = 'Lower rank';
+		const up = button('+', () => change(tiers[i + 1]), 'b step');
+		up.disabled = i < 0 || i >= tiers.length - 1;
+		up.title = 'Higher rank';
+		const steps = make('div', 'steps');
+		for (let k = 1; k <= 5; k++) {
+			const name = word(tierForms(b, k, k >= CHAPTER_FROM ? c : ''), m.form, m.el);
+			const st = make('button', `st${k === t ? ' on' : ''}${k < t ? ' below' : ''}`, String(k));
+			st.dataset.t = String(k);
+			st.title = `${k}. ${name}`;
+			st.disabled = !tiers.includes(k);
+			st.addEventListener('click', () => guard(() => change(k), panelSay));
+			steps.append(st);
+		}
+		const name = t ? word(tierForms(b, t, t >= CHAPTER_FROM ? c : ''), m.form, m.el) : '';
+		wrap.append(down, steps, up, make('span', 'rank-name', name));
+		return wrap;
+	}
+	/** Branch b's chapters as chips (from rank CHAPTER_FROM on). */
+	function chapterChips(/** @type {any} */ b, /** @type {number} */ t, /** @type {string} */ c, /** @type {(c: string) => any} */ pick) {
+		const wrap = make('div', 'chips');
+		if (t < CHAPTER_FROM) {
+			wrap.append(make('span', 'dim', `Chapters come from rank ${CHAPTER_FROM}.`));
+			return wrap;
+		}
+		for (const [id, name] of [['', 'No chapter'], ...b.chapters.map((/** @type {any} */ x) => [x.id, x.name])]) {
+			const ch = make('button', `chip${id === c ? ' on' : ''}`, name);
+			ch.dataset.chapter = id;
+			ch.addEventListener('click', () => guard(() => pick(id), panelSay));
+			wrap.append(ch);
+		}
+		return wrap;
+	}
+
+	// The Admin tab's Manage: a list of the members you may manage; a click opens their sheet.
+	/** The part of the Admin tab shown. */
+	let adminView = 'manage';
+	/** The member whose sheet is open in Manage (0: the list). */
+	let sheetFor = 0;
+	/** @typedef {{ places: { b: string, t: number, c: string }[], mon: boolean }} Place what the sheet saves */
+	/** @type {(Place & { n: number }) | null} Changes to the open sheet's place, not saved yet. */
+	let sheetDraft = null;
+	/** @type {{ n: number, undo: Record<string, any>[], until: number } | null} The last save, undone for a few seconds. */
+	let lastSave = null;
+	const UNDO_FOR = 8000;
+	/** @type {Map<number, any>} Members' cards, for the commendations in their sheet. */
+	const sheetCards = new Map();
+	/** The member whose sheet shows the weapon picker. */
+	let issuing = 0;
+	/** The requests that take a member from one place to another: out of branches first, then into ranks, then Monsignor. */
+	function placeSteps(/** @type {number} */ n, /** @type {Place} */ from, /** @type {Place} */ to) {
+		/** @type {Record<string, any>[]} */
+		const steps = [];
+		for (const p of from.places) {
+			if (!to.places.some((x) => x.b === p.b)) {
+				steps.push({ t: 'unplace', member: n, branch: p.b });
+			}
+		}
+		for (const p of to.places) {
+			const o = from.places.find((x) => x.b === p.b);
+			const c = p.t >= CHAPTER_FROM ? p.c : '';
+			if (!o || o.t !== p.t || o.c !== c) {
+				steps.push({ t: 'place', member: n, branch: p.b, tier: p.t, chapter: c });
+			}
+		}
+		if (from.mon !== to.mon) {
+			steps.push({ t: 'monsignor', member: n, on: to.mon });
+		}
+		return steps;
+	}
+	/** Runs requests in turn; stops at the first refused (its reason shows). Whether all went through. */
+	async function runSteps(/** @type {Record<string, any>[]} */ steps) {
+		for (const x of steps) {
+			if ((await act(x)).t === 'error') {
+				return false;
+			}
+		}
+		return true;
+	}
+	const placeOf = (/** @type {any} */ m) => ({
+		places: m.places.map((/** @type {any} */ p) => ({ b: p.b, t: p.t, c: p.c || '' })),
+		mon: !!m.mon,
+	});
+	/** Saves the sheet's changes to member m; for a few seconds they can be undone. */
+	async function saveSheet(/** @type {any} */ m) {
+		if (!sheetDraft) {
+			return;
+		}
+		const before = placeOf(m);
+		const after = { places: sheetDraft.places, mon: sheetDraft.mon };
+		const ok = await runSteps(placeSteps(m.n, before, after));
+		if (!ok) {
+			return;
+		}
+		sheetDraft = null;
+		lastSave = { n: m.n, undo: placeSteps(m.n, after, before), until: Date.now() + UNDO_FOR };
+		setTimeout(() => {
+			if (lastSave && Date.now() >= lastSave.until) {
+				lastSave = null;
+				render();
+			}
+		}, UNDO_FOR + 50);
+		render(true);
+	}
+	/** A titled section of a member's sheet. */
+	function sheetSection(/** @type {HTMLElement} */ body, /** @type {string} */ title, cls = '') {
+		const sec = make('section', `sec${cls ? ` ${cls}` : ''}`);
+		sec.append(make('h3', '', title));
+		body.append(sec);
+		return sec;
+	}
+	/** One member's sheet: their ID as it will read, then only what you may do: place, roles, armory, honours, access. */
+	function drawSheet(/** @type {HTMLElement} */ body, /** @type {any} */ m) {
+		const me = state.me;
+		if (sheetDraft && sheetDraft.n !== m.n) {
+			sheetDraft = null;
+		}
+		const d = sheetDraft || { n: m.n, ...placeOf(m) };
+		const edit = (/** @type {(x: Place & { n: number }) => void} */ f) => {
+			const next = sheetDraft || { n: m.n, ...placeOf(m) };
+			f(next);
+			sheetDraft = placeSteps(m.n, placeOf(m), next).length ? next : null;
+			render(true);
+		};
+		const head = make('div', 'sheet-head');
+		head.append(
+			button(
+				'‹ Back',
+				() => {
+					sheetFor = 0;
+					sheetDraft = null;
+					issuing = 0;
 					render(true);
 				},
-				'',
-			);
-			ch.disabled = t < CHAPTER_FROM;
-			line.append(
-				select(
-					open.map((/** @type {any} */ x) => [x.id, withSym(x)]),
-					b.id,
-					(v) => {
-						drafts[`${k}:b`] = v;
-						render(true);
-					},
-					'',
-				),
-				select(
-					tierOptions(b, tiers, m, c),
-					String(t),
-					(v) => {
-						drafts[`${k}:t`] = v;
-						render(true);
-					},
-					'',
-				),
-				ch,
-				button(
-					m.places.length ? 'Add branch' : 'Place',
-					() => act({ t: 'place', member: m.n, branch: b.id, tier: t, chapter: c }, () => forget(k)),
-					'b main',
-				),
-			);
-			box.append(line);
+				'b back',
+			),
+			avatar(m, 44),
+		);
+		const who = make('div', 'grow');
+		who.append(make('div', 'nm', m.name), make('div', 'dim', `#${m.n}${m.n === me.n ? ' · you' : ''}`));
+		head.append(who);
+		body.append(head);
+		const preview = { ...m, places: d.places, mon: d.mon ? 1 : 0 };
+		const idCard = idBlock(idLines(preview, m.n === founderN()), 'idprev');
+		if (sheetDraft) {
+			idCard.prepend(make('div', 'dim', 'Their ID card, once saved'));
 		}
+		body.append(idCard);
+
+		// Place: each branch's rank and chapter, a branch to add, Monsignor.
+		const open = structure().branches.filter(
+			(/** @type {any} */ b) => !d.places.some((p) => p.b === b.id) && givableTiers(me, m, b.id).length,
+		);
+		const mayMon = topOver(me, m);
+		const anyPlace = d.places.some((p) => givableTiers(me, m, p.b).length) || open.length || mayMon;
+		if (anyPlace || d.places.length) {
+			const sec = sheetSection(body, 'Place');
+			for (const [i, p] of d.places.entries()) {
+				const b = branchOf(p.b);
+				if (!b) {
+					continue;
+				}
+				const tiers = givableTiers(me, m, b.id);
+				const box = make('div', 'pl');
+				box.dataset.branch = b.id;
+				const top = make('div', 'row');
+				top.append(branchTitle(b, 'branch sm'), make('span', 'grow'));
+				if (tiers.length) {
+					top.append(button('Take out', () => edit((x) => x.places.splice(i, 1)), 'b bad sm'));
+				}
+				box.append(top);
+				if (!tiers.length) {
+					box.append(make('div', 'dim', `${rankName(p, m)}${p.c ? ` · ${chapterName(p)}` : ''}: not yours to change.`));
+				} else {
+					box.append(
+						rankStepper(b, tiers, p.t, m, p.c, (t) =>
+							edit((x) => {
+								x.places[i].t = t;
+								if (t < CHAPTER_FROM) {
+									x.places[i].c = '';
+								}
+							}),
+						),
+						chapterChips(b, p.t, p.c, (c) => edit((x) => (x.places[i].c = c))),
+					);
+				}
+				sec.append(box);
+			}
+			if (d.places.length < PLACES && open.length) {
+				sec.append(
+					make('div', 'dim', d.places.length ? 'Add a second branch (makes a hybrid):' : 'Choose their branch:'),
+					branchTiles(open, '', (id) => edit((x) => x.places.push({ b: id, t: givableTiers(me, m, id)[0], c: '' }))),
+				);
+			}
+			const roles = make('div', 'chips');
+			if (mayMon) {
+				const mon = structure().monsignor;
+				const t = make('button', `chip toggle${d.mon ? ' on' : ''}`, `${mon.sym} ${mon.name}`);
+				t.dataset.toggle = 'monsignor';
+				t.addEventListener('click', () => edit((x) => (x.mon = !x.mon)));
+				roles.append(t);
+			}
+			roles.append(
+				make('span', 'dim', `Rank names in the ${{ f: 'feminine', m: 'masculine' }[m.form] || 'neutral'} form (their own choice).`),
+			);
+			sec.append(roles);
+			if (sheetDraft) {
+				const row = make('div', 'row save');
+				row.append(
+					button('Save', () => saveSheet(m), 'b main'),
+					button('Discard', () => {
+						sheetDraft = null;
+						render(true);
+					}),
+				);
+				sec.append(row);
+			} else if (lastSave && lastSave.n === m.n && Date.now() < lastSave.until) {
+				const row = make('div', 'row save');
+				const undo = lastSave.undo;
+				row.append(
+					make('span', 'dim', 'Saved.'),
+					button('Undo', async () => {
+						lastSave = null;
+						await runSteps(undo);
+						render(true);
+					}),
+				);
+				sec.append(row);
+			}
+		}
+
+		// Roles: admin and a personal badge.
+		const mayAdmin = (me.n === founderN() || me.n === state.appAdmin) && m.n !== state.appAdmin && m.n !== founderN() && !m.invited;
+		if (mayAdmin || topOver(me, m)) {
+			const sec = sheetSection(body, 'Roles');
+			const chips = make('div', 'chips');
+			if (mayAdmin) {
+				const t = make('button', `chip toggle${m.admin ? ' on' : ''}`, 'Admin: every power');
+				t.dataset.toggle = 'admin';
+				t.addEventListener('click', () => guard(() => act({ t: 'admin', member: m.n, on: !m.admin }), panelSay));
+				chips.append(t);
+			}
+			sec.append(chips);
+			if (topOver(me, m)) {
+				loadBadges();
+				if (badges && badges.length) {
+					const pick = make('div', 'chips');
+					for (const [id, name] of [['', 'No badge'], ...badges.map((b) => [b.id, b.name])]) {
+						const ch = make('button', `chip${(m.badge || '') === id ? ' on' : ''}`, name);
+						ch.dataset.badge = id;
+						ch.addEventListener('click', () => guard(() => act({ t: 'badge', member: m.n, badge: id }), panelSay));
+						pick.append(ch);
+					}
+					sec.append(make('div', 'dim', 'Personal badge on their card:'), pick);
+				}
+			}
+		}
+
 		if (topOver(me, m) || m.places.some((/** @type {any} */ p) => leaderOver(me, m, p.b))) {
-			box.append(drawIssue(m));
+			sheetArmory(sheetSection(body, 'Armory'), m);
 		}
 		if (mayCommend(me, m)) {
-			box.append(drawCommend(m));
+			sheetHonours(sheetSection(body, 'Honours'), m);
 		}
-		const row = make('div', 'row');
-		row.style.marginTop = '6px';
-		row.append(make('span', 'grow'));
 		if (mayReset(me, m)) {
-			row.append(
+			const sec = sheetSection(body, 'Access');
+			const reset = resetCodes.get(m.n);
+			if (reset) {
+				const row = make('div', 'row');
+				row.append(
+					make('span', 'code', reset.code),
+					button('Copy', () => navigator.clipboard?.writeText(reset.code)),
+				);
+				sec.append(
+					make('div', 'dim', `${m.invited ? 'Join' : 'Reset'} code, valid ${spellHours(reset.hours)}. They open /void and enter it.`),
+					row,
+				);
+			} else {
+				sec.append(
+					make(
+						'div',
+						'dim',
+						m.invited ? 'They haven’t joined with their code yet.' : 'A reset code lets them sign in again on a new device.',
+					),
+				);
+			}
+			sec.append(
 				button(m.invited ? 'New join code' : 'Reset code', () =>
 					act({ t: 'reset', member: m.n }, (r) => {
 						resetCodes.set(m.n, { code: r.code, hours: r.hours });
@@ -3655,31 +4169,138 @@
 			);
 		}
 		if (mayRemove(me, m)) {
-			row.append(
+			const sec = sheetSection(body, 'Danger zone', 'danger');
+			sec.append(
 				button(
 					'Remove from the Order',
 					() => {
 						if (confirmed(`kick:${m.n}`, `Click "Remove from the Order" again to take ${m.name} out of the Order.`)) {
-							return act({ t: 'kick', member: m.n });
+							return act({ t: 'kick', member: m.n }, () => {
+								sheetFor = 0;
+								render(true);
+							});
 						}
 					},
 					'b bad',
 				),
 			);
 		}
-		box.append(row);
-		const reset = resetCodes.get(m.n);
-		if (reset) {
-			box.append(
-				make(
-					'div',
-					'dim',
-					`${m.invited ? 'Join' : 'Reset'} code for ${m.name}, valid ${spellHours(reset.hours)}. They open /void and enter it:`,
-				),
-				make('div', 'code', reset.code),
-			);
+	}
+	/** A sheet's Armory: their weapons as tiles, and Issue, which opens a picker of the rest by kind. */
+	function sheetArmory(/** @type {HTMLElement} */ sec, /** @type {any} */ m) {
+		if (!catalog) {
+			sec.append(make('div', 'dim', 'Opening the Armory…'));
+			guard(loadCatalog, panelSay);
+			return;
 		}
-		return box;
+		const has = armsOf(m);
+		const tiles = make('div', 'wtiles');
+		if (m.n === state.appAdmin) {
+			sec.append(make('div', 'dim', 'Every weapon (early access).'));
+		} else {
+			for (const x of has) {
+				const t = make('div', 'wtile');
+				t.dataset.id = String(x.id);
+				t.style.setProperty('--c', RARITY[x.rarity] || '#c9c4d8');
+				const off = button('✕', () => act({ t: 'issue', member: m.n, weapon: x.id, on: false }), 'off');
+				off.title = `Take back ${x.name}`;
+				t.append(sprite(x, 48), make('span', 'nm', x.name), off);
+				tiles.append(t);
+			}
+			if (!has.length) {
+				sec.append(make('div', 'dim', 'No weapons yet.'));
+			}
+			sec.append(tiles);
+		}
+		const others = catalog.filter((x) => !has.includes(x));
+		if (!others.length || m.n === state.appAdmin) {
+			return;
+		}
+		if (issuing !== m.n) {
+			sec.append(
+				button('＋ Issue a weapon', () => {
+					issuing = m.n;
+					render(true);
+				}),
+			);
+			return;
+		}
+		const pick = make('div', 'picker');
+		const row = make('div', 'row');
+		const q = field('iss:q', '', 40);
+		q.placeholder = 'Find a weapon';
+		q.classList.add('grow');
+		q.style.width = 'auto';
+		q.addEventListener('input', () => render(true));
+		row.append(
+			q,
+			button('Done', () => {
+				issuing = 0;
+				forget('iss');
+				render(true);
+			}),
+		);
+		pick.append(row);
+		const text = String(drafts['iss:q'] || '').toLowerCase();
+		const shown = others.filter((x) => !text || x.name.toLowerCase().includes(text) || kindOf(x).toLowerCase().includes(text));
+		for (const k of [...new Set(shown.map(kindOf))]) {
+			pick.append(make('div', 'kind', k));
+			const grid = make('div', 'wtiles');
+			for (const x of shown.filter((y) => kindOf(y) === k)) {
+				const t = make('button', 'wtile pickable');
+				t.dataset.id = String(x.id);
+				t.title = `${x.name} (${x.rarity})${statsLine(x) ? `\n${statsLine(x)}` : ''}`;
+				t.style.setProperty('--c', RARITY[x.rarity] || '#c9c4d8');
+				t.append(sprite(x, 40), make('span', 'nm', x.name));
+				t.addEventListener('click', () => guard(() => act({ t: 'issue', member: m.n, weapon: x.id }), panelSay));
+				grid.append(t);
+			}
+			pick.append(grid);
+		}
+		if (!shown.length) {
+			pick.append(make('div', 'dim', 'No weapon matches.'));
+		}
+		sec.append(pick);
+	}
+	/** A sheet's Honours: their commendations (from their card), each taken back where you may, and Commend. */
+	function sheetHonours(/** @type {HTMLElement} */ sec, /** @type {any} */ m) {
+		const card = sheetCards.get(m.n);
+		if (card === undefined) {
+			sheetCards.set(m.n, null);
+			guard(async () => {
+				const r = await req({ t: 'card', member: m.n });
+				sheetCards.set(m.n, r.t === 'card' && r.card ? r.card : { medals: [] });
+				render();
+			});
+		}
+		const medals = (card && card.medals) || [];
+		if (!card) {
+			sec.append(make('div', 'dim', 'Looking up their commendations…'));
+		} else if (!medals.length) {
+			sec.append(make('div', 'dim', 'No commendations yet.'));
+		}
+		for (const md of medals) {
+			const line = make('div', 'commend');
+			const text = make('div', 'grow');
+			text.append(
+				make('b', '', md.name),
+				document.createTextNode(md.reason ? ` · ${md.reason}` : ''),
+				make('div', 'dim', `from ${md.byName}, ${date(md.at)}`),
+			);
+			line.append(medalSvg(md.icon, 26), text);
+			if (md.by === state.me.n || topOver(state.me, m)) {
+				line.append(
+					button('Take back', () =>
+						act({ t: 'unaward', member: m.n, id: md.id }, () => {
+							sheetCards.delete(m.n);
+							render(true);
+						}),
+					),
+				);
+			}
+			sec.append(line);
+		}
+		sec.append(drawCommend(m));
 	}
 	/** Commending a member: a button that opens the form (a picture, a name and a reason). */
 	function drawCommend(/** @type {any} */ m) {
@@ -3718,6 +4339,7 @@
 				() =>
 					act({ t: 'award', member: m.n, icon, name: drafts[`${k}:name`] || '', reason: drafts[`${k}:reason`] || '' }, () => {
 						forget(k);
+						sheetCards.delete(m.n);
 						panelSay(`Commended ${m.name}.`);
 						render(true);
 					}),
@@ -3731,85 +4353,169 @@
 		wrap.append(label(`Commend ${m.name}`), pick, name, reason, row);
 		return wrap;
 	}
+	/** The Admin tab: its parts as chips on top (Manage, Bring in, the about page, recent changes, reports). */
+	function drawAdmin(/** @type {HTMLElement} */ body) {
+		const views = adminViews();
+		if (!views.some(([id]) => id === adminView)) {
+			adminView = views[0][0];
+		}
+		const sheet = adminView === 'manage' && sheetFor ? memberOf(sheetFor) : null;
+		if (!sheet) {
+			sheetFor = 0;
+			const sub = make('div', 'chips subnav');
+			for (const [id, label] of views) {
+				const b = make('button', `chip${id === adminView ? ' on' : ''}`, label);
+				const count = id === 'manage' ? unplacedFor().length : 0;
+				if (count) {
+					b.append(make('span', 'badge', String(count)));
+				}
+				b.addEventListener('click', () => {
+					adminView = id;
+					lastMsg = '';
+					render(true);
+				});
+				sub.append(b);
+			}
+			body.append(sub);
+		}
+		if (sheet) {
+			drawSheet(body, sheet);
+		} else if (adminView === 'manage') {
+			drawManage(body);
+		} else if (adminView === 'bring') {
+			body.append(drawBringIn());
+		} else if (adminView === 'about') {
+			drawAboutAdmin(body);
+		} else if (adminView === 'log') {
+			drawLog(body);
+		} else {
+			moduleTabs.find((x) => x.id === adminView)?.draw(body);
+		}
+	}
+	/** Manage: the members you may manage, one row each, Neophytes first; a search and filter chips on top. */
 	function drawManage(/** @type {HTMLElement} */ body) {
 		const me = state.me;
 		const top = isTop(me);
-		const led = ledBy(me);
-		body.append(
-			make(
-				'p',
-				'dim',
-				top
-					? 'You have every power: place anyone, in any branch, at any rank. Members still waiting come first; every pick saves at once.'
-					: `You lead ${led.map((/** @type {any} */ b) => b.name).join(' and ')}: you place members below your own rank there, and place those still waiting. Every pick saves at once.`,
-			),
-		);
+		const waiting = unplacedFor();
+		const mine = state.members
+			.filter(
+				(/** @type {any} */ m) =>
+					!waiting.includes(m) &&
+					(topOver(me, m) || m.places.some((/** @type {any} */ p) => leaderOver(me, m, p.b))) &&
+					(m.places.length || m.mon || m.n === me.n),
+			)
+			.sort((/** @type {any} */ a, /** @type {any} */ b) => a.name.localeCompare(b.name));
 		const filter = field('m:filter', '', 40);
 		filter.placeholder = 'Find a member by name or number';
 		filter.addEventListener('input', () => render(true));
 		body.append(filter);
+		const show = drafts['m:show'] || 'all';
+		const chips = make('div', 'chips');
+		const chip = (/** @type {string} */ id, /** @type {string} */ text, /** @type {string} */ color = '') => {
+			const c = make('button', `chip${id === show ? ' on' : ''}`, text);
+			c.dataset.show = id;
+			if (isColor(color)) {
+				c.style.setProperty('--c', color);
+			}
+			c.addEventListener('click', () => {
+				drafts['m:show'] = id;
+				render(true);
+			});
+			chips.append(c);
+		};
+		chip('all', 'All');
+		chip('neo', `${NEOPHYTE}s · ${waiting.length}`, NEOPHYTE_COLOR);
+		for (const b of top ? structure().branches : ledBy(me)) {
+			chip(b.id, `${b.sym} ${b.name}`, b.color);
+		}
+		body.append(chips);
 		const q = String(drafts['m:filter'] || '').toLowerCase();
-		const shown = (/** @type {any} */ m) => !q || m.name.toLowerCase().includes(q) || String(m.n).includes(q);
-		const waiting = unplacedFor().filter(shown);
-		body.append(make('h3', '', `${NEOPHYTE}s (not yet in a branch) · ${waiting.length}`));
-		if (!waiting.length) {
-			body.append(make('p', 'dim', `No ${NEOPHYTE}s waiting for a branch.`));
+		const shown = (/** @type {any} */ m) =>
+			(!q || m.name.toLowerCase().includes(q) || String(m.n).includes(q)) &&
+			(show === 'all' || show === 'neo' || m.places.some((/** @type {any} */ p) => p.b === show));
+		const row = (/** @type {any} */ m) => {
+			const r = make('button', 'mrow');
+			r.dataset.n = String(m.n);
+			const who = make('span', 'who');
+			who.append(make('span', 'nm', m.name), make('span', 'num', ` #${m.n}${m.n === me.n ? ' (you)' : ''}`));
+			r.append(avatar(m), who, memberPills(m), make('span', 'go', '›'));
+			r.addEventListener('click', () => {
+				sheetFor = m.n;
+				sheetDraft = null;
+				issuing = 0;
+				lastMsg = '';
+				render(true);
+			});
+			return r;
+		};
+		const list = make('div', 'mlist');
+		const neo = show === 'all' || show === 'neo' ? waiting.filter(shown) : [];
+		if (show === 'all' || show === 'neo') {
+			list.append(make('h3', '', `${NEOPHYTE}s (not yet in a branch) · ${neo.length}`));
+			if (!neo.length) {
+				list.append(make('p', 'dim', `No ${NEOPHYTE}s waiting for a branch.`));
+			}
+			for (const m of neo) {
+				list.append(row(m));
+			}
 		}
-		for (const m of waiting) {
-			body.append(memberBox(m));
+		if (show !== 'neo') {
+			const rest = mine.filter(shown);
+			list.append(make('h3', '', top ? 'Members' : 'Members of your branch below you'));
+			if (!rest.length) {
+				list.append(make('p', 'dim', 'Nobody here.'));
+			}
+			for (const m of rest) {
+				list.append(row(m));
+			}
 		}
-		const mine = state.members
-			.filter(
-				(/** @type {any} */ m) =>
-					!waiting.includes(m) && (topOver(me, m) || m.places.some((/** @type {any} */ p) => leaderOver(me, m, p.b))),
-			)
-			.filter((/** @type {any} */ m) => (m.places.length || m.mon || m.n === me.n) && shown(m))
-			.sort((/** @type {any} */ a, /** @type {any} */ b) => a.name.localeCompare(b.name));
-		body.append(make('h3', '', top ? 'Members' : 'Members of your branch below you'));
-		if (!mine.length) {
-			body.append(make('p', 'dim', 'Nobody here yet.'));
-		}
-		for (const m of mine) {
-			body.append(memberBox(m));
-		}
-		body.append(drawBringIn());
-		if (!top) {
-			return;
-		}
+		body.append(list);
+	}
+	/** The about page and whether joining is open (the Founder and admins). */
+	function drawAboutAdmin(/** @type {HTMLElement} */ body) {
 		const meta = state.meta;
-		body.append(
-			make('h3', '', 'About page and joining'),
-			label('About'),
+		const isOpen = 'a:open' in drafts ? drafts['a:open'] === '1' : meta.open;
+		const box = make('div', 'box form');
+		const toggle = make('button', `chip toggle${isOpen ? ' on' : ''}`, isOpen ? 'Joining is open' : 'Joining is closed');
+		toggle.dataset.toggle = 'open';
+		toggle.addEventListener('click', () => {
+			drafts['a:open'] = isOpen ? '0' : '1';
+			render(true);
+		});
+		box.append(
+			label('What everyone reads on The Order tab'),
 			field('a:about', meta.about, LIMITS.about, 'textarea'),
-			check(' Joining open', 'a:open' in drafts ? drafts['a:open'] === '1' : meta.open, (on) => {
-				drafts['a:open'] = on ? '1' : '0';
-			}),
+			make('div', 'dim', 'Open: anyone running the add-on can join, as a Neophyte. Closed: only with a join code.'),
+			toggle,
 		);
-		body.append(
-			make('div'),
+		const row = make('div', 'row save');
+		row.append(
 			button(
 				'Save the about page',
 				() =>
-					act(
-						{
-							t: 'about',
-							about: drafts['a:about'] ?? meta.about,
-							open: 'a:open' in drafts ? drafts['a:open'] === '1' : meta.open,
-						},
-						() => {
-							forget('a');
-							panelSay('Saved.');
-						},
-					),
+					act({ t: 'about', about: drafts['a:about'] ?? meta.about, open: isOpen }, () => {
+						forget('a');
+						panelSay('Saved.');
+					}),
 				'b main',
 			),
 		);
-		if (state.log && state.log.length) {
-			body.append(make('h3', '', 'Recent changes'));
-			for (const l of [...state.log].reverse()) {
-				body.append(make('div', 'dim', `${dateTime(l.at)} — ${l.text}`));
-			}
+		box.append(row);
+		body.append(box);
+	}
+	/** The hierarchy's recent changes, newest first. */
+	function drawLog(/** @type {HTMLElement} */ body) {
+		const log = state.log || [];
+		if (!log.length) {
+			body.append(make('p', 'dim', 'Nothing changed yet.'));
 		}
+		const list = make('div', 'log');
+		for (const l of [...log].reverse()) {
+			const line = make('div', 'logline');
+			line.append(make('span', 'when', dateTime(l.at)), make('span', '', l.text));
+			list.append(line);
+		}
+		body.append(list);
 	}
 	/**
 	 * Bringing in members the Order had before the add-on: one per line, "member number, name", all at one place. Each
@@ -3818,13 +4524,12 @@
 	function drawBringIn() {
 		const me = state.me;
 		const top = isTop(me);
-		const wrap = make('div');
+		const wrap = make('div', 'box form');
 		wrap.append(
-			make('h3', '', 'Bring in existing members'),
 			make(
 				'p',
 				'dim',
-				'For members the Order had before the add-on, placed at once. One per line: member number, name. Each gets a join code; send it to them by whisper or beep, and they enter it under /void.',
+				'For members the Order had before the add-on, placed at once. Each gets a join code; send it to them by whisper or beep, and they enter it under /void.',
 			),
 		);
 		const list = field('in:list', '', 4000, 'textarea');
@@ -3835,50 +4540,53 @@
 		const tiers = b ? (top ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5].filter((t) => t < tierOf(me, b.id))) : [];
 		const t = tiers.includes(Number(drafts['in:t'])) ? Number(drafts['in:t']) : tiers[0] || 0;
 		const c = b && t >= CHAPTER_FROM ? drafts['in:c'] || '' : '';
-		const line = make('div', 'place');
-		line.append(
-			select(
-				[...(top ? [['', 'No branch yet']] : []), ...branches.map((/** @type {any} */ x) => [x.id, withSym(x)])],
+		const since = field('in:since', '', 10);
+		since.type = 'date';
+		since.classList.add('auto');
+		wrap.append(
+			label('People: one per line, member number, name'),
+			list,
+			label('Their branch'),
+			branchTiles(
+				branches,
 				bId,
 				(v) => {
 					drafts['in:b'] = v;
 					render(true);
 				},
-				'',
+				top ? 'No branch yet' : '',
 			),
 		);
 		if (b) {
-			const ch = select(
-				chapterOptions(b),
-				c,
-				(v) => {
+			const nobody = { form: 'n', el: '' };
+			wrap.append(
+				label('Rank'),
+				rankStepper(b, tiers, t, nobody, c, (v) => {
+					drafts['in:t'] = String(v);
+					render(true);
+				}),
+				chapterChips(b, t, c, (v) => {
 					drafts['in:c'] = v;
 					render(true);
-				},
-				'',
-			);
-			ch.disabled = t < CHAPTER_FROM;
-			line.append(
-				select(
-					tiers.map((x) => [String(x), `${x}. ${tierLabel(tierForms(b, x, c))}`]),
-					String(t),
-					(v) => {
-						drafts['in:t'] = v;
-						render(true);
-					},
-					'',
-				),
-				ch,
+				}),
 			);
 		}
-		const since = field('in:since', '', 10);
-		since.type = 'date';
-		wrap.append(label('People'), list, label('Their place'), line);
 		if (top) {
-			wrap.append(check(` ${structure().monsignor.name}s`, drafts['in:mon'] === '1', (on) => (drafts['in:mon'] = on ? '1' : '0')));
+			const mon = structure().monsignor;
+			const on = drafts['in:mon'] === '1';
+			const tg = make('button', `chip toggle${on ? ' on' : ''}`, `${mon.sym} ${mon.name}s`);
+			tg.dataset.toggle = 'monsignor';
+			tg.addEventListener('click', () => {
+				drafts['in:mon'] = on ? '0' : '1';
+				render(true);
+			});
+			const roles = make('div', 'chips');
+			roles.append(tg);
+			wrap.append(roles);
 		}
 		wrap.append(label('In the Order since (optional, the same for all of them)'), since);
-		wrap.append(
+		const row = make('div', 'row save');
+		row.append(
 			button(
 				'Bring them in',
 				() => {
@@ -3920,12 +4628,13 @@
 				'b main',
 			),
 		);
+		wrap.append(row);
 		if (broughtIn) {
 			wrap.append(make('p', 'dim', `Join codes, valid ${plural(broughtIn.days, 'day')}. Send each person theirs:`));
 			for (const x of broughtIn.codes) {
-				const row = make('div', 'row');
-				row.append(make('span', 'grow', `${x.name} #${x.n}`), make('span', 'code', x.code));
-				wrap.append(row);
+				const line = make('div', 'row');
+				line.append(make('span', 'grow', `${x.name} #${x.n}`), make('span', 'code', x.code));
+				wrap.append(line);
 			}
 		}
 		return wrap;
@@ -4162,10 +4871,11 @@
 			style();
 			t = make('button', '', '⸸');
 			t.id = 'void-tab';
-			t.title = 'Oculus Nihili (/void)';
-			t.addEventListener('click', () => guard(() => openPanel()));
+			t.title = 'Oculus Nihili (/void; drag to move it)';
+			wireTab(t);
 			document.body.append(t);
 		}
+		placeTab();
 		t.classList.toggle('right', opts.tabSide === 'right');
 		const n = openOrders();
 		t.textContent = n ? `⸸${n}` : '⸸';
@@ -4253,7 +4963,7 @@
 	const early = /** @type {[string, any, number][]} */ ([]);
 	/** @type {((t: any) => void)[]} */
 	const serverListeners = [];
-	/** @type {{ id: string, label: string, show: () => boolean, draw: (body: HTMLElement) => void }[]} */
+	/** @type {{ id: string, label: string, admin?: boolean, show: () => boolean, draw: (body: HTMLElement) => void }[]} A tab with `admin` sits under the Admin tab. */
 	const moduleTabs = [];
 	/** @type {((body: HTMLElement) => void)[]} */
 	const moduleSettings = [];

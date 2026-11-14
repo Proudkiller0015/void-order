@@ -277,42 +277,50 @@ const type = (page, sel, text, nth = 0) =>
 	);
 const panelText = (page) => page.evaluate(() => document.getElementById('void-panel')?.innerText || '');
 const slash = (page, args) => page.evaluate((args) => Commands.find((c) => c.Tag === 'void').Action(args, `/void ${args}`, []), args);
+/** Opens Admin › Manage on its list (back out of an open member sheet). */
+async function openManage(page) {
+	await click(page, '🛡 Admin');
+	await click(page, '‹ Back');
+	await click(page, 'Manage');
+}
+/** Opens the sheet of the member named `name` from the Manage list. */
+async function openSheet(page, name) {
+	await openManage(page);
+	return page.evaluate((name) => {
+		const r = [...document.querySelectorAll('#void-panel .mrow')].find((x) => x.querySelector('.nm')?.textContent === name);
+		r?.click();
+		return !!r;
+	}, name);
+}
+/** Clicks the first element in the panel's body matching `sel` (inside the place box of `branch`, when given). */
+const tap = (page, sel, branch = '') =>
+	page.evaluate(
+		(sel, branch) => {
+			const root = branch ? document.querySelector(`#void-panel .pl[data-branch="${branch}"]`) : document.querySelector('#void-panel main');
+			const el = root?.querySelector(sel);
+			el?.click();
+			return !!el;
+		},
+		sel,
+		branch,
+	);
 /**
- * In Manage, places the member named `name` from the add-a-branch line of their box: picks the branch, the rank and
- * the chapter (each pick redraws the panel), then clicks Place.
+ * Places the member named `name` from their sheet: their branch (a tile, if they aren't in it yet), the rank step and
+ * the chapter chip, then Save.
  */
 async function placeVia(page, name, branch, tier, chapter = '') {
-	const pick = (i, value) =>
-		page.evaluate(
-			(name, i, value) => {
-				const box = [...document.querySelectorAll('#void-panel .box')].find((b) =>
-					b.querySelector('.row .grow')?.textContent.startsWith(`${name} #`),
-				);
-				const line = [...box.querySelectorAll('.place')].pop();
-				const sel = line.querySelectorAll('select')[i];
-				sel.value = value;
-				sel.dispatchEvent(new Event('change'));
-			},
-			name,
-			i,
-			value,
-		);
-	await pick(0, branch);
-	await pick(1, String(tier));
-	if (chapter) await pick(2, chapter);
-	return page.evaluate((name) => {
-		const box = [...document.querySelectorAll('#void-panel .box')].find((b) =>
-			b.querySelector('.row .grow')?.textContent.startsWith(`${name} #`),
-		);
-		const b = [...box.querySelectorAll('.place button')].pop();
-		b.click();
-		return b.textContent;
-	}, name);
+	await openSheet(page, name);
+	if (!(await page.evaluate((b) => !!document.querySelector(`#void-panel .pl[data-branch="${b}"]`), branch))) {
+		await tap(page, `.tiles .tile[data-branch="${branch}"]`);
+	}
+	await tap(page, `.st[data-t="${tier}"]`, branch);
+	if (chapter) await tap(page, `.chip[data-chapter="${chapter}"]`, branch);
+	return click(page, 'Save');
 }
 /** The ID lines of the open card, as written (the card shows some in capitals). */
 /** Clicks the checkbox of the setting whose label starts with `text`, in the panel's ⚙ Settings tab. */
 async function toggleSetting(page, text) {
-	await click(page, '⚙ Settings');
+	await click(page, '⚙');
 	return page.evaluate((text) => {
 		const l = [...document.querySelectorAll('#void-panel label.check')].find((x) => x.textContent.trim().startsWith(text));
 		const c = l.querySelector('input');
@@ -323,7 +331,7 @@ async function toggleSetting(page, text) {
 }
 /** Picks a choice (by its text) for the setting whose label starts with `text`, in the ⚙ Settings tab. */
 async function chooseSetting(page, text, choice) {
-	await click(page, '⚙ Settings');
+	await click(page, '⚙');
 	return page.evaluate(
 		(text, choice) => {
 			const row = [...document.querySelectorAll('#void-panel .setting')].find((x) => x.textContent.trim().startsWith(text));
@@ -366,11 +374,7 @@ const openCardOf = async (page, name) => {
 		await click(page, 'Found the Order');
 		await page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const tabs = await page.evaluate(() => [...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'));
-		check(
-			'founding gives the Founder every tab',
-			tabs === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|Manage|My card|🐞 Reports|⚙ Settings',
-			tabs,
-		);
+		check('founding gives the Founder every tab', tabs === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|🛡 Admin', tabs);
 
 		// Bea joins at once and waits for a place; Ann places her from Manage as a Paladin rank 5.
 		const bea = await peer(12, 'Bea');
@@ -378,8 +382,8 @@ const openCardOf = async (page, name) => {
 		await bea.req({ t: 'join', name: 'Bea' });
 		await wait(400);
 		const badge = await page.evaluate(() => document.querySelector('#void-panel nav .badge')?.textContent);
-		check('Manage shows one member awaiting a place', badge === '1', badge);
-		await click(page, 'Manage');
+		check('Admin shows one member awaiting a place', badge === '1', badge);
+		await openManage(page);
 		check(
 			'Bea is listed under the Neophytes',
 			/Neophytes \(not yet in a branch\) · 1\s+Bea #12/i.test(await panelText(page)),
@@ -420,13 +424,15 @@ const openCardOf = async (page, name) => {
 		await wait(400);
 		await cat.req({ t: 'profile', form: 'f', bio: 'Blade and spell.' });
 		await dan.req({ t: 'profile', form: 'f' });
-		// Ann makes herself a Monsignor from her own box.
-		await page.evaluate(() => {
-			const box = [...document.querySelectorAll('#void-panel .box')].find((b) => /\(you\)/.test(b.textContent));
-			const c = [...box.querySelectorAll('label.check')].find((l) => /Monsignor/.test(l.textContent)).querySelector('input');
-			c.checked = true;
-			c.dispatchEvent(new Event('change'));
-		});
+		// Ann makes herself a Monsignor from her own sheet: the preview shows it before she saves.
+		await openSheet(page, 'Ann');
+		await tap(page, '.chip[data-toggle="monsignor"]');
+		check(
+			'the sheet previews the ID card before saving',
+			/Monsignor/.test(await page.evaluate(() => document.querySelector('#void-panel .idprev')?.innerText || '')) &&
+				bea.state.members.find((m) => m.n === 11)?.mon !== 1,
+		);
+		await click(page, 'Save');
 		await wait(500);
 		check('Ann makes herself a Monsignor', bea.state.members.find((m) => m.n === 11)?.mon === 1);
 
@@ -438,14 +444,12 @@ const openCardOf = async (page, name) => {
 		await fay.page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const fayStatus = await fay.page.evaluate(() => document.querySelector('#void-panel .status').textContent);
 		check('Fay joins at once, a Neophyte', fayStatus === 'Neophyte', fayStatus);
-		await click(page, 'Members');
-		await click(page, 'Manage');
 		await placeVia(page, 'Fay', 'paladin', 4);
 		await wait(600);
 		const fayTabs = await fay.page.evaluate(() =>
 			[...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'),
 		);
-		check('placed as a Paladin rank 4, Fay leads: she gets Manage', /Manage/.test(fayTabs), fayTabs);
+		check('placed as a Paladin rank 4, Fay leads: she gets Admin', /Admin/.test(fayTabs), fayTabs);
 		await fay.page.waitForFunction(() => window.sbJoined.length > 0, { timeout: 8000 }).catch(() => {});
 		check(
 			'running SlimeBeep, Fay is put in the Order chat once she is a member',
@@ -500,37 +504,28 @@ const openCardOf = async (page, name) => {
 		await page.evaluate(() => document.getElementById('void-card').remove());
 
 		// Commendations: Ann commends Cat from Manage; the card shows the medal, and Ann takes it back from there.
-		await click(page, 'Manage');
-		/** Clicks a button in a member's box in Manage: the one whose text starts with `text`, or the medal picture `icon`. */
-		const inBox = (name, text, icon = '') =>
-			page.evaluate(
-				(name, text, icon) => {
-					const box = [...document.querySelectorAll('#void-panel .box')].find((b) =>
-						b.querySelector('.row .grow')?.textContent.startsWith(`${name} #`),
-					);
-					const b = icon
-						? box.querySelector(`.medal-pick button[data-icon="${icon}"]`)
-						: [...box.querySelectorAll('button')].find((x) => x.textContent.startsWith(text));
-					b.click();
-				},
-				name,
-				text,
-				icon,
-			);
-		await inBox('Cat', '🎖 Commend');
-		await inBox('Cat', '', 'shield');
+		await openSheet(page, 'Cat');
+		await click(page, '🎖 Commend');
+		await tap(page, '.medal-pick button[data-icon="shield"]');
 		await page.evaluate(() => {
-			const box = [...document.querySelectorAll('#void-panel .box')].find((b) =>
-				b.querySelector('.row .grow')?.textContent.startsWith('Cat #'),
-			);
-			const [name, reason] = box.querySelectorAll('input:not([type])');
+			const [name, reason] = document.querySelectorAll('#void-panel main input:not([type])');
 			name.value = 'Shield of the Void';
 			name.dispatchEvent(new Event('input'));
 			reason.value = 'Held the gate <b>alone</b>.';
 			reason.dispatchEvent(new Event('input'));
 		});
-		await inBox('Cat', 'Award');
+		await click(page, 'Award');
 		await wait(500);
+		await page
+			.waitForFunction(() => /Shield of the Void/.test(document.querySelector('#void-panel main')?.innerText || ''), { timeout: 5000 })
+			.catch(() => {});
+		check(
+			'the sheet lists the new commendation under Honours',
+			/HONOURS[\s\S]*Shield of the Void · Held the gate <b>alone<\/b>\.[\s\S]*from Ann/i.test(await panelText(page)),
+			await panelText(page),
+		);
+		await page.evaluate(() => document.querySelector('#void-panel .commend')?.scrollIntoView({ block: 'center' }));
+		await shot(page, '06b-member-sheet');
 		await click(page, 'Members');
 		await openCardOf(page, 'Cat');
 		const medalCard = await page.evaluate(() => {
@@ -601,19 +596,47 @@ const openCardOf = async (page, name) => {
 			.waitForFunction(() => [...document.querySelectorAll('#void-panel img')].slice(0, 6).every((i) => i.complete), { timeout: 5000 })
 			.catch(() => {});
 		await shot(page, '20-armory');
-		await click(page, 'Manage');
-		await page.waitForFunction(() => !!document.querySelector('#void-panel .box select'), { timeout: 5000 }).catch(() => {});
-		await page.evaluate(() => {
-			const box = [...document.querySelectorAll('#void-panel .box')].find((b) =>
-				b.querySelector('.row .grow')?.textContent.startsWith('Cat #'),
-			);
-			const issue = [...box.querySelectorAll('button')].find((b) => b.textContent === 'Issue');
-			const sel = issue.previousElementSibling;
-			sel.value = '7';
-			sel.dispatchEvent(new Event('change'));
-			issue.click();
-		});
+		await openSheet(page, 'Cat');
+		await click(page, '＋ Issue a weapon');
+		await page
+			.waitForFunction(() => [...document.querySelectorAll('#void-panel .picker img')].slice(0, 8).every((i) => i.complete), {
+				timeout: 5000,
+			})
+			.catch(() => {});
+		const picker = await page.evaluate(() => ({
+			kinds: document.querySelectorAll('#void-panel .picker .kind').length,
+			tiles: document.querySelectorAll('#void-panel .picker .wtile').length,
+			selects: document.querySelectorAll('#void-panel main select').length,
+		}));
+		check('Issue opens a picker of weapon tiles by kind, not a select', picker.kinds > 3 && picker.tiles > 90 && !picker.selects, picker);
+		await page.evaluate(() => document.querySelector('#void-panel .picker')?.scrollIntoView({ block: 'center' }));
+		await shot(page, '06c-issue-picker');
+		// At phone width: the list and the sheet still fit, nothing wider than the screen.
+		await page.setViewport({ width: 390, height: 844 });
+		await wait(300);
+		await page.evaluate(() => document.querySelector('#void-panel main').scrollTo(0, 0));
+		const fits = () =>
+			page.evaluate(() => {
+				const main = document.querySelector('#void-panel main');
+				const p = document.getElementById('void-panel').getBoundingClientRect();
+				return main.scrollWidth <= main.clientWidth + 1 && p.right <= innerWidth && p.left >= 0;
+			});
+		const sheetFits = await fits();
+		await shot(page, '06d-phone-sheet');
+		await openManage(page);
+		const listFits = await fits();
+		await shot(page, '06e-phone-list');
+		check('at phone width the sheet and the list fit, with no sideways scroll', sheetFits && listFits, { sheetFits, listFits });
+		await page.setViewport({ width: 1600, height: 900 });
+		await wait(300);
+		await openSheet(page, 'Cat');
+		await click(page, '＋ Issue a weapon');
+		await tap(page, '.picker .wtile[data-id="7"]');
 		await wait(500);
+		check(
+			'the issued weapon shows as a tile in her sheet',
+			await page.evaluate(() => !!document.querySelector('#void-panel .wtile[data-id="7"]:not(.pickable)')),
+		);
 		await cat.req({ t: 'carry', weapon: 7 });
 		check('Ann issues a weapon to Cat from Manage', (cat.state.me.weapons || []).join() === '7');
 		await click(page, 'Members');
@@ -645,7 +668,7 @@ const openCardOf = async (page, name) => {
 		peers.push(eve);
 		await eve.req({ t: 'join', name: 'Eve' });
 		await wait(400);
-		await click(fay.page, 'Manage');
+		await openManage(fay.page);
 		await wait(200);
 		const fm = await panelText(fay.page);
 		check(
@@ -654,23 +677,27 @@ const openCardOf = async (page, name) => {
 			fm,
 		);
 		check('but not Bea (rank 5), Gus (rank 4), Dan (a Priest) or Ann', !/Bea #12|Gus #16|Dan #14|Ann #11/.test(fm), fm);
-		const fayRanks = await fay.page.evaluate(() => {
-			const box = [...document.querySelectorAll('#void-panel .box')].find((b) => /^Cat #13/.test(b.textContent));
-			return [...box.querySelectorAll('.place')].map(
-				(l) =>
-					[...l.querySelectorAll('select')].map((s) => [...s.options].map((o) => o.textContent).join('/')).join(' | ') ||
-					l.innerText.replace(/\s+/g, ' '),
-			);
-		});
+		await shot(fay.page, '06-manage-branch-leader');
+		await openSheet(fay.page, 'Cat');
+		const fayRanks = await fay.page.evaluate(() =>
+			[...document.querySelectorAll('#void-panel .pl')].map(
+				(l) => [...l.querySelectorAll('.st:not(:disabled)')].map((s) => s.title).join('/') + ' |' + l.innerText.replace(/\s+/g, ' '),
+			),
+		);
+		const fayHidden = await fay.page.evaluate(() => ({
+			danger: !!document.querySelector('#void-panel .sec.danger'),
+			roles: /ROLES/i.test(document.querySelector('#void-panel main').innerText),
+			mon: !!document.querySelector('#void-panel .chip[data-toggle="monsignor"]'),
+		}));
+		check('a leader’s sheet hides what she may not do: no roles, no Monsignor', !fayHidden.roles && !fayHidden.mon, fayHidden);
 		check(
 			"Cat's Paladin ranks go up to Paladin (3) for Fay; her Mage branch is read-only",
-			fayRanks[0].startsWith('1. Squire/2. Knight/3. Paladin |') && /Mage.*Spellblade/.test(fayRanks[1]),
+			fayRanks[0].startsWith('1. Squire/2. Knight/3. Paladin |') && /^ \|.*Mage.*Spellblade.*not yours to change/.test(fayRanks[1]),
 			fayRanks,
 		);
 		await placeVia(fay.page, 'Eve', 'paladin', 1);
 		await wait(400);
 		check('Fay places Eve as a Squire', JSON.stringify(eve.state.me.places) === '[{"b":"paladin","t":1,"c":""}]', eve.state.me);
-		await shot(fay.page, '06-manage-branch-leader');
 
 		// A photo session from the panel to a group: the Paladins.
 		await click(page, 'Orders');
@@ -930,6 +957,42 @@ const openCardOf = async (page, name) => {
 		await toggleSetting(fp, 'Void mark over members');
 		check('and on again', await marked(1));
 
+		// The add-on's logo over everyone who runs it, member or not (Zed), with their version; none over Ann's character
+		// here, which carries no sign of the add-on; inside the screen at the top; clicks on it go through to the game.
+		const logo = (i, y = 0) =>
+			fp.evaluate(
+				(i, y) => {
+					MainCanvas.clearRect(0, 0, 2000, 1000);
+					ChatRoomCharacterViewDrawOverlay(ChatRoomCharacter[i], 0, y, 1);
+					return MainCanvas.getImageData(309, Math.max(2, y + 42) + 17, 1, 1).data[3] > 0;
+				},
+				i,
+				y,
+			);
+		await fp.evaluate(() => {
+			ChatRoomCharacter[2].OnlineSharedSettings = { ...ChatRoomCharacter[2].OnlineSharedSettings, OculusNihili: '2.0.0-beta.2.5' };
+			ChatRoomCharacter[1].OnlineSharedSettings = { GameVersion };
+		});
+		check('Zed runs Oculus Nihili: its logo is over him', await logo(2));
+		check('Fay has it over herself', await logo(0));
+		check('Ann’s character here shows no sign of the add-on: no logo', !(await logo(1)));
+		check('at the top of the screen it stays inside it', await logo(2, -60));
+		const through = await fp.evaluate(() => {
+			window.clickedThrough = false;
+			bcModSdk
+				.registerMod({ name: 'TestSpy', fullName: 'Test spy', version: '1' })
+				.hookFunction('ChatRoomCharacterViewClickCharacter', -100, (args, next) => {
+					window.clickedThrough = true;
+					return next(args);
+				});
+			ChatRoomCharacterViewClickCharacter(ChatRoomCharacter[2], 0, 0, 1, 309, 59);
+			return { through: window.clickedThrough, card: !!document.getElementById('void-card') };
+		});
+		check('a click on the logo goes through to the game', through.through && !through.card, through);
+		await toggleSetting(fp, 'Oculus Nihili logo over its users');
+		check('the setting hides the logos', !(await logo(2)));
+		await toggleSetting(fp, 'Oculus Nihili logo over its users');
+
 		// The hunt board: a copy of the prison's public board, with everyone's notes; a target over Bea, who has a bounty.
 		await page.bringToFront();
 		await click(page, '🎯 Hunt board');
@@ -1040,7 +1103,7 @@ const openCardOf = async (page, name) => {
 		await page.evaluate(() => document.getElementById('void-card').remove());
 
 		// My card: the form of rank names, and showing it.
-		await click(fay.page, 'My card');
+		await fay.page.evaluate(() => document.querySelector('#void-panel .me-chip').click());
 		await click(fay.page, 'Join the Order chat in SlimeBeep');
 		await wait(500);
 		check(
@@ -1064,7 +1127,7 @@ const openCardOf = async (page, name) => {
 		await shot(fay.page, '12-my-card');
 		await page.bringToFront();
 		await page.waitForFunction(() => !document.getElementById('void-dice'), { timeout: 8000 });
-		await click(page, 'My card');
+		await page.evaluate(() => document.querySelector('#void-panel .me-chip').click());
 		check('without SlimeBeep there is no chat button', !/Join the Order chat/.test(await panelText(page)));
 		await click(page, 'The Order');
 		const about = await panelText(page);
@@ -1078,7 +1141,7 @@ const openCardOf = async (page, name) => {
 		await shot(page, '13-the-order');
 
 		// Settings: one list, in the panel's ⚙ tab and the game's Settings > Extensions page.
-		await click(fp, '⚙ Settings');
+		await click(fp, '⚙');
 		const groups = await fp.evaluate(() => [...document.querySelectorAll('#void-panel main h3')].map((h) => h.textContent).join('|'));
 		check('the ⚙ tab groups the settings', groups === 'Notifications|Rooms|Panel|SlimeBeep|Privacy|Problems|Weapon actions', groups);
 		await shot(fp, '15-settings');
@@ -1109,44 +1172,35 @@ const openCardOf = async (page, name) => {
 			bea.state.members.find((m) => m.n === 15),
 		);
 
-		// The Extensions page: Ann turns off other people's dice there; the panel agrees.
+		// Settings > Extensions: the add-on's entry opens the panel's ⚙ Settings tab and leaves the game on its list.
 		await page.bringToFront();
-		const ext = await page.evaluate(() => {
+		await page.evaluate(() => document.getElementById('void-panel')?.remove());
+		const ext = await page.evaluate(async () => {
+			const was = [CurrentModule, CurrentScreen];
+			const hadChat = !!document.getElementById('InputChat');
+			await CommonSetScreen('Character', 'Preference');
+			await PreferenceOpenSubscreen('Extensions');
 			const e = PreferenceExtensionsSettings.OculusNihili;
-			e.load();
-			e.run();
-			// "Play dice others roll in my room", the seventh checkbox: rows of 72 from 170, at x 400.
-			MouseX = 420;
-			MouseY = 170 + 6 * 72 + 20;
-			e.click();
-			return { text: e.ButtonText, image: /^data:image\/png/.test(e.Image) };
+			PreferenceExtensionsDisplay.find((d) => d.Button === 'Oculus Nihili').click();
+			await new Promise((r) => setTimeout(r, 300));
+			const out = {
+				text: e.ButtonText,
+				image: /^data:image\/png/.test(e.Image),
+				tab: document.querySelector('#void-panel header .icon.on')?.title || '',
+				current: PreferenceExtensionsCurrent,
+				subscreen: PreferenceSubscreen?.name,
+			};
+			await CommonSetScreen(...was);
+			// This test room had no chat box; going back to it made the game's, which later checks make for themselves.
+			if (!hadChat) document.getElementById('InputChat')?.remove();
+			return out;
 		});
 		check('Settings > Extensions lists Oculus Nihili with its eye', ext.text === 'Oculus Nihili' && ext.image, ext);
-		await page.evaluate(() => document.querySelectorAll('body > :not(canvas)').forEach((el) => el.classList.add('vo-test-hidden')));
-		await page.addStyleTag({ content: '.vo-test-hidden { visibility: hidden !important; }' });
-		// Drawn twice: the checkbox ticks are pictures the game loads on first use.
-		const drawExtensions = () =>
-			page.evaluate(() => {
-				const g = document.getElementById('MainCanvas').getContext('2d');
-				g.fillStyle = '#eee';
-				g.fillRect(0, 0, 2000, 1000);
-				PreferenceExtensionsSettings.OculusNihili.run();
-			});
-		await drawExtensions();
-		await wait(500);
-		await drawExtensions();
-		await shot(page, '16-extensions-page');
-		await page.evaluate(() => document.querySelectorAll('.vo-test-hidden').forEach((el) => el.classList.remove('vo-test-hidden')));
-		await slash(page, '');
-		await click(page, '⚙ Settings');
-		const diceBox = await page.evaluate(
-			() =>
-				[...document.querySelectorAll('#void-panel label.check')]
-					.find((l) => /Play dice others roll/.test(l.textContent))
-					.querySelector('input').checked,
+		check(
+			'choosing it opens the ⚙ Settings tab and the game stays on its list',
+			/Settings/.test(ext.tab) && ext.current === null && ext.subscreen === 'Extensions',
+			ext,
 		);
-		check('a checkbox clicked on the Extensions page shows in the panel', diceBox === false);
-		await toggleSetting(page, 'Play dice others roll');
 
 		// The ⸸ tab (off now that there is a bubble), its side, the look, and the open/close key.
 		await toggleSetting(page, 'Show the side tab');
@@ -1212,6 +1266,84 @@ const openCardOf = async (page, name) => {
 		await wait(2500);
 		const b2 = await bubble();
 		check('drawn again, it is where it was left', !!b2 && b2.x === b1.x && b2.y === b1.y, { b1, b2 });
+		// The panel's window: dragged by its header, resized from its edges and corners, kept on screen, remembered.
+		await slash(page, '');
+		const win = () =>
+			page.evaluate(() => {
+				const r = document.getElementById('void-panel').getBoundingClientRect();
+				return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+			});
+		/** A drag on the panel, from the header or a resize handle, by pointer events (`touch` for a finger). */
+		const dragOn = (target, dx, dy, touch = false) =>
+			page.evaluate(
+				(target, dx, dy, touch) => {
+					const p = document.getElementById('void-panel');
+					const el = target === 'header' ? p.querySelector('header h2') : p.querySelector(`.v-rs[data-rs="${target}"]`);
+					const r = el.getBoundingClientRect();
+					const x = r.left + Math.min(20, r.width / 2);
+					const y = r.top + r.height / 2;
+					const at = (type, cx, cy, buttons) =>
+						el.dispatchEvent(
+							new PointerEvent(type, {
+								clientX: cx,
+								clientY: cy,
+								button: 0,
+								buttons,
+								pointerId: 9,
+								pointerType: touch ? 'touch' : 'mouse',
+								bubbles: true,
+							}),
+						);
+					at('pointerdown', x, y, 1);
+					at('pointermove', x + dx / 2, y + dy / 2, 1);
+					at('pointermove', x + dx, y + dy, 1);
+					at('pointerup', x + dx, y + dy, 0);
+				},
+				target,
+				dx,
+				dy,
+				touch,
+			);
+		const w0 = await win();
+		await dragOn('header', -150, 60);
+		const w1 = await win();
+		check('the panel moves when its header is dragged', w1.x === w0.x - 150 && w1.y === w0.y + 60, { w0, w1 });
+		await dragOn('se', -120, -90);
+		const w2 = await win();
+		check('its corner resizes it', w2.w === w1.w - 120 && w2.h === w1.h - 90 && w2.x === w1.x, { w1, w2 });
+		await dragOn('w', 900, 0);
+		const w3 = await win();
+		check('it never gets narrower than its minimum', w3.w === 360, w3);
+		await page.evaluate(() => document.querySelector('#void-panel .x').click());
+		await slash(page, '');
+		const w4 = await win();
+		check('closed and opened again, it is where it was left', w4.w === 360 && w4.y === w3.y && w4.x === w3.x, { w3, w4 });
+		await page.evaluate(() =>
+			document.querySelector('#void-panel .v-rs[data-rs="e"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })),
+		);
+		check('double-clicking an edge brings back the usual size', (await win()).w === 820, await win());
+		await dragOn('header', 5000, 5000);
+		const w5 = await win();
+		check('dragged far away, it stays on screen', w5.x + w5.w <= 1600 && w5.y + w5.h <= 900 && w5.x >= 0 && w5.y >= 0, w5);
+		await page.setViewport({ width: 900, height: 600 });
+		await wait(150);
+		const w6 = await win();
+		check('a smaller window keeps it fully on screen', w6.x >= 0 && w6.y >= 0 && w6.x + w6.w <= 900 && w6.y + w6.h <= 600, w6);
+		await page.setViewport({ width: 1600, height: 900 });
+		await wait(150);
+		const t0 = await win();
+		await dragOn('header', -80, -60, true);
+		const t1 = await win();
+		check('a touch drag moves it too', t1.x === t0.x - 80 && t1.y === t0.y - 60, { t0, t1 });
+		await click(page, '⚙ Settings');
+		await click(page, 'Reset window position');
+		check(
+			'Reset window position puts it back in the middle at its usual size',
+			await page.evaluate(
+				() => !document.getElementById('void-panel').classList.contains('placed') && localStorage.getItem('voidorder.win') === 'null',
+			),
+		);
+		await page.evaluate(() => document.querySelector('#void-panel .x').click());
 		await slash(page, '');
 		await toggleSetting(page, 'Show the Void bubble');
 		check('the setting hides it', await page.evaluate(() => !document.getElementById('void-bubble')));
@@ -1229,14 +1361,14 @@ const openCardOf = async (page, name) => {
 		const second = await gamePage(browser, { me: [15, 'Fay'], other: [11, 'Ann'], settings: { VoidOrder: fayKey }, slimebeep: true });
 		await slash(second.page, '');
 		await second.page
-			.waitForFunction(() => /Manage/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 })
+			.waitForFunction(() => /Admin/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 })
 			.catch(() => {});
 		const tabs2 = await second.page.evaluate(() =>
 			[...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent.replace(/\d+$/, '')).join('|'),
 		);
 		check(
 			'another device with the same account signs in as the same member',
-			tabs2 === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|Manage|My card|⚙ Settings',
+			tabs2 === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|🛡 Admin',
 			tabs2,
 		);
 		const noteOnLogin = await second.page.evaluate(() => window.local.join('\n'));
@@ -1251,7 +1383,8 @@ const openCardOf = async (page, name) => {
 		// listener after it): keys typed in the panel's fields stay there and the other add-on never sees them.
 		{
 			await slash(page, '');
-			await click(page, 'Manage');
+			await openManage(page);
+			await click(page, 'Bring in');
 			const kept = await page.evaluate(() => {
 				const chat = document.createElement('input');
 				chat.id = 'InputChat';
@@ -1341,6 +1474,8 @@ const openCardOf = async (page, name) => {
 			),
 		);
 		await slash(page, '');
+		await click(page, '🛡 Admin');
+		await click(page, '‹ Back');
 		await click(page, '🐞 Reports');
 		await page
 			.waitForFunction(() => /forced failure/.test(document.getElementById('void-panel')?.innerText || ''), { timeout: 5000 })
@@ -1351,27 +1486,15 @@ const openCardOf = async (page, name) => {
 			/Test feature: forced failure 42/.test(reportsText) && /1 report from 1 player/.test(reportsText) && /#15/.test(reportsText),
 			reportsText,
 		);
-		await click(fay.page, '⚙ Settings').catch(() => {});
+		await click(fay.page, '⚙').catch(() => {});
 		await slash(fay.page, '');
-		await click(fay.page, '⚙ Settings');
+		await click(fay.page, '⚙');
 		const fayProblems = await panelText(fay.page);
 		check('⚙ Settings lists the problem', /problems/i.test(fayProblems) && /Test feature switched off/.test(fayProblems), fayProblems);
-		// Personal badges: Ann gives Fay one in Manage; it shows on Fay's ID card.
-		await click(page, 'Manage');
-		await page
-			.waitForFunction(
-				() => [...document.querySelectorAll('#void-panel select option')].some((o) => o.textContent === 'Badge: Slime Queen'),
-				{ timeout: 5000 },
-			)
-			.catch(() => {});
-		const gave = await page.evaluate(() => {
-			const box = [...document.querySelectorAll('#void-panel .box')].find((b) => /^Fay #15/.test(b.innerText));
-			const sel = box && [...box.querySelectorAll('select')].find((x) => [...x.options].some((o) => o.value === 'slime-queen'));
-			if (!sel) return false;
-			sel.value = 'slime-queen';
-			sel.dispatchEvent(new Event('change'));
-			return true;
-		});
+		// Personal badges: Ann gives Fay one in her sheet; it shows on Fay's ID card.
+		await openSheet(page, 'Fay');
+		await page.waitForSelector('#void-panel .chip[data-badge="slime-queen"]', { timeout: 5000 }).catch(() => {});
+		const gave = await tap(page, '.chip[data-badge="slime-queen"]');
 		check('an admin has a badge picker on a member', gave);
 		await wait(800);
 		await slash(page, 'card 15');
