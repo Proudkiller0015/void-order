@@ -120,6 +120,14 @@ const POSES = (
 			nogl: !!process.env.NOGL,
 			prop: process.env.PROP ? JSON.parse(process.env.PROP) : null,
 			color: process.env.COLOR ? JSON.parse(process.env.COLOR) : null,
+			// HANDS_AT: where the hands are in a pose that moves them (as drawn, x,y,size), e.g. "Kneel:870,590,200".
+			handsAt: Object.fromEntries(
+				(process.env.HANDS_AT || '')
+					.split(' ')
+					.filter(Boolean)
+					.map((s) => s.split(':'))
+					.map(([p, r]) => [p, r.split(',').map(Number)]),
+			),
 		};
 	});
 	const full = [];
@@ -165,7 +173,9 @@ const POSES = (
 					};
 					return {
 						full: cut(500, 0, 1000, 1000, 0.5),
-						hands: cut(750 + 110, 300, 280, 280, 2),
+						hands: row.handsAt[pose]
+							? cut(row.handsAt[pose][0], row.handsAt[pose][1], row.handsAt[pose][2], row.handsAt[pose][2], 560 / row.handsAt[pose][2])
+							: cut(750 + 110, 300, 280, 280, 2),
 						got: ((Player.ActivePose || []).join('+') || 'BaseUpper') + (row.probe ? ` ${String(eval(row.probe))}` : ''),
 						layers: window.LAYERS
 							? Player.AppearanceLayers.map((l) => `${l.Asset.Group.Name}/${l.Asset.Name}/${l.Name || ''}:${l.Priority}`).join(' ')
