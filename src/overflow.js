@@ -109,7 +109,9 @@
 		function build(/** @type {any} */ c) {
 			const layers =
 				c && Array.isArray(c.AppearanceLayers) ? c.AppearanceLayers.filter((/** @type {any} */ l) => items.isArmory(l.Asset)) : [];
-			if (!layers.length || !c.Canvas) {
+			// Another add-on (Echo) already widened the character's picture past the game's 500 px, with room on both
+			// sides: the game draws the whole weapon there itself, and a second copy beside it would show twice.
+			if (!layers.length || !c.Canvas || c.Canvas.width > 500) {
 				if (c) {
 					pictures.delete(c);
 				}
