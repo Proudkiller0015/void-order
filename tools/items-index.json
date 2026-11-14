@@ -1,0 +1,104 @@
+{
+	"VoidPistols": [
+		"CrackheadPMPistol",
+		"VoidFactoryMadeHKUSP",
+		"Glock",
+		"VoidHKUSP",
+		"PL15Pistol",
+		"FN57Pistol",
+		"DesertEaglePistol",
+		"Bucky"
+	],
+	"VoidSMGs": [
+		"CrackheadIllegalGun",
+		"Mp5K",
+		"UpgradedMiniUzi",
+		"VectorSMG",
+		"P100SMG"
+	],
+	"VoidRifles": [
+		"HK416",
+		"OldAK",
+		"PKM",
+		"CommandoAKSU",
+		"OverupgradedM4",
+		"VoidExperimentalBlessedHK416",
+		"GoodAKRifle",
+		"TacticalAKRifle",
+		"ModernizedSteyrAug",
+		"PrototypeV02Rifle",
+		"VoidPaladinEliteHK416",
+		"M60",
+		"UpgradedAKRifle",
+		"VoidDivisionSalvatorisCrusaderMCX",
+		"ExperimentalAKRifle"
+	],
+	"VoidSniperRifles": [
+		"OldHuntingRifle",
+		"Flinta",
+		"R700",
+		"SVDS",
+		"VoidMRRifle",
+		"VoidMarksmanHK416",
+		"VoidDivisionRangerCrusaderRSASS",
+		"BloodshotMosinRifle",
+		"AK50",
+		"VoidNTW20"
+	],
+	"VoidShotguns": [
+		"OldSawedOffShotgun",
+		"PumpActionShotgun",
+		"SaigaShotgun",
+		"VoidDivisionBellatorCrusaderMP155Ultima",
+		"MiseryKS23Shotgun"
+	],
+	"VoidCrossbows": [
+		"SimpleHandCrossbow",
+		"SmallCrossbow",
+		"GoodCrossbow",
+		"ModernCrossbow"
+	],
+	"VoidSwords": [
+		"Recider",
+		"Basical",
+		"Mirandus",
+		"Skorzniak",
+		"Nidilus",
+		"Bandzior",
+		"VoidUnblessedSword",
+		"Bidenhander",
+		"Signari",
+		"TheSneakiValore",
+		"Zmora",
+		"Shamshir",
+		"Antecessor",
+		"MistElegance",
+		"BuryBrzetysaw",
+		"Silverwing",
+		"Dominator",
+		"BlessingOfSin",
+		"CookieSlicer",
+		"DragonsBane",
+		"StGeorgeSword",
+		"InvictusManeo",
+		"Triquetra"
+	],
+	"VoidGlowingBlades": [
+		"Lovebite",
+		"ExcellentiaNihili",
+		"KugarinnTheOpressor",
+		"SanguisugaTheBloodsucker",
+		"IkariRage",
+		"IraInfernalisHellwrath",
+		"Humbler",
+		"SerpensPalustris",
+		"SihilisManm",
+		"GloriaNihil",
+		"IraBaccae"
+	],
+	"VoidShortBlades": [
+		"Ineluctabilis",
+		"PaladinVoidKnife",
+		"ThePaladinVoidBlade"
+	]
+}
