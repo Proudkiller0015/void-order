@@ -1856,6 +1856,7 @@
 			return;
 		}
 		let broken = false;
+		let logosBroken = false;
 		mod.hookFunction('ChatRoomCharacterViewDrawOverlay', 0, (/** @type {any[]} */ args, /** @type {(a: any[]) => any} */ next) => {
 			const r = next(args);
 			if (!broken) {
@@ -1867,6 +1868,14 @@
 					report(e, undefined, 'Room marks');
 				}
 			}
+			if (!logosBroken) {
+				try {
+					drawLogo(args[0], args[1], args[2], args[3]);
+				} catch (e) {
+					logosBroken = true;
+					report(e, undefined, 'Add-on logos');
+				}
+			}
 			return r;
 		});
 		mod.hookFunction('ChatRoomCharacterViewClickCharacter', 0, (/** @type {any[]} */ args, /** @type {(a: any[]) => any} */ next) =>
@@ -1874,6 +1883,41 @@
 		);
 	}
 
+	// ---- The add-on's logo over everyone in the room who runs Oculus Nihili (member or not), with their version: left of
+	// SlimeBeep's slime (x 330, y 42), above the Void mark (x 330, y 80), never on either, and inside the screen.
+	const LOGO = { x: 292, y: 42, size: 34 };
+	/** The Oculus Nihili version a character runs, from their shared settings ('' when they don't). */
+	function addOnVersion(/** @type {any} */ C) {
+		if (C && w.Player && C.MemberNumber === w.Player.MemberNumber) {
+			return VERSION;
+		}
+		const v = C && C.OnlineSharedSettings && C.OnlineSharedSettings.OculusNihili;
+		return typeof v === 'string' && /^[\w.+-]{1,24}$/.test(v) ? v : '';
+	}
+	/** A version short enough to sit under the logo: a beta by its number ("2.0.0-beta.2.5" → "b2.5"), a release whole. */
+	const shortVersion = (/** @type {string} */ v) => (/-beta\.(.+)$/.exec(v) || [])[1]?.replace(/^/, 'b') || v;
+	/** @type {HTMLCanvasElement | null} The logo: the add-on's Void eye, drawn once. */
+	let logoImage = null;
+	/** Draws the logo over C at x, y with zoom; the full name and version while the mouse is on it. Not clickable. */
+	function drawLogo(/** @type {any} */ C, /** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) {
+		const v = addOnVersion(C);
+		const g = /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
+		if (!opts.logos || !v || !g || (typeof w.ChatRoomHideIconState === 'number' && w.ChatRoomHideIconState > 0)) {
+			return;
+		}
+		const size = LOGO.size * zoom;
+		const left = x + LOGO.x * zoom;
+		// The top row of a room starts at the screen's edge: the logo is kept below it.
+		const top = Math.max(2, y + LOGO.y * zoom);
+		logoImage ??= eyeCanvas();
+		g.drawImage(logoImage, left, top, size, size);
+		if (typeof w.DrawTextFit === 'function') {
+			w.DrawTextFit(shortVersion(v), left + size / 2, top + size + 7 * zoom, size + 4 * zoom, '#c9a8ff', 'black');
+			if (typeof w.MouseIn === 'function' && w.MouseIn(left, top, size, size)) {
+				w.DrawTextFit(`Oculus Nihili ${v}`, left + size / 2, top - 10 * zoom, 200 * zoom, '#e8defc', 'black');
+			}
+		}
+	}
 	/** Looks up a roll shown in the room and plays it, if it is the sender's and fresh. */
 	async function fetchRoll(/** @type {string} */ id, /** @type {number} */ sender) {
 		const r = await req({ t: 'getroll', id });
@@ -2369,6 +2413,14 @@
 			hint: 'No pop-ups or sounds; everything is still listed.',
 		},
 		{ k: 'roomBadges', group: 'Rooms', label: 'Void mark over members in my room', kind: 'bool', dflt: true },
+		{
+			k: 'logos',
+			group: 'Rooms',
+			label: 'Oculus Nihili logo over its users',
+			kind: 'bool',
+			dflt: true,
+			hint: 'Over everyone in the room who runs the add-on, with their version.',
+		},
 		{ k: 'roomCards', group: 'Rooms', label: 'Open ID cards shown in my room', kind: 'bool', dflt: true },
 		{ k: 'roomDice', group: 'Rooms', label: 'Play dice others roll in my room', kind: 'bool', dflt: true },
 		{
@@ -2626,8 +2678,10 @@
 			),
 		);
 	}
-	/** The Void eye, drawn: the add-on's picture on the game's Extensions page. */
-	function eyeIcon() {
+	/** The Void eye as a picture's address: the add-on's picture on the game's Extensions page. */
+	const eyeIcon = () => eyeCanvas().toDataURL('image/png');
+	/** The Void eye, drawn on a 64 px canvas: the add-on's picture, and its logo in rooms. */
+	function eyeCanvas() {
 		const c = document.createElement('canvas');
 		c.width = c.height = 64;
 		const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
@@ -2650,7 +2704,7 @@
 		g.beginPath();
 		g.arc(32, 32, 4.5, 0, Math.PI * 2);
 		g.fill();
-		return c.toDataURL('image/png');
+		return c;
 	}
 	/**
 	 * Registers the add-on's page in the game's Settings > Extensions, drawn on the game's canvas with its own checkbox

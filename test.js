@@ -930,6 +930,42 @@ const openCardOf = async (page, name) => {
 		await toggleSetting(fp, 'Void mark over members');
 		check('and on again', await marked(1));
 
+		// The add-on's logo over everyone who runs it, member or not (Zed), with their version; none over Ann's character
+		// here, which carries no sign of the add-on; inside the screen at the top; clicks on it go through to the game.
+		const logo = (i, y = 0) =>
+			fp.evaluate(
+				(i, y) => {
+					MainCanvas.clearRect(0, 0, 2000, 1000);
+					ChatRoomCharacterViewDrawOverlay(ChatRoomCharacter[i], 0, y, 1);
+					return MainCanvas.getImageData(309, Math.max(2, y + 42) + 17, 1, 1).data[3] > 0;
+				},
+				i,
+				y,
+			);
+		await fp.evaluate(() => {
+			ChatRoomCharacter[2].OnlineSharedSettings = { ...ChatRoomCharacter[2].OnlineSharedSettings, OculusNihili: '2.0.0-beta.2.5' };
+			ChatRoomCharacter[1].OnlineSharedSettings = { GameVersion };
+		});
+		check('Zed runs Oculus Nihili: its logo is over him', await logo(2));
+		check('Fay has it over herself', await logo(0));
+		check('Ann’s character here shows no sign of the add-on: no logo', !(await logo(1)));
+		check('at the top of the screen it stays inside it', await logo(2, -60));
+		const through = await fp.evaluate(() => {
+			window.clickedThrough = false;
+			bcModSdk
+				.registerMod({ name: 'TestSpy', fullName: 'Test spy', version: '1' })
+				.hookFunction('ChatRoomCharacterViewClickCharacter', -100, (args, next) => {
+					window.clickedThrough = true;
+					return next(args);
+				});
+			ChatRoomCharacterViewClickCharacter(ChatRoomCharacter[2], 0, 0, 1, 309, 59);
+			return { through: window.clickedThrough, card: !!document.getElementById('void-card') };
+		});
+		check('a click on the logo goes through to the game', through.through && !through.card, through);
+		await toggleSetting(fp, 'Oculus Nihili logo over its users');
+		check('the setting hides the logos', !(await logo(2)));
+		await toggleSetting(fp, 'Oculus Nihili logo over its users');
+
 		// The hunt board: a copy of the prison's public board, with everyone's notes; a target over Bea, who has a bounty.
 		await page.bringToFront();
 		await click(page, '🎯 Hunt board');
@@ -1115,9 +1151,9 @@ const openCardOf = async (page, name) => {
 			const e = PreferenceExtensionsSettings.OculusNihili;
 			e.load();
 			e.run();
-			// "Play dice others roll in my room", the seventh checkbox: rows of 72 from 170, at x 400.
+			// "Play dice others roll in my room", the eighth checkbox: rows of 72 from 170, at x 400.
 			MouseX = 420;
-			MouseY = 170 + 6 * 72 + 20;
+			MouseY = 170 + 7 * 72 + 20;
 			e.click();
 			return { text: e.ButtonText, image: /^data:image\/png/.test(e.Image) };
 		});
