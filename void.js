@@ -336,7 +336,13 @@
 		for (const f of serverListeners) {
 			guard(() => f(x));
 		}
-		if (x.t === 'report' && x.report && state && state.appAdmin === (w.Player && w.Player.MemberNumber) && tab !== 'reports') {
+		if (
+			x.t === 'report' &&
+			x.report &&
+			state &&
+			state.appAdmin === (w.Player && w.Player.MemberNumber) &&
+			!(tab === 'admin' && adminView === 'reports')
+		) {
 			unseenReports++;
 			drawBubble();
 		}
@@ -2772,11 +2778,16 @@
 		placeTab();
 	});
 
+	/** Opens the panel, on a tab if given ('admin:<view>' opens one of the Admin tab's views). */
 	function openPanel(/** @type {string | undefined} */ which) {
 		style();
 		withUs = true;
 		if (which) {
-			tab = which;
+			const [t, view] = which.split(':');
+			tab = t;
+			if (t === 'admin' && view) {
+				adminView = view;
+			}
 		}
 		if (!document.getElementById('void-panel')) {
 			const p = make('div');

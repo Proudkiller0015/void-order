@@ -75,12 +75,19 @@ export async function addReport(order, ws, a, p) {
 			delete hits[who];
 		}
 	}
-	const byMember = `m${a.member}`;
+	// A number is counted and credited only when it can't be someone else's: a member signed in with their own key, or
+	// a player who isn't in the Order. A claimed member number with another key (or one brought in who hasn't joined
+	// yet) counts against its address alone and names nobody.
+	const status = order.statusOf(a);
+	const verified = status === 'member' || status === 'guest';
+	const byMember = verified ? `m${a.member}` : '';
 	const byIp = `i${a.ip}`;
-	if ((hits[byMember] || []).length >= REPORTS.perHour || (a.ip && (hits[byIp] || []).length >= REPORTS.perHour)) {
+	if ((byMember && (hits[byMember] || []).length >= REPORTS.perHour) || (a.ip && (hits[byIp] || []).length >= REPORTS.perHour)) {
 		return order.no(ws, 'too many reports, try again in an hour', p);
 	}
-	hits[byMember] = [...(hits[byMember] || []), now];
+	if (byMember) {
+		hits[byMember] = [...(hits[byMember] || []), now];
+	}
 	if (a.ip) {
 		hits[byIp] = [...(hits[byIp] || []), now];
 	}
@@ -107,7 +114,7 @@ export async function addReport(order, ws, a, p) {
 	r.last = now;
 	r.version = field(p.version, REPORTS.len.version) || r.version;
 	r.game = field(p.game, REPORTS.len.game) || r.game;
-	if (!r.players.includes(a.member)) {
+	if (verified && !r.players.includes(a.member)) {
 		r.players = [...r.players, a.member].slice(-REPORTS.players);
 	}
 	all[key] = r;
@@ -128,7 +135,7 @@ export async function addReport(order, ws, a, p) {
 
 /** The app admin reads the reports, newest first: { t: 'reports', reports }. */
 export async function listReports(order, ws, a, p) {
-	if (a.member !== order.appAdmin) {
+	if (a.member !== order.appAdmin || order.statusOf(a) !== 'member') {
 		return order.no(ws, 'only the app admin reads reports', p);
 	}
 	const all = await kept(order);
@@ -137,7 +144,7 @@ export async function listReports(order, ws, a, p) {
 
 /** The app admin clears every report. */
 export async function clearReports(order, ws, a, p) {
-	if (a.member !== order.appAdmin) {
+	if (a.member !== order.appAdmin || order.statusOf(a) !== 'member') {
 		return order.no(ws, 'only the app admin clears reports', p);
 	}
 	await order.ctx.storage.delete('reports');

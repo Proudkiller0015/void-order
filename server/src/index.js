@@ -35,7 +35,7 @@ import { BOUNTY_BOARD_URL, fetchBounties, fetchHunting } from './vop-source.js';
 import { ORDER_SHEET_CSV, parseOrderSheet } from './order-sheet.js';
 import { addReport, clearReports, listReports } from './reports.js';
 import { badgeOf, setBadge } from './badges.js';
-import { lend, lentTo, loadLend, recall } from './lend.js';
+import { endLendTo, lend, lentTo, loadLend, recall } from './lend.js';
 import WEAPONS from '../../assets/weapons/index.json';
 
 const LIMITS = {
@@ -409,8 +409,10 @@ export class Order extends DurableObject {
 	isFounder(n) {
 		return !!this.meta && this.meta.founder === n && !!this.members[n];
 	}
+	/** An admin: the app admin or one the Founder named, once they have signed in with their own key. */
 	isAdmin(n) {
-		return !!this.members[n] && (n === this.appAdmin || (!!this.meta && this.meta.admins.includes(n)));
+		const m = this.members[n];
+		return !!m && !!m.pub && (n === this.appAdmin || (!!this.meta && this.meta.admins.includes(n)));
 	}
 	/** The Founder or an admin: every power, everywhere. */
 	isTop(n) {
@@ -439,7 +441,22 @@ export class Order extends DurableObject {
 		const t = this.tierIn(n, b);
 		return !this.isTop(n) && t > 0 && t < this.tierIn(by, b) && this.leads(by, b);
 	}
-	/** Whether `by` stands over member n: orders go down to them, and `by` sees the answers to n's orders. */
+	/**
+	 * Whether `by` has powers over member n (codes that hand over their number, weapons, commendations): the Founder's
+	 * or an admin's (topOver), or a leader's over n in EVERY branch n holds. A leader over one branch of a hybrid member
+	 * who outranks them in another has no powers over them (orders still reach them in that branch: see commands).
+	 */
+	standsOver(by, n) {
+		const m = this.members[n];
+		if (!m) {
+			return false;
+		}
+		return this.topOver(by, n) || (m.places.length > 0 && m.places.every((p) => this.leaderOver(by, n, p.b)));
+	}
+	/**
+	 * Whether `by` stands over member n in the hierarchy's messages: orders go down to them, `by` sees the answers to
+	 * n's orders and the room n shows those over them. A leader reaches a hybrid member in the branch they lead.
+	 */
 	commands(by, n) {
 		const m = this.members[n];
 		return !!m && by !== n && (this.topOver(by, n) || m.places.some((p) => this.leaderOver(by, n, p.b)));
@@ -479,9 +496,12 @@ export class Order extends DurableObject {
 		}
 		return !m.mon && (this.placesNew(by, n) || (m.places.length > 0 && m.places.every((p) => this.leaderOver(by, n, p.b))));
 	}
-	/** Whether `by` may make member n a reset or join code: someone over them. */
+	/**
+	 * Whether `by` may make member n a reset or join code: whoever may take them out of the Order (a code hands over the
+	 * member's number), so a leader only over those below them in every branch they hold.
+	 */
 	mayReset(by, n) {
-		return this.commands(by, n) || this.placesNew(by, n);
+		return this.mayRemove(by, n);
 	}
 	/** Whether member n may post orders: the Founder, admins and branch leaders. */
 	mayOrder(n) {
@@ -550,6 +570,11 @@ export class Order extends DurableObject {
 	 * @returns {Promise<Response>}
 	 */
 	async opReset(member) {
+		// The app admin is the one number the operator may bring back in: she can't join and is never removed, but an
+		// Order kept from before that rule may have lost her.
+		if (!this.members[member] && member === this.appAdmin && this.meta) {
+			this.members[member] = this.newMember(member, `#${member}`, null);
+		}
 		const m = this.members[member];
 		if (!m) {
 			return new Response('Not a member', { status: 404 });
@@ -759,8 +784,31 @@ export class Order extends DurableObject {
 		if (!m || n === o.by) {
 			return false;
 		}
-		const under = this.members[o.by] ? this.commands(o.by, n) : true;
+		// An author who left still reaches only those below the place they held when they posted (kept in o.from); an
+		// order from before places were kept reaches nobody once its author is gone.
+		const under = this.members[o.by] ? this.commands(o.by, n) : this.overFrom(o.from, n);
 		return under && (o.to.all === true || (o.to.groups || []).some((g) => this.inGroup(g, n)) || (o.to.members || []).includes(n));
+	}
+	/** Member n's place, kept with an order they post: { founder, admin, places }. */
+	placeOf(n) {
+		const m = this.members[n];
+		return { founder: this.isFounder(n), admin: this.isAdmin(n), places: m ? m.places.map((x) => ({ b: x.b, t: x.t })) : [] };
+	}
+	/** Whether a place kept with an order (see placeOf) stands over member n, the way commands does for a member. */
+	overFrom(from, n) {
+		const m = this.members[n];
+		if (!from || typeof from !== 'object' || !m) {
+			return false;
+		}
+		if (from.founder) {
+			return true;
+		}
+		if (from.admin) {
+			return !this.isFounder(n) && !this.isAdmin(n);
+		}
+		const kept = Array.isArray(from.places) ? from.places : [];
+		const tier = (b) => (kept.find((x) => x && x.b === b) || { t: 0 }).t;
+		return !this.isTop(n) && m.places.some((p) => tier(p.b) >= LEADS_FROM && p.t < tier(p.b));
 	}
 	/** Sends every member connection the orders it sees now (after a change to who stands where). */
 	pushAllOrders() {
@@ -1040,6 +1088,11 @@ export class Order extends DurableObject {
 		if (status === 'invited') {
 			return this.no(ws, 'you are already in the Order: enter the join code you were sent', p);
 		}
+		// The app admin's number is never joined into: she founds the Order, and if she ever lost her place she comes
+		// back through the operator's reset code (which re-admits her), never through a join anyone can send.
+		if (a.member === this.appAdmin) {
+			return this.no(ws, "the app admin's number can't join: the operator makes her a reset code", p);
+		}
 		if (!this.meta.open) {
 			return this.no(ws, 'joining is closed right now', p);
 		}
@@ -1184,10 +1237,14 @@ export class Order extends DurableObject {
 		if (!m) {
 			return;
 		}
+		if (m.n === this.appAdmin) {
+			return this.no(ws, 'the app admin stays in the Order', p);
+		}
 		if (!this.mayRemove(me, m.n)) {
 			return this.no(ws, 'you can only remove members below you in every branch they hold', p);
 		}
 		await this.note(me, `${this.nameOf(me)} removed ${this.nameOf(m.n)}`);
+		await endLendTo(this, m.n);
 		delete this.members[m.n];
 		this.chatRemove(m.n);
 		this.meta.admins = this.meta.admins.filter((n) => n !== m.n);
@@ -1251,6 +1308,9 @@ export class Order extends DurableObject {
 			if (this.members[n]) {
 				return this.no(ws, `#${n} is already in the Order`, p);
 			}
+			if (n === this.appAdmin) {
+				return this.no(ws, `#${n} is the app admin's number: nobody brings it in`, p);
+			}
 			people.push({ n, name });
 		}
 		if (new Set(people.map((x) => x.n)).size !== people.length) {
@@ -1278,7 +1338,11 @@ export class Order extends DurableObject {
 		if (this.isFounder(me)) {
 			return this.no(ws, 'hand the Order to someone else first', p);
 		}
+		if (me === this.appAdmin) {
+			return this.no(ws, 'the app admin stays in the Order', p);
+		}
 		await this.note(me, `${this.nameOf(me)} left`);
+		await endLendTo(this, me);
 		delete this.members[me];
 		this.chatRemove(me);
 		this.meta.admins = this.meta.admins.filter((n) => n !== me);
@@ -1292,7 +1356,7 @@ export class Order extends DurableObject {
 		if (!this.isFounder(me)) {
 			return this.no(ws, 'only the Founder can do that', p);
 		}
-		const m = this.members[p.member];
+		const m = isNum(p.member) ? this.members[p.member] : null;
 		if (!m || m.n === me) {
 			return this.no(ws, 'no such member', p);
 		}
@@ -1349,7 +1413,7 @@ export class Order extends DurableObject {
 	}
 	/** A member's ID card, for anyone signed in (a card shown in a chat room is looked up here). */
 	async card(ws, p) {
-		const m = this.members[p.member];
+		const m = isNum(p.member) ? this.members[p.member] : null;
 		if (!m) {
 			return this.send(ws, { t: 'card', member: p.member, card: null, ...ridOf(p) });
 		}
@@ -1462,6 +1526,7 @@ export class Order extends DurableObject {
 			title,
 			body: clean(p.body, LIMITS.orderText),
 			to: dest,
+			from: this.placeOf(me),
 			...(kind === 'session' ? { when } : {}),
 			acks: {},
 		};
@@ -1532,6 +1597,11 @@ export class Order extends DurableObject {
 	huntCheck() {
 		const every = Number(this.env.HUNT_EVERY) || LIMITS.huntEvery;
 		if (Date.now() - this.hunt.tried < every) {
+			return;
+		}
+		// A chain of pages still being read is never restarted (its later pages would never be read, and a new chain
+		// would start right after the last page read, without the boards' gap), unless it has been stuck a long time.
+		if (Array.isArray(this.hunt.next) && this.hunt.next.length && Date.now() - this.hunt.tried < 3 * every) {
 			return;
 		}
 		this.hunt.tried = Date.now();
@@ -1738,7 +1808,7 @@ export class Order extends DurableObject {
 		if (!m) {
 			return;
 		}
-		if (!this.topOver(me, m.n) && !m.places.some((x) => this.leaderOver(me, m.n, x.b))) {
+		if (!this.standsOver(me, m.n)) {
 			return this.no(ws, 'you can only issue weapons to members below you', p);
 		}
 		const w = WEAPONS.find((x) => x.id === p.weapon);
@@ -1786,8 +1856,7 @@ export class Order extends DurableObject {
 	 * branch they lead; never themselves.
 	 */
 	mayCommend(by, n) {
-		const m = this.members[n];
-		return !!m && by !== n && (this.topOver(by, n) || m.places.some((p) => this.leaderOver(by, n, p.b)));
+		return by !== n && this.standsOver(by, n);
 	}
 	/** A commendation for a member: { member, icon, name, reason }. They keep the newest LIMITS.medals. */
 	async award(ws, me, p) {

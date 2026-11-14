@@ -342,9 +342,10 @@ async function joined(member, name) {
 	await wait(200);
 	check(o3.t === 'ok' && c.orders.has(o3.id), 'promoted to rank 3, Cat gets the notice for rank 3');
 
-	// Reset codes and removing: a leader over the member.
-	const code = await b.req({ t: 'reset', member: 13 });
-	check(/^[A-Z2-9]{10}$/.test(code.code || '') && code.hours === 48, 'Bea makes a reset code for Cat', code);
+	// Reset codes and removing: someone over the member in every branch they hold (a code hands over their number).
+	check((await b.req({ t: 'reset', member: 13 })).why === 'they are not below you', "Bea can't make Cat's reset code: Cat is a Mage too");
+	const code = await a.req({ t: 'reset', member: 13 });
+	check(/^[A-Z2-9]{10}$/.test(code.code || '') && code.hours === 48, 'Ann makes a reset code for Cat', code);
 	const cat2 = await makePeer(13, 'Cat');
 	const c2bad = await connect(cat2);
 	check(c2bad.state.status === 'mismatch', 'a new key without the code is not Cat');
@@ -459,10 +460,14 @@ async function joined(member, name) {
 	const faces = tries.slice(0, 8).flatMap((r) => r.roll.dice.map((x) => x.v));
 	check(new Set(faces).size === 6, 'eighty d6 show every face', [...new Set(faces)]);
 
-	// Commendations: the Founder and admins give them to anyone they act on, a leader to those below her.
-	const md = await b.req({ t: 'award', member: 13, icon: 'shield', name: 'Shield of the Void', reason: 'Held the line.' });
+	// Commendations: the Founder and admins give them to anyone they act on, a leader to those below her in every branch.
+	check(
+		(await b.req({ t: 'award', member: 13, icon: 'star', name: 'x' })).why === 'you can only commend members below you',
+		"Bea can't commend Cat, a Mage too",
+	);
+	const md = await a.req({ t: 'award', member: 13, icon: 'shield', name: 'Shield of the Void', reason: 'Held the line.' });
 	await wait(200);
-	check(md.t === 'ok' && c2.got.some((x) => x.t === 'medal' && x.medal.name === 'Shield of the Void'), 'Bea commends Cat, who hears of it');
+	check(md.t === 'ok' && c2.got.some((x) => x.t === 'medal' && x.medal.name === 'Shield of the Void'), 'Ann commends Cat, who hears of it');
 	check(
 		(await b.req({ t: 'award', member: 14, icon: 'star', name: 'x' })).why === 'you can only commend members below you',
 		'but not Dan, a Priest',
@@ -473,11 +478,11 @@ async function joined(member, name) {
 		'Cat commends nobody',
 	);
 	check(
-		(await b.req({ t: 'award', member: 13, icon: 'banana', name: 'x' })).why === 'a commendation needs a picture and a name',
+		(await a.req({ t: 'award', member: 13, icon: 'banana', name: 'x' })).why === 'a commendation needs a picture and a name',
 		'only the Order’s pictures',
 	);
 	check(
-		(await b.req({ t: 'award', member: 13, icon: 'star', name: ' ' })).why === 'a commendation needs a picture and a name',
+		(await a.req({ t: 'award', member: 13, icon: 'star', name: ' ' })).why === 'a commendation needs a picture and a name',
 		'and a name',
 	);
 	const catCard = (await d.req({ t: 'card', member: 13 })).card;
@@ -485,18 +490,18 @@ async function joined(member, name) {
 		catCard.medals.length === 1 &&
 			catCard.medals[0].icon === 'shield' &&
 			catCard.medals[0].reason === 'Held the line.' &&
-			catCard.medals[0].byName === 'Bea',
+			catCard.medals[0].byName === 'Ann',
 		'her card shows it: picture, name, reason, who and when',
 		catCard.medals,
 	);
-	check((await f.req({ t: 'unaward', member: 13, id: md.id })).why, 'Fay cannot take back Bea’s commendation');
-	check((await b.req({ t: 'unaward', member: 13, id: md.id })).t === 'ok', 'Bea takes hers back');
+	check((await f.req({ t: 'unaward', member: 13, id: md.id })).why, 'Fay cannot take back Ann’s commendation');
+	check((await a.req({ t: 'unaward', member: 13, id: md.id })).t === 'ok', 'Ann takes hers back');
 	await a.req({ t: 'award', member: 13, icon: 'eye', name: 'First' });
 	for (let i = 0; i < 30; i++) await a.req({ t: 'award', member: 13, icon: 'star', name: `Star ${i}` });
 	const kept = (await d.req({ t: 'card', member: 13 })).card.medals;
 	check(kept.length === 30 && kept[0].name === 'Star 0' && kept[29].name === 'Star 29', 'a member keeps the newest 30', kept.length);
 	const fromAnn = kept[29].id;
-	await b.req({ t: 'award', member: 13, icon: 'rose', name: 'Rose' });
+	await a.req({ t: 'award', member: 13, icon: 'rose', name: 'Rose' });
 	const roseId = (await d.req({ t: 'card', member: 13 })).card.medals.find((x) => x.name === 'Rose').id;
 	check((await d.req({ t: 'unaward', member: 13, id: roseId })).why, 'Dan, no longer an admin, takes nothing back');
 	check((await a.req({ t: 'unaward', member: 13, id: roseId })).t === 'ok', 'an admin takes back anyone’s');
@@ -533,8 +538,12 @@ async function joined(member, name) {
 	// The Armory: weapons from the catalog, issued by those over a member; the app admin has every one, early access.
 	check(listed(a, 11).weapons.length === 100 && listed(a, 11).weapons.includes(100), 'the app admin has every weapon');
 	check(
-		(await b.req({ t: 'issue', member: 13, weapon: 7 })).t === 'ok' && listed(a, 13).weapons.join() === '7',
-		'Bea issues a weapon to Cat',
+		(await b.req({ t: 'issue', member: 13, weapon: 7 })).why === 'you can only issue weapons to members below you',
+		"Bea can't arm Cat, a Mage too",
+	);
+	check(
+		(await a.req({ t: 'issue', member: 13, weapon: 7 })).t === 'ok' && listed(a, 13).weapons.join() === '7',
+		'Ann issues a weapon to Cat',
 	);
 	check(
 		(await b.req({ t: 'issue', member: 14, weapon: 7 })).why === 'you can only issue weapons to members below you',
@@ -544,18 +553,18 @@ async function joined(member, name) {
 		(await c2.req({ t: 'issue', member: 30, weapon: 7 })).why === 'you can only issue weapons to members below you',
 		'Cat issues nothing',
 	);
-	check((await b.req({ t: 'issue', member: 13, weapon: 999 })).why === 'no such weapon', 'only weapons in the catalog');
+	check((await a.req({ t: 'issue', member: 13, weapon: 999 })).why === 'no such weapon', 'only weapons in the catalog');
 	check((await c2.req({ t: 'carry', weapon: 8 })).why === 'that weapon is not yours', 'Cat cannot carry a weapon she lacks');
 	check((await c2.req({ t: 'carry', weapon: 7 })).t === 'ok' && listed(a, 13).carry === 7, 'she carries the one she has');
 	const armed = (await d.req({ t: 'card', member: 13 })).card;
 	check(armed.weapons.join() === '7' && armed.carry === 7, 'her card shows it');
-	await b.req({ t: 'issue', member: 13, weapon: 7, on: false });
+	await a.req({ t: 'issue', member: 13, weapon: 7, on: false });
 	check(listed(a, 13).weapons.length === 0 && listed(a, 13).carry === 0, 'taken back, she no longer carries it');
 	check((await a.req({ t: 'carry', weapon: 100 })).t === 'ok' && listed(b, 11).carry === 100, 'the app admin carries her own scythe');
 	// Carrying: at most 2 (the app admin 4), Queen's Wrath not counted.
-	await b.req({ t: 'issue', member: 13, weapon: 1 });
-	await b.req({ t: 'issue', member: 13, weapon: 2 });
-	await b.req({ t: 'issue', member: 13, weapon: 3 });
+	await a.req({ t: 'issue', member: 13, weapon: 1 });
+	await a.req({ t: 'issue', member: 13, weapon: 2 });
+	await a.req({ t: 'issue', member: 13, weapon: 3 });
 	check(listed(a, 13).carryLimit === 2 && listed(b, 11).carryLimit === 4, 'members carry 2, the app admin 4', [
 		listed(a, 13),
 		listed(b, 11).carryLimit,
@@ -576,7 +585,7 @@ async function joined(member, name) {
 		'the app admin carries 4 and Queen’s Wrath on top',
 	);
 	check((await a.req({ t: 'carry', weapons: [1, 2, 3, 4, 5] })).why === 'you carry at most 4: put one down first', 'but not a fifth');
-	await b.req({ t: 'issue', member: 13, weapon: 3, on: false });
+	await a.req({ t: 'issue', member: 13, weapon: 3, on: false });
 	check(listed(a, 13).carried.join() === '2', 'a weapon taken back is put down');
 
 	// The hunt board: fetched one page at a time, joined, sent to everyone signed in, and kept when the site fails.
@@ -661,7 +670,7 @@ async function joined(member, name) {
 	const bAgain = a.state.members.find((x) => x.n === 12);
 	check(bAgain && placesOf(a, 12) === 'paladin4', 'Bea is still a Paladin rank 4');
 	check(
-		a.state.log && a.state.log.some((l) => /Bea \(12\) commended Cat \(13\): Rose/.test(l.text)),
+		a.state.log && a.state.log.some((l) => /Ann \(11\) commended Cat \(13\): Rose/.test(l.text)),
 		'the log records commendations',
 		a.state.log.slice(-5),
 	);

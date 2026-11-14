@@ -20,6 +20,10 @@ export async function lend(order, ws, me, p) {
 	if (!Number.isInteger(p.member) || p.member <= 0 || p.member === me) {
 		return order.no(ws, 'lend it to someone else', p);
 	}
+	const m = order.members[p.member];
+	if (!m || !m.pub) {
+		return order.no(ws, 'lend it to a member of the Order', p);
+	}
 	order.lend = { to: p.member, at: Date.now() };
 	await order.ctx.storage.put('lend', order.lend);
 	order.ok(ws, p);
@@ -35,4 +39,13 @@ export async function recall(order, ws, me, p) {
 	await order.ctx.storage.delete('lend');
 	order.ok(ws, p);
 	order.broadcast();
+}
+
+/** Ends a lend to member n (when they leave or are removed): Queen's Wrath goes back to its owner. */
+export async function endLendTo(order, n) {
+	if (lentTo(order) !== n) {
+		return;
+	}
+	order.lend = null;
+	await order.ctx.storage.delete('lend');
 }

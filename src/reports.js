@@ -11,7 +11,7 @@
 	const KEPT = 30;
 	const STACK_LINES = 8;
 	const CSS = `
-		.void-toast.void-problem { cursor: default; width: 340px; }
+		.void-toast.void-problem { cursor: default; width: 340px; max-width: calc(100vw - 16px); }
 		.void-problem .t { margin-bottom: 8px; }
 		.void-problem .row { display: flex; gap: 6px; flex-wrap: wrap; }
 		.void-problem button, #void-panel .void-report-actions button { border: 1px solid #5b3d8f; border-radius: 999px; background: #ffffff0a;
@@ -296,7 +296,7 @@
 	ctx.onServer((/** @type {any} */ x) => {
 		if (x.t === 'report' && x.report && ctx.appAdmin()) {
 			list = null;
-			ctx.toast(`🐞 New problem report: ${x.report.feature}`, () => ctx.openPanel('reports'));
+			ctx.toast(`🐞 New problem report: ${x.report.feature}`, () => ctx.openPanel('admin:reports'));
 			ctx.render();
 		}
 	});
