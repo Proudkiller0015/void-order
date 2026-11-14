@@ -7,7 +7,7 @@ export default [
 	js.configs.recommended,
 	prettier,
 	{
-		files: ['void.js', 'void.user.js'],
+		files: ['void.js', 'void.user.js', 'src/**/*.js'],
 		languageOptions: { ecmaVersion: 2023, sourceType: 'script', globals: { ...globals.browser } },
 		plugins: { 'no-unsanitized': noUnsanitized },
 		rules: { 'no-unsanitized/method': 'error', 'no-unsanitized/property': 'error', 'no-unused-vars': ['error', { caughtErrors: 'none' }] },
@@ -27,7 +27,7 @@ export default [
 		rules: { 'no-unused-vars': ['error', { caughtErrors: 'none' }] },
 	},
 	{
-		files: ['test.js', 'server/test-server.js'],
+		files: ['test.js', 'server/test-server.js', 'server/test-reports.js'],
 		languageOptions: { ecmaVersion: 2023, sourceType: 'commonjs', globals: { ...globals.node, ...globals.browser } },
 		// The game's globals, used inside page.evaluate.
 		rules: { 'no-unused-vars': ['error', { caughtErrors: 'none' }], 'no-undef': 'off' },
