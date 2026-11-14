@@ -141,8 +141,11 @@ def rarity_of(text):
 
 
 def write_if_changed(path, data, changes):
-    if path.exists() and path.read_bytes() == data:
-        return
+    """Writes `data` unless the file already holds it; a text file checked out with CRLF line ends counts as the same."""
+    if path.exists():
+        old = path.read_bytes()
+        if old == data or (path.suffix == '.json' and old.replace(b'\r\n', b'\n') == data):
+            return
     path.write_bytes(data)
     changes.append(path.relative_to(REPO).as_posix())
 
