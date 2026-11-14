@@ -82,7 +82,8 @@ const pieces = source.pieces.map((/** @type {any} */ p) => {
 		copy(file, path.join('img', p.Group, `${p.Name}_${l.Name}.png`));
 		/** @type {Record<string, any>} */
 		const layer = { Name: l.Name, Left: l.Left, Top: l.Top, Priority: l.Priority ?? p.Priority, ParentGroup: '' };
-		layer.AllowColorize = l.AllowColorize === true;
+		// Every layer with a colour takes it, the glow included (its art is white, so its colour is the glow's).
+		layer.AllowColorize = l.AllowColorize !== false;
 		// The game takes a layer's default colour from the layer (older versions from the item's DefaultColor).
 		if (layer.AllowColorize) {
 			layer.Color = [l.Color];

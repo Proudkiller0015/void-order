@@ -2313,7 +2313,7 @@ const openCardOf = async (page, name) => {
 			InventoryRemove(Player, 'Hat');
 			return JSON.stringify(c);
 		});
-		check('a piece is worn in its own colours', helmetColor === '["#262833","#262833","#262833","#17181D"]', helmetColor);
+		check('a piece is worn in its own colours', helmetColor === '["#262833","#262833","#3FE6FF","#262833","#17181D"]', helmetColor);
 		const helmetPixels = (wear) =>
 			page.evaluate(async (wear) => {
 				if (wear) InventoryWear(Player, 'VoidPaladinHelmet', 'Hat');
@@ -2434,7 +2434,7 @@ const openCardOf = async (page, name) => {
 				allColored(worn.cloth, '#1E1F24') &&
 				worn.pants[0] === 'MilitaryPants' &&
 				allColored(worn.boots, '#18181C') &&
-				JSON.stringify(worn.carrier) === '["VoidPaladinPlateCarrier",["#262833","#17181D"]]' &&
+				JSON.stringify(worn.carrier) === '["VoidPaladinPlateCarrier",["#262833","#17181D","#3FE6FF"]]' &&
 				JSON.stringify(worn.gloves) === '["VoidPaladinGloves",["#262833","#17181D"]]' &&
 				worn.cloak[0] === 'VoidPaladinCloak' &&
 				worn.rig[0] === 'VoidPaladinLegRig' &&
@@ -2513,6 +2513,40 @@ const openCardOf = async (page, name) => {
 			}
 		};
 		await posed(null, '26-uniform-worn');
+		/** Draws Ann standing and counts, around a spot of the character's picture, the pixels that pass `test`. */
+		const pixelsNear = (x, y, kind) =>
+			page.evaluate(
+				(x, y, kind) => {
+					PoseSetActive(Player, null, true);
+					CharacterRefresh(Player, false);
+					MainCanvas.fillStyle = '#2a2a33';
+					MainCanvas.fillRect(0, 0, 2000, 1000);
+					DrawCharacter(Player, 750, 0, 1);
+					const d = MainCanvas.getImageData(750 + x - 40, y - 40, 80, 80).data;
+					let n = 0;
+					for (let i = 0; i < d.length; i += 4) {
+						const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
+						if (kind === 'cyan' ? g > r + 30 && b > r + 40 : r > g + 60 && r > b + 60) n++;
+					}
+					return n;
+				},
+				x,
+				y,
+				kind,
+			);
+		const goggles = await pixelsNear(251, 148, 'cyan');
+		const strip = await pixelsNear(252, 281, 'cyan');
+		check('the uniform’s glow is cyan: the goggles and the plate carrier’s strip', goggles > 200 && strip > 40, { goggles, strip });
+		await page.evaluate(() => {
+			InventoryGet(Player, 'Hat').Color[2] = '#FF2020';
+			CharacterRefresh(Player, false);
+		});
+		const red = await pixelsNear(251, 148, 'red');
+		check('and the glow can be recoloured, like any other layer', red > 200, red);
+		await page.evaluate(() => {
+			InventoryGet(Player, 'Hat').Color[2] = '#3FE6FF';
+			CharacterRefresh(Player, false);
+		});
 		await posed('Kneel', '27-uniform-kneel');
 		await posed('BackBoxTie', '28-uniform-arms-tied');
 		await page.evaluate(() => document.querySelectorAll('.vo-test-hidden').forEach((el) => el.classList.remove('vo-test-hidden')));

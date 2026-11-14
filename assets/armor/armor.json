@@ -16,7 +16,8 @@
 				"Hide": [],
 				"DefaultColor": [
 					"#262833",
-					"#17181D"
+					"#17181D",
+					"#3FE6FF"
 				],
 				"Layer": [
 					{
@@ -47,7 +48,10 @@
 						"Top": 219,
 						"Priority": 31,
 						"ParentGroup": "",
-						"AllowColorize": false
+						"AllowColorize": true,
+						"Color": [
+							"#3FE6FF"
+						]
 					}
 				]
 			},
@@ -113,6 +117,7 @@
 				"DefaultColor": [
 					"#262833",
 					"#262833",
+					"#3FE6FF",
 					"#262833",
 					"#17181D"
 				],
@@ -145,7 +150,10 @@
 						"Top": 128,
 						"Priority": 56,
 						"ParentGroup": "",
-						"AllowColorize": false
+						"AllowColorize": true,
+						"Color": [
+							"#3FE6FF"
+						]
 					},
 					{
 						"Name": "NeckPlates",
