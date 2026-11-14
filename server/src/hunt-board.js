@@ -1,14 +1,12 @@
 // Reads the Void Order Prison's public hunt board (https://vo-p.com/hunt-board) into plain data.
-// Runs in the Worker: no DOM, so the page goes through a small forgiving tokenizer and tree builder instead.
+// Runs in the Worker on every refresh, so it finds what it needs with plain string searches rather than
+// building a tree of the whole page.
 
 /** The board's address, and the base its relative links resolve against. */
 export const HUNT_BOARD_URL = 'https://vo-p.com/hunt-board';
 
 /** The most pages huntBoardPages hands out, whatever the page claims. */
 const MAX_PAGES = 20;
-
-const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
-const RAW_TEXT_TAGS = new Set(['script', 'style', 'textarea', 'title']);
 
 const NAMED_ENTITIES = {
 	amp: '&',
@@ -78,145 +76,6 @@ export function decodeEntities(text) {
 	});
 }
 
-/**
- * @typedef {object} Node
- * @property {string} tag lower-case tag name, '#root' for the document
- * @property {Record<string, string>} attrs attribute values, entities decoded
- * @property {string[]} classes the class attribute's names
- * @property {Array<Node | string>} children elements, and text still HTML-encoded
- */
-
-const ATTR_RE = /([^\s=/>"']+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+)))?/g;
-
-/** @returns {Record<string, string>} */
-function parseAttrs(source) {
-	const attrs = {};
-	for (const m of source.matchAll(ATTR_RE)) {
-		const name = m[1].toLowerCase();
-		if (name in attrs) continue;
-		const value = m[2] ?? m[3] ?? m[4] ?? '';
-		attrs[name] = value.includes('&') ? decodeEntities(value) : value;
-	}
-	return attrs;
-}
-
-/**
- * Builds a loose element tree. Comments, doctypes and the bodies of script/style are dropped. A closing tag
- * closes the nearest open element of that name and everything opened inside it; a closing tag with no open
- * match is ignored, so broken markup still yields a tree.
- * @param {string} html
- * @returns {Node}
- */
-function buildTree(html) {
-	const root = { tag: '#root', attrs: {}, classes: [], children: [] };
-	const stack = [root];
-	const tagRe =
-		/<!--[\s\S]*?(?:-->|$)|<![^>]*>?|<\?[^>]*>?|<\/([a-zA-Z][a-zA-Z0-9-]*)[^>]*>|<([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>/g;
-	let at = 0;
-	let m;
-	while ((m = tagRe.exec(html))) {
-		const top = stack[stack.length - 1];
-		if (m.index > at) top.children.push(html.slice(at, m.index));
-		at = tagRe.lastIndex;
-		if (m[1]) {
-			const name = m[1].toLowerCase();
-			for (let i = stack.length - 1; i > 0; i--) {
-				if (stack[i].tag === name) {
-					stack.length = i;
-					break;
-				}
-			}
-		} else if (m[2]) {
-			const name = m[2].toLowerCase();
-			let attrSource = m[3];
-			const selfClosing = /\/\s*$/.test(attrSource);
-			if (selfClosing) attrSource = attrSource.replace(/\/\s*$/, '');
-			const attrs = parseAttrs(attrSource);
-			const node = { tag: name, attrs, classes: attrs.class ? attrs.class.trim().split(/\s+/) : [], children: [] };
-			top.children.push(node);
-			if (RAW_TEXT_TAGS.has(name)) {
-				const endRe = new RegExp(`</${name}\\b[^>]*>`, 'gi');
-				endRe.lastIndex = at;
-				const end = endRe.exec(html);
-				if (name === 'title' || name === 'textarea') node.children.push(html.slice(at, end ? end.index : html.length));
-				at = end ? endRe.lastIndex : html.length;
-				tagRe.lastIndex = at;
-			} else if (!selfClosing && !VOID_TAGS.has(name)) {
-				stack.push(node);
-			}
-		}
-	}
-	if (at < html.length) stack[stack.length - 1].children.push(html.slice(at));
-	return root;
-}
-
-/** @returns {boolean} whether `node` carries the class `cls` */
-function hasClass(node, cls) {
-	return node.classes.includes(cls);
-}
-
-/**
- * Every element under `node` (not `node` itself) that passes `test`, in document order.
- * @param {Node} node
- * @param {(n: Node) => boolean} test
- * @returns {Node[]}
- */
-function findAll(node, test) {
-	const out = [];
-	const walk = (n) => {
-		for (const c of n.children) {
-			if (typeof c === 'string') continue;
-			if (test(c)) out.push(c);
-			walk(c);
-		}
-	};
-	walk(node);
-	return out;
-}
-
-const byClass = (node, cls) => findAll(node, (n) => hasClass(n, cls));
-/**
- * The first element under `node` with the class `cls`, in document order, or null.
- * @param {Node | null} node
- * @param {string} cls
- * @returns {Node | null}
- */
-function firstByClass(node, cls) {
-	if (!node) return null;
-	for (const c of node.children) {
-		if (typeof c === 'string') continue;
-		if (c.classes.includes(cls)) return c;
-		const deeper = firstByClass(c, cls);
-		if (deeper) return deeper;
-	}
-	return null;
-}
-
-/**
- * The text a reader sees: tags dropped, entities decoded, runs of whitespace folded to one space, and <br>
- * kept as a line break.
- * @param {Node | null} node
- * @returns {string}
- */
-function textOf(node) {
-	if (!node) return '';
-	const parts = [];
-	const walk = (n) => {
-		for (const c of n.children) {
-			if (typeof c === 'string') parts.push(decodeEntities(c).replace(/\s+/g, ' '));
-			else if (c.tag === 'br') parts.push('\n');
-			else walk(c);
-		}
-	};
-	walk(node);
-	return parts
-		.join('')
-		.replace(/\xa0/g, ' ')
-		.replace(/ *\n */g, '\n')
-		.replace(/ {2,}/g, ' ')
-		.trim();
-}
-
 /** The whole number in `text` with its thousands separators dropped ("L$ 6,000,000" → 6000000), or null. */
 function numberIn(text) {
 	const m = /\d[\d,.\xa0 ]*/.exec(text);
@@ -267,6 +126,202 @@ function absolute(href, base) {
  * @property {string | null} url the inmate's dossier
  */
 
+const ATTR_RE = /([^\s=/>"']+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>"']+)))?/g;
+
+/** @returns {Record<string, string>} the attributes in an opening tag's source, values decoded */
+function parseAttrs(source) {
+	const attrs = {};
+	ATTR_RE.lastIndex = 0;
+	let m;
+	while ((m = ATTR_RE.exec(source))) {
+		const name = m[1].toLowerCase();
+		if (name in attrs) continue;
+		const value = m[2] ?? m[3] ?? m[4] ?? '';
+		attrs[name] = value.includes('&') ? decodeEntities(value) : value;
+	}
+	return attrs;
+}
+
+/** The class names in an opening tag's attribute source. */
+function classesOf(attrSource) {
+	const m = /(?:^|\s)class\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i.exec(attrSource);
+	return m ? (m[1] ?? m[2] ?? m[3]).trim().split(/\s+/) : [];
+}
+
+/** An opening tag, matched where it starts: group 1 is its name, group 2 its attributes. */
+const OPEN_TAG_RE = /<([a-zA-Z][a-zA-Z0-9-]*)(\s[^>]*)?>/y;
+
+/** Whether a character code can be part of a class name, so a search for "hb-mw" skips "hb-mw-row". */
+const isNameChar = (c) => (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 45 || c === 95;
+
+/**
+ * @typedef {object} Opening the opening tag of an element
+ * @property {string} tag lower-case tag name
+ * @property {string} attrSource its attributes, as written
+ * @property {number} start where the tag starts
+ * @property {number} inner where the element's content starts
+ */
+
+/**
+ * The first opening tag in html[from, to) whose class attribute holds `cls`: the class name is looked for
+ * as text, then checked against the tag around it. Attribute values must not contain '>'; a tag that
+ * breaks that is not found, and the caller reports the piece as missing.
+ * @param {string} html
+ * @param {string} cls
+ * @param {number} from
+ * @param {number} to
+ * @returns {Opening | null}
+ */
+function opening(html, cls, from, to) {
+	const view = to < html.length ? html.slice(0, to) : html;
+	let at = from;
+	for (;;) {
+		const hit = view.indexOf(cls, at);
+		if (hit < 0) return null;
+		at = hit + cls.length;
+		if (isNameChar(html.charCodeAt(hit - 1)) || isNameChar(html.charCodeAt(at))) continue;
+		const start = html.lastIndexOf('<', hit);
+		if (start < from) continue;
+		OPEN_TAG_RE.lastIndex = start;
+		const m = OPEN_TAG_RE.exec(view);
+		if (!m || OPEN_TAG_RE.lastIndex <= hit || !classesOf(m[2] || '').includes(cls)) continue;
+		return { tag: m[1].toLowerCase(), attrSource: m[2] || '', start, inner: OPEN_TAG_RE.lastIndex };
+	}
+}
+
+const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+const TAG_RE = /<([a-zA-Z][a-zA-Z0-9-]*)(\s[^>]*)?>/g;
+
+/**
+ * @typedef {object} Leaf
+ * @property {string} tag lower-case tag name
+ * @property {string} attrSource the opening tag's attributes, as written
+ * @property {string[]} classes
+ * @property {string} inner the element's content, up to the first closing tag of its name
+ */
+
+/**
+ * The first element with each class in `source`, found in one pass over its tags. An element's content
+ * runs to the first closing tag of its name, which is right for the small pieces of a card or row (they
+ * never hold an element of their own kind) and is all the parser reads.
+ * @param {string} source
+ * @returns {Map<string, Leaf>}
+ */
+function leaves(source) {
+	const found = new Map();
+	TAG_RE.lastIndex = 0;
+	let m;
+	while ((m = TAG_RE.exec(source))) {
+		const attrSource = m[2];
+		if (!attrSource || !attrSource.includes('class')) continue;
+		const classes = classesOf(attrSource);
+		let leaf = null;
+		for (const c of classes) {
+			if (found.has(c)) continue;
+			if (!leaf) {
+				const tag = m[1].toLowerCase();
+				let inner = '';
+				if (!VOID_TAGS.has(tag)) {
+					const close = source.indexOf(`</${tag}`, TAG_RE.lastIndex);
+					inner = source.slice(TAG_RE.lastIndex, close < 0 ? source.length : close);
+				}
+				leaf = { tag, attrSource, classes, inner };
+			}
+			found.set(c, leaf);
+		}
+	}
+	return found;
+}
+
+/** The content of every element in `source` with the class `cls`, as in leaves. */
+function allLeaves(source, cls) {
+	const out = [];
+	TAG_RE.lastIndex = 0;
+	let m;
+	while ((m = TAG_RE.exec(source))) {
+		if (!m[2] || !m[2].includes(cls) || !classesOf(m[2]).includes(cls)) continue;
+		const close = source.indexOf(`</${m[1].toLowerCase()}`, TAG_RE.lastIndex);
+		out.push(source.slice(TAG_RE.lastIndex, close < 0 ? source.length : close));
+	}
+	return out;
+}
+
+const closeRes = new Map();
+
+/**
+ * Where the element whose content starts at `from` ends: the closing tag that balances it, counting only
+ * tags of the same name. An element that is never closed runs to `to`.
+ * @returns {number} the position just past its closing tag
+ */
+function closeOf(html, tag, from, to) {
+	let re = closeRes.get(tag);
+	if (!re) {
+		re = new RegExp(`<(/?)${tag}(?=[\\s/>])[^>]*>`, 'gi');
+		closeRes.set(tag, re);
+	}
+	re.lastIndex = from;
+	let depth = 1;
+	let m;
+	while ((m = re.exec(html)) && m.index < to) {
+		if (!m[1]) depth++;
+		else if (--depth === 0) return re.lastIndex;
+	}
+	return to;
+}
+
+/**
+ * @typedef {object} Block an element that holds others, as a stretch of the page's source
+ * @property {string} tag
+ * @property {string} attrSource
+ * @property {number} start where its opening tag starts
+ * @property {number} inner where its content starts
+ * @property {number} end where it ends
+ */
+
+/**
+ * A run of sibling elements with the class `cls` in html[from, to), such as the board's cards: each is
+ * taken to end where the next one starts, and only the last is balanced to find its end.
+ * @returns {Block[]}
+ */
+function siblings(html, cls, from, to) {
+	const out = [];
+	for (let o = opening(html, cls, from, to); o; o = opening(html, cls, o.inner, to)) out.push({ ...o, end: to });
+	for (let i = 0; i < out.length - 1; i++) out[i].end = out[i + 1].start;
+	const last = out[out.length - 1];
+	if (last) last.end = closeOf(html, last.tag, last.inner, to);
+	return out;
+}
+
+/** The first element in html[from, to) with the class `cls`, balanced to find its end; null when there is none. */
+function block(html, cls, from, to) {
+	const o = opening(html, cls, from, to);
+	return o ? { ...o, end: closeOf(html, o.tag, o.inner, to) } : null;
+}
+
+/**
+ * The text a reader sees in a piece of HTML: tags dropped, entities decoded, runs of whitespace folded to
+ * one space, and <br> kept as a line break.
+ * @param {string | undefined} source
+ * @returns {string}
+ */
+function plainText(source) {
+	if (!source) return '';
+	let text = source.replace(/\s+/g, ' ');
+	if (text.includes('<')) {
+		if (text.includes('<!--')) text = text.replace(/<!--[\s\S]*?(?:-->|$)/g, '');
+		text = text
+			.replace(/<br\b[^>]*>/gi, '\n')
+			.replace(/<[^>]*>/g, '')
+			.replace(/ {2,}/g, ' ');
+	}
+	if (text.includes('&')) text = decodeEntities(text).replace(/[ \t\r\f\v\xa0]+/g, ' ');
+	if (text.includes('\n')) text = text.replace(/ *\n */g, '\n');
+	return text.trim();
+}
+
+/** The text of the element with the class `cls` among `fields` (from leaves); '' when there is none. */
+const textIn = (fields, cls) => plainText(fields.get(cls)?.inner);
+
 /**
  * @typedef {object} HuntBoard
  * @property {boolean} ok true when the page looked as expected and every card and row read cleanly
@@ -281,38 +336,41 @@ function absolute(href, base) {
  *   and the full length of each wanted list
  */
 
-/** Reads one bounty card; anything missing that should be there goes into `problems`. */
-function readCard(card, index, base, problems) {
-	const label = card.attrs.id || `card ${index + 1}`;
-	const codeBox = firstByClass(card, 'hb-code');
-	const code = (/\bBH-\d+\b/.exec(card.attrs.id || '') || /\bBH-\d+\b/.exec(textOf(codeBox)) || [''])[0];
-	const name = textOf(firstByClass(card, 'hb-name'));
-	const memberMatch = /#\s*(\d+)/.exec(textOf(firstByClass(card, 'hb-member')));
+/** Reads one bounty card from its source; anything missing that should be there goes into `problems`. */
+function readCard(card, cardAttrs, index, base, problems) {
+	const id = cardAttrs.id || '';
+	const label = id || `card ${index + 1}`;
+	const fields = leaves(card);
+	const codeBox = fields.get('hb-code');
+	const code = (/\bBH-\d+\b/.exec(id) || /\bBH-\d+\b/.exec(plainText(codeBox?.inner)) || [''])[0];
+	const name = textIn(fields, 'hb-name');
+	const memberMatch = /#\s*(\d+)/.exec(textIn(fields, 'hb-member'));
 	const member = memberMatch ? Number(memberMatch[1]) : null;
-	const amount = firstByClass(card, 'hb-amount');
-	const reward = amount ? numberIn(textOf(amount)) : null;
-	const taunt = firstByClass(card, 'hb-taunt');
-	const bonus = taunt ? (numberIn(textOf(firstByClass(taunt, 'hb-taunt-amt'))) ?? 0) : 0;
-	const terms = taunt ? textOf(firstByClass(taunt, 'hb-taunt-label')) : '';
-	const quote = textOf(firstByClass(card, 'hb-tagline'))
+	const amount = fields.get('hb-amount');
+	const reward = amount ? numberIn(plainText(amount.inner)) : null;
+	const taunted = fields.has('hb-taunt');
+	const bonus = taunted ? (numberIn(textIn(fields, 'hb-taunt-amt')) ?? 0) : 0;
+	const terms = taunted ? textIn(fields, 'hb-taunt-label') : '';
+	const quote = textIn(fields, 'hb-tagline')
 		.replace(/^["“”«»„]\s*/, '')
 		.replace(/\s*["“”«»„]$/, '');
-	const notes = textOf(firstByClass(card, 'hb-reason'));
-	const metaText = textOf(firstByClass(card, 'hb-meta'));
+	const notes = textIn(fields, 'hb-reason');
+	const metaText = textIn(fields, 'hb-meta');
 	const postedBy = (/Posted by\s+([^\n]+)/.exec(metaText) || ['', ''])[1].trim();
 	const hunter = (/Hunter:\s*([^\n]+)/.exec(metaText) || ['', ''])[1].trim();
-	const badge = firstByClass(card, 'hb-badge');
+	const badge = fields.get('hb-badge');
 	const badgeKind = badge ? (badge.classes.find((c) => c.startsWith('hb-badge-')) || '').slice('hb-badge-'.length) : '';
-	const status = badgeKind || (badge ? textOf(badge).toLowerCase() : '');
-	const track = firstByClass(card, 'hb-track');
+	const status = badgeKind || (badge ? plainText(badge.inner).toLowerCase() : '');
 	let tracking = null;
+	const track = fields.get('hb-track');
 	if (track) {
-		if (hasClass(track, 'hb-track-live')) tracking = 'live';
-		else if (hasClass(track, 'hb-track-known')) tracking = 'known';
-		else problems.push(`${label}: unknown tracking state "${track.attrs.class}"`);
+		const classes = track.classes;
+		if (classes.includes('hb-track-live')) tracking = 'live';
+		else if (classes.includes('hb-track-known')) tracking = 'known';
+		else problems.push(`${label}: unknown tracking state "${classes.join(' ')}"`);
 	}
-	const fileLink = codeBox ? findAll(codeBox, (n) => n.tag === 'a' && n.attrs.href)[0] : null;
-	const photo = firstByClass(card, 'hb-photo-main');
+	const fileLink = codeBox ? /<a\b([^>]*)>/i.exec(codeBox.inner) : null;
+	const photo = fields.get('hb-photo-main');
 
 	const missing = [];
 	if (!code) missing.push('code');
@@ -336,27 +394,28 @@ function readCard(card, index, base, problems) {
 		hunter,
 		status,
 		tracking,
-		url: absolute(fileLink?.attrs.href, base),
-		photo: absolute(photo?.attrs.src, base),
+		url: absolute(fileLink ? parseAttrs(fileLink[1]).href : undefined, base),
+		photo: absolute(photo ? parseAttrs(photo.attrSource).src : undefined, base),
 	};
 }
 
-/** Reads one row of a wanted list; anything missing that should be there goes into `problems`. */
+/** Reads one row of a wanted list from its source; anything missing that should be there goes into `problems`. */
 function readWanted(row, list, base, problems) {
-	const nameLink = firstByClass(row, 'hb-mw-name');
-	const name = textOf(nameLink);
-	const code = textOf(firstByClass(row, 'hb-mw-code'));
-	const threat = textOf(firstByClass(row, 'hb-mw-threat')).toUpperCase();
-	const sub = firstByClass(row, 'hb-mw-sub');
-	const subText = textOf(sub);
-	const seen = sub ? findAll(sub, (n) => n.tag === 'em')[0] : null;
+	const fields = leaves(row);
+	const nameLink = fields.get('hb-mw-name');
+	const name = plainText(nameLink?.inner);
+	const code = textIn(fields, 'hb-mw-code');
+	const threat = textIn(fields, 'hb-mw-threat').toUpperCase();
+	const sub = fields.get('hb-mw-sub');
+	const subText = plainText(sub?.inner);
+	const seen = sub ? /<em\b[^>]*>([\s\S]*?)<\/em>/i.exec(sub.inner) : null;
 	let escaped = null;
 	const days = /escaped\s+(\d+)\s+days?\s+ago/i.exec(subText);
 	if (days) escaped = Number(days[1]);
 	else if (/escaped\s+(today|just now|\d+\s+(hours?|minutes?|seconds?)\s+ago)/i.test(subText)) escaped = 0;
 	else if (/escaped\s+yesterday/i.test(subText)) escaped = 1;
 	const sighted = /(\d[\d,]*)\s+sightings?/i.exec(subText);
-	const bounty = numberIn(textOf(firstByClass(row, 'hb-mw-money')));
+	const bounty = numberIn(textIn(fields, 'hb-mw-money'));
 
 	const missing = [];
 	if (!name) missing.push('name');
@@ -370,41 +429,51 @@ function readWanted(row, list, base, problems) {
 		name,
 		code,
 		threat,
-		lastSeen: seen ? textOf(seen) : null,
+		lastSeen: seen ? plainText(seen[1]) : null,
 		escaped,
 		sightings: sighted ? Number(sighted[1].replace(/,/g, '')) : 0,
 		bounty,
-		url: absolute(nameLink?.attrs.href, base),
+		url: absolute(nameLink ? parseAttrs(nameLink.attrSource).href : undefined, base),
 	};
 }
 
 /**
- * The part of the page that holds the board, from its .hb-page wrapper to the site footer; the whole
- * page when either end can't be found. Keeps the site's stylesheet and scripts out of the tree.
+ * The stretch of the page that holds the board, from its .hb-page wrapper to the site footer; the whole
+ * page when either end can't be found. Keeps the site's stylesheet and scripts out of every search.
+ * @returns {[number, number]}
  */
 function boardRegion(html) {
-	const start = html.search(/<div\b[^>]*\bclass\s*=\s*["'][^"']*\bhb-page\b/i);
-	if (start < 0) return html;
-	const end = html.slice(start).search(/<footer\b/i);
-	return end < 0 ? html.slice(start) : html.slice(start, start + end);
+	const page = opening(html, 'hb-page', 0, html.length);
+	const start = page ? page.start : 0;
+	const footer = html.indexOf('<footer', start);
+	return [start, footer < 0 ? html.length : footer];
+}
+
+/** "page N of M" from the board's heading, read between `from` and `to`. */
+function pageOf(html, from, to) {
+	const board = html.indexOf('data-sec="board"', from);
+	const at = board >= 0 && board < to ? board : from;
+	const m = /\bpage\s+(\d+)\s+of\s+(\d+)/i.exec(html.slice(at, Math.min(to, at + 4000)));
+	return m ? { n: Number(m[1]), of: Number(m[2]) } : null;
 }
 
 /** The other pages' addresses from the pager; see huntBoardPages. */
-function readPager(root, page, base) {
-	const pager = firstByClass(root, 'hb-pager');
+function readPager(html, from, to, page, base) {
+	const pager = block(html, 'hb-pager', from, to);
 	if (!pager) return [];
 	/** @type {Map<number, string>} page number → address */
 	const found = new Map();
 	let pattern = null;
 	let here = page ? page.n : null;
-	for (const a of findAll(pager, (n) => n.tag === 'a' && n.attrs.href)) {
-		const href = absolute(a.attrs.href, base);
+	for (const m of html.slice(pager.inner, pager.end).matchAll(/<a\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi)) {
+		const attrs = parseAttrs(m[1]);
+		const href = absolute(attrs.href, base);
 		if (!href) continue;
 		const p = new URL(href).searchParams.get('p');
 		const n = p === null ? 1 : Number(p);
 		if (!Number.isInteger(n) || n < 1) continue;
 		if (p !== null) pattern = href;
-		if (a.attrs['aria-current'] === 'page' && here === null) here = n;
+		if (attrs['aria-current'] === 'page' && here === null) here = n;
 		if (!found.has(n)) found.set(n, href);
 	}
 	if (pattern && page) {
@@ -446,32 +515,36 @@ export function parseHuntBoard(html, base = HUNT_BOARD_URL) {
 			problems.push('the page is empty');
 			return result;
 		}
-		const region = boardRegion(html);
-		const root = buildTree(region);
+		const [from, to] = boardRegion(html);
 
-		const stats = firstByClass(root, 'hb-top-nums');
-		for (const num of stats ? byClass(stats, 'hb-num') : []) {
-			const t = textOf(num);
-			if (/\bopen\b/i.test(t)) totals.open = numberIn(t);
-			else if (/being hunted/i.test(t)) totals.hunted = numberIn(t);
+		const stats = block(html, 'hb-top-nums', from, to);
+		if (stats) {
+			for (const num of allLeaves(html.slice(stats.inner, stats.end), 'hb-num')) {
+				const t = plainText(num);
+				if (/\bopen\b/i.test(t)) totals.open = numberIn(t);
+				else if (/being hunted/i.test(t)) totals.hunted = numberIn(t);
+			}
 		}
 		if (totals.open === null) problems.push('no count of open bounties at the top of the page');
 
-		const showing = /Showing\s+([\d,]+)\s+of\s+([\d,]+)/i.exec(region);
-		const pageOf = /\bpage\s+(\d+)\s+of\s+(\d+)/i.exec(region);
+		const grid = opening(html, 'hb-grid', from, to);
+		const gridAt = grid ? grid.start : -1;
+		const board = html.indexOf('data-sec="board"', from);
+		const heading = html.slice(board >= 0 && board < to ? board : from, gridAt >= 0 ? gridAt : to);
+		const showing = /Showing\s+([\d,]+)\s+of\s+([\d,]+)/i.exec(heading);
 		if (showing) totals.board = Number(showing[2].replace(/,/g, ''));
-		if (pageOf) result.page = { n: Number(pageOf[1]), of: Number(pageOf[2]) };
-		else if (showing) result.page = { n: 1, of: 1 };
+		result.page = pageOf(html, from, to) ?? (showing ? { n: 1, of: 1 } : null);
 
-		const grid = firstByClass(root, 'hb-grid');
-		if (!grid) {
+		let boardEnd = from;
+		if (gridAt < 0) {
 			problems.push('no bounty grid (.hb-grid) on the page');
 		} else {
-			const cards = byClass(grid, 'hb-card');
+			const cards = siblings(html, 'hb-card', grid.inner, to);
 			cards.forEach((card, i) => {
-				const c = readCard(card, i, base, problems);
+				const c = readCard(html.slice(card.inner, card.end), parseAttrs(card.attrSource), i, base, problems);
 				if (c) result.contracts.push(c);
 			});
+			boardEnd = cards.length ? cards[cards.length - 1].end : grid.inner;
 			if (showing) {
 				const shown = Number(showing[1].replace(/,/g, ''));
 				if (cards.length !== shown) problems.push(`the board says it shows ${shown} bounties but has ${cards.length} cards`);
@@ -480,23 +553,26 @@ export function parseHuntBoard(html, base = HUNT_BOARD_URL) {
 			}
 		}
 
-		const sections = byClass(root, 'hb-mw');
+		const sections = siblings(html, 'hb-mw', from, gridAt >= 0 ? gridAt : to);
 		if (!sections.length) problems.push('no most wanted section (.hb-mw)');
 		for (const sec of sections) {
-			const debtor = hasClass(sec, 'is-debtor') || /debtor/i.test(`${sec.attrs['data-sec'] || ''} ${sec.attrs.id || ''}`);
+			const secAttrs = parseAttrs(sec.attrSource);
+			const debtor =
+				classesOf(sec.attrSource).includes('is-debtor') || /debtor/i.test(`${secAttrs['data-sec'] || ''} ${secAttrs.id || ''}`);
 			const list = debtor ? 'debtors' : 'wanted';
-			const total = numberIn(textOf(firstByClass(firstByClass(sec, 'hb-mw-head'), 'hb-mw-n')));
+			const source = html.slice(sec.inner, sec.end);
+			const total = numberIn(textIn(leaves(source.slice(0, Math.max(0, source.indexOf('hb-mw-row')))), 'hb-mw-n'));
 			if (total !== null) totals[list] = total;
-			const rows = byClass(sec, 'hb-mw-row');
+			const rows = siblings(source, 'hb-mw-row', 0, source.length);
 			if (!rows.length && total) problems.push(`the ${list} list says ${total} but shows nobody`);
 			for (const row of rows) {
-				const w = readWanted(row, list, base, problems);
+				const w = readWanted(source.slice(row.inner, row.end), list, base, problems);
 				if (w) result[list].push(w);
 			}
 		}
 		if (sections.length && !result.wanted.length && totals.wanted === null) problems.push('no most wanted list among the .hb-mw sections');
 
-		result.pages = readPager(root, result.page, base);
+		result.pages = readPager(html, boardEnd, to, result.page, base);
 	} catch (e) {
 		problems.push(`the page could not be read: ${e && e.message ? e.message : e}`);
 	}
@@ -516,9 +592,8 @@ export function parseHuntBoard(html, base = HUNT_BOARD_URL) {
 export function huntBoardPages(html, base = HUNT_BOARD_URL) {
 	try {
 		if (typeof html !== 'string') return [];
-		const region = boardRegion(html);
-		const pageOf = /\bpage\s+(\d+)\s+of\s+(\d+)/i.exec(region);
-		return readPager(buildTree(region), pageOf ? { n: Number(pageOf[1]), of: Number(pageOf[2]) } : null, base);
+		const [from, to] = boardRegion(html);
+		return readPager(html, from, to, pageOf(html, from, to), base);
 	} catch (e) {
 		return [];
 	}

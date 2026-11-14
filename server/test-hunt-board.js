@@ -17,6 +17,23 @@ const fixture = (name) => readFileSync(new URL(`./test/fixtures/${name}`, import
 const PAGE_1 = fixture('hunt-board.html');
 const PAGE_2 = fixture('hunt-board-2.html');
 
+// Timing, before anything else has run the parser: the first parse pays for compiling it. The Worker gets
+// 10 ms of CPU per request on the free plan.
+for (const [name, html] of [
+	['page 1', PAGE_1],
+	['page 2', PAGE_2],
+]) {
+	const times = [];
+	for (let i = 0; i < 20; i++) {
+		const t0 = performance.now();
+		parseHuntBoard(html);
+		times.push(performance.now() - t0);
+	}
+	const sorted = [...times].sort((a, b) => a - b);
+	const median = (sorted[9] + sorted[10]) / 2;
+	check(median < 5, `${name}: first parse ${times[0].toFixed(1)} ms, median of 20 ${median.toFixed(1)} ms`);
+}
+
 // Entity decoding.
 same(
 	decodeEntities('a &amp; b &lt;c&gt; &quot;d&quot; &#039;e&#39;'),
