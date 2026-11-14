@@ -1945,7 +1945,7 @@ const openCardOf = async (page, name) => {
 		);
 		// Swords: held or slung on the back; Queen's Wrath: held, held in front or on the back; each with its own line.
 		const carryOptions = await ap.evaluate(() =>
-			['VoidRifles', 'VoidSwords', 'QueensWrath'].map((n) =>
+			['VoidRifles', 'VoidSwords', 'QueensWrath', 'VoidPistols'].map((n) =>
 				ModularItemDataLookup[`ItemHandheld${n}`].modules
 					.find((m) => m.Key === 'Position')
 					.Options.map((o) => AssetTextGet(`ItemHandheld${n}Option${o.Name}`))
@@ -1955,7 +1955,8 @@ const openCardOf = async (page, name) => {
 		check(
 			'each kind offers its carries by name',
 			carryOptions.join('|') ===
-				'Hand on the trigger/Port arms/On the shoulder/On the back|Held/On the back|Held/Held in front/On the back',
+				'Hand on the trigger/Port arms/On the shoulder/On the back|Held/On the back|Held/Held in front/On the back|' +
+					'Hand on the trigger/On the hip/In the left hand',
 			carryOptions,
 		);
 		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
@@ -1967,6 +1968,18 @@ const openCardOf = async (page, name) => {
 			window.sent.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action').map(([, d]) => d.Dictionary[0].Text),
 		);
 		check('slinging a sword on the back gets its line', backLine.includes('Ann slings the Recider across the back.'), backLine);
+		// A pistol's own carries: a hip holster, then the left hand.
+		await hold(ap, 'VoidPistols', { w: 2, Position: 0 });
+		await wait(1800);
+		await ap.evaluate(() => (window.sent = []));
+		await hold(ap, 'VoidPistols', { w: 2, Position: 1 });
+		await wait(1800);
+		const hipLine = await ap.evaluate(() =>
+			window.sent.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action').map(([, d]) => d.Dictionary[0].Text),
+		);
+		check('holstering a pistol on the hip gets its line', hipLine.some((t) => /holsters the .+ on the hip\./.test(t)), hipLine);
+		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
+		await wait(1800);
 		// Only where it makes sense, and none of the game's item activities for our weapons.
 		await ap.evaluate(() => {
 			const bea = ChatRoomCharacter[1];

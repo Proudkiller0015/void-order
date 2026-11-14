@@ -135,7 +135,7 @@
 			const option = Number.isInteger(record.w) ? record.w : 0;
 			const weapon = item.weapons[option] || item.weapons[0];
 			const position = Number.isInteger(record.Position) ? record.Position : 0;
-			// What that carry is: 'trigger', 'portarms', 'shoulder', 'back', 'held' or 'front' ('' for none).
+			// What that carry is: 'trigger', 'portarms', 'shoulder', 'back', 'hip', 'lefthand', 'held' or 'front' ('' for none).
 			const carry = (Array.isArray(item.carries) && item.carries[position]) || '';
 			return { item: item.name, weapon, option, position, carry };
 		}

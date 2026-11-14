@@ -25,6 +25,14 @@ const CARRY_IDS = ['trigger', 'portarms', 'shoulder', 'back'];
 const PARTS_KINDS = ['Swords', 'GlowingBlades', 'ShortBlades'];
 /** Blades, maces and staffs say "Held" where guns say "Hand on the trigger". */
 const BLADE_KINDS = ['Swords', 'GlowingBlades', 'ShortBlades', 'Blunt', 'Staffs'];
+/**
+ * Pistols can't be held at port arms or on the shoulder while the arms rest: their second and third carries are a hip
+ * holster and the left hand (fullcfg.py), with their own names, lines and ids.
+ */
+const PISTOL_CARRIES = {
+	1: { id: 'hip', label: 'On the hip', set: 'SourceCharacter holsters the pistol on DestinationCharacter hip.' },
+	2: { id: 'lefthand', label: 'In the left hand', set: 'SourceCharacter puts the pistol in DestinationCharacter left hand.' },
+};
 /** Queen's Wrath's carry options, by number. */
 const WRATH_CARRY_IDS = ['held', 'front', 'back'];
 /** Each kind's item name, as it reads after the game's "a" ("swaps a void sword for a void rifle"). */
@@ -278,13 +286,29 @@ function main() {
 				? { ...o, Property: { ...o.Property, DefaultColor: keep.map((i) => o.Property.DefaultColor[i] ?? 'Default') } }
 				: o;
 		// The carries this item's weapons have pictures for, numbered from 0 in the item (swords: held, on the back).
+		// (The Hand layer names every carry in the hands, so it counts none: an item has the carries it has pictures for.)
 		const used = [
-			...new Set(layers.flatMap((l) => (l.AllowTypes && 'Position' in l.AllowTypes ? allowed(l.AllowTypes.Position) : []))),
+			...new Set(
+				layers.flatMap((l) => (l.AllowTypes && 'Position' in l.AllowTypes && !l.TextureMask ? allowed(l.AllowTypes.Position) : [])),
+			),
 		].sort((a, b) => a - b);
 		const renumber = new Map(used.map((n, i) => [n, i]));
 		for (const l of layers) {
 			if (l.AllowTypes && 'Position' in l.AllowTypes) {
-				const ns = allowed(l.AllowTypes.Position).map((n) => renumber.get(n));
+				const ns = allowed(l.AllowTypes.Position)
+					.filter((n) => renumber.has(n))
+					.map((n) => renumber.get(n));
+				if (!ns.length) {
+					// An item with no carries (knives): the Hand layer applies whatever the record says.
+					const rest = { ...l.AllowTypes };
+					delete rest.Position;
+					if (Object.keys(rest).length) {
+						l.AllowTypes = rest;
+					} else {
+						delete l.AllowTypes;
+					}
+					continue;
+				}
 				l.AllowTypes = { ...l.AllowTypes, Position: ns.length === 1 ? ns[0] : ns };
 			}
 		}
@@ -309,9 +333,10 @@ function main() {
 			texts[`${prefix}ModulePosition`] = strings[`${GROUP}WeaponsModulePosition`] || 'Carry';
 			texts[`${prefix}SelectPosition`] = strings[`${GROUP}WeaponsSelectPosition`] || 'How to carry it:';
 			used.forEach((n, i) => {
-				const label = n === 0 && BLADE_KINDS.includes(cat) ? 'Held' : strings[`${GROUP}WeaponsOptionPosition${n}`];
+				const own = cat === 'Pistols' ? PISTOL_CARRIES[n] : undefined;
+				const label = n === 0 && BLADE_KINDS.includes(cat) ? 'Held' : own ? own.label : strings[`${GROUP}WeaponsOptionPosition${n}`];
 				texts[`${prefix}OptionPosition${i}`] = label;
-				texts[`${prefix}SetPosition${i}`] = strings[`${GROUP}WeaponsSetPosition${n}`];
+				texts[`${prefix}SetPosition${i}`] = own ? own.set : strings[`${GROUP}WeaponsSetPosition${n}`];
 			});
 		}
 		items.push({
@@ -319,7 +344,11 @@ function main() {
 			// The game writes "a <description>" in lower case in its lines ("uses a void rifle on…").
 			description: DESCRIPTIONS[cat] || `Void ${cat.toLowerCase()}`,
 			weapons: weapons.map((w) => ({ key: w.key, name: w.name, cat: w.cat })),
-			carries: carried ? used.map((n) => (n === 0 && BLADE_KINDS.includes(cat) ? 'held' : CARRY_IDS[n])) : [],
+			carries: carried
+				? used.map((n) =>
+						n === 0 && BLADE_KINDS.includes(cat) ? 'held' : cat === 'Pistols' && PISTOL_CARRIES[n] ? PISTOL_CARRIES[n].id : CARRY_IDS[n],
+					)
+				: [],
 			source: 'Weapons',
 			def: { Name: name, ...base, Layer: layers.map(unlisted) },
 			extended: {

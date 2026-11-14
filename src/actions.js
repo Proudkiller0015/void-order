@@ -835,6 +835,8 @@
 		portarms: (a, x) => `${a} holds ${x} across the chest, at port arms.`,
 		shoulder: (a, x) => `${a} rests ${x} on a shoulder, muzzle up.`,
 		back: (a, x) => `${a} slings ${x} across the back.`,
+		hip: (a, x) => `${a} holsters ${x} on the hip.`,
+		lefthand: (a, x) => `${a} takes ${x} in the left hand.`,
 		held: (a, x) => `${a} takes ${x} in hand.`,
 		front: (a, x) => `${a} holds ${x} out in front.`,
 	};
