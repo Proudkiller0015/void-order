@@ -138,6 +138,8 @@ const ORIGINS = [
 const forms = (f, m = f, n = m) => ({ f, m, n });
 const chapter = (id, name, tiers = []) => ({ id, name, tiers: Array.from({ length: TIERS }, (_, i) => tiers[i] || null) });
 /** The Order's structure, as its Discord has it. Changing it is a code update. */
+/** The Order's name: fixed, like its structure. A name stored when the Order was founded stays in 'meta' but isn't used. */
+const ORDER_NAME = 'Holy Order of Void';
 const STRUCTURE = {
 	motto: 'Praise the Void! 𓁹‿𓁹',
 	founder: { name: 'Founder', sym: '𓁹‿𓁹', color: '#ffe3a3' },
@@ -970,7 +972,7 @@ export class Order extends DurableObject {
 			return this.no(ws, 'wrong founding code', p);
 		}
 		this.meta = {
-			name: clean(p.name, LIMITS.name) || 'The Void Order',
+			name: ORDER_NAME,
 			about: clean(p.about, LIMITS.about),
 			open: true,
 			founded: Date.now(),
@@ -980,7 +982,7 @@ export class Order extends DurableObject {
 		this.members[a.member] = this.newMember(a.member, clean(p.myName, LIMITS.name) || a.name, a.pub);
 		await this.ctx.storage.put('meta', this.meta);
 		await this.putMember(a.member);
-		await this.note(a.member, `${this.nameOf(a.member)} founded ${this.meta.name}`);
+		await this.note(a.member, `${this.nameOf(a.member)} founded the ${ORDER_NAME}`);
 		this.ok(ws, p);
 		this.broadcast();
 		this.send(ws, { t: 'orders', orders: [] });
@@ -1330,7 +1332,7 @@ export class Order extends DurableObject {
 				weapons: this.weaponsOf(m.n),
 				carry: m.carry || 0,
 				pic,
-				order: this.meta ? this.meta.name : '',
+				order: this.meta ? ORDER_NAME : '',
 			},
 		});
 	}
@@ -1347,13 +1349,10 @@ export class Order extends DurableObject {
 		}
 	}
 
-	/** The Order's name, the about page and whether joining is open. The Founder and admins. */
+	/** The about page and whether joining is open (the name is fixed: one sent is ignored). The Founder and admins. */
 	async setAbout(ws, me, p) {
 		if (!this.isTop(me)) {
 			return this.no(ws, 'not allowed', p);
-		}
-		if (typeof p.name === 'string' && clean(p.name, LIMITS.name)) {
-			this.meta.name = clean(p.name, LIMITS.name);
 		}
 		if (typeof p.about === 'string') {
 			this.meta.about = clean(p.about, LIMITS.about);

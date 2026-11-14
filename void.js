@@ -34,6 +34,11 @@
 		medalReason: 140,
 	};
 	/** Ranks in a branch, the lowest rank that joins a chapter and that leads the branch, and branches per member. */
+	/** The rank of a member in no branch (not the Founder or a Monsignor), and the colour of their mark. */
+	const NEOPHYTE = 'Neophyte';
+	const NEOPHYTE_COLOR = '#9a8fb8';
+	/** The Order's name: fixed, like its structure (the name stored when it was founded is never shown). */
+	const ORDER_NAME = 'Holy Order of Void';
 	const TIERS = 5;
 	const CHAPTER_FROM = 2;
 	const LEADS_FROM = 4;
@@ -431,12 +436,12 @@
 			}
 		}
 		if (!founder && !m.mon && !m.places.length) {
-			lines.push({ text: 'Awaiting placement', cls: 'chapter' });
+			lines.push({ text: NEOPHYTE });
 		}
 		return lines;
 	}
 
-	/** A member's place in a few words: "Founder · Monsignor", "Warmage", "Paladin - Knight", "Awaiting placement". */
+	/** A member's place in a few words: "Founder · Monsignor", "Warmage", "Paladin - Knight", "Neophyte". */
 	function placeSummary(/** @type {any} */ m) {
 		const s = structure();
 		const parts = [];
@@ -448,7 +453,7 @@
 		}
 		const title = hybridTitle(m);
 		parts.push(...(title ? [title] : m.places.map((/** @type {any} */ p) => placeText(p, m))));
-		return parts.join(' · ') || 'Awaiting placement';
+		return parts.join(' · ') || NEOPHYTE;
 	}
 
 	// ---- Who stands where (the server decides; this only shows what you may do)
@@ -749,7 +754,7 @@
 		l.append(c, document.createTextNode(text));
 		return l;
 	}
-	/** Keys typed in the panel stay out of the game. */
+	/** Keys typed in the panel stay out of the game (see shieldKeys, which also keeps them from other add-ons). */
 	const keepKeys = (/** @type {HTMLElement} */ el) => {
 		for (const t of ['keydown', 'keyup', 'keypress']) {
 			el.addEventListener(t, (e) => {
@@ -759,6 +764,44 @@
 			});
 		}
 	};
+	/** Whether an element is part of the add-on's own windows (the panel, an ID card, the dice tray). */
+	const inOurs = (/** @type {any} */ el) => el instanceof Element && !!el.closest('#void-panel, #void-card, #void-dice');
+	/**
+	 * Keys typed in the add-on's windows, caught on the window before anything else (registered as soon as the add-on
+	 * runs): the add-on's own Esc and hotkey are handled here, and the key goes no further, so another add-on that sends
+	 * typing to the chat box never sees it. Typing itself still happens (nothing is prevented). If an add-on that
+	 * listened earlier still moved the focus to the chat box, it goes back to the field being typed in, caret and all.
+	 */
+	function shieldKeys(/** @type {KeyboardEvent} */ e) {
+		const t = e.target;
+		if (!inOurs(t)) {
+			return;
+		}
+		const field = /** @type {HTMLInputElement} */ (t);
+		if (document.activeElement !== field && /^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName) && field.isConnected) {
+			field.focus();
+		}
+		if (e.type === 'keydown') {
+			guard(() => {
+				hotkeyDown(e);
+				if (e.key === 'Escape') {
+					escape();
+				}
+			});
+		}
+		e.stopImmediatePropagation();
+	}
+	/** Esc: closes an open ID card, else the panel. */
+	function escape() {
+		if (document.getElementById('void-card')) {
+			document.getElementById('void-card')?.remove();
+		} else {
+			closePanel();
+		}
+	}
+	for (const type of ['keydown', 'keypress', 'keyup']) {
+		addEventListener(type, (e) => shieldKeys(/** @type {KeyboardEvent} */ (e)), true);
+	}
 	/**
 	 * A pop-up at the bottom right that goes away by itself (clicking it runs `click`), with a soft sound if that is on;
 	 * neither while pop-ups are off or you don't want to be disturbed.
@@ -920,14 +963,7 @@
 			}
 			id.append(ln);
 		}
-		card.append(
-			x,
-			make('div', 'org', c.order || 'The Void Order'),
-			pic,
-			make('div', 'nm', c.name),
-			make('div', 'num', `Member #${c.n}`),
-			id,
-		);
+		card.append(x, make('div', 'org', ORDER_NAME), pic, make('div', 'nm', c.name), make('div', 'num', `Member #${c.n}`), id);
 		const medals = [...(c.medals || [])].reverse();
 		if (medals.length) {
 			const row = make('div', 'medals');
@@ -1004,7 +1040,7 @@
 		if (!isMember()) {
 			return 'Only members have an ID card.';
 		}
-		w.ServerSend('ChatRoomChat', { Content: `shows their ID card of ${state.meta.name}.`, Type: 'Emote' });
+		w.ServerSend('ChatRoomChat', { Content: `shows their ID card of the ${ORDER_NAME}.`, Type: 'Emote' });
 		w.ServerSend('ChatRoomChat', { Content: HIDDEN, Type: 'Hidden', Dictionary: [{ card: true }] });
 		return '';
 	}
@@ -1123,11 +1159,11 @@
 		}
 		return c;
 	}
-	/** A member's mark: the Founder's, a Monsignor's, their main branch's, or the Order's ⸸ while they wait for a place. */
+	/** A member's mark: the Founder's, a Monsignor's, their main branch's, or a Neophyte's dim ⸸. */
 	function markOf(/** @type {any} */ m) {
 		const s = structure();
 		const b = m.places[0] && branchOf(m.places[0].b);
-		const x = m.n === founderN() ? s.founder : m.mon ? s.monsignor : b || { sym: '⸸', color: '#b48cff' };
+		const x = m.n === founderN() ? s.founder : m.mon ? s.monsignor : b || { sym: '⸸', color: NEOPHYTE_COLOR };
 		return { sym: x.sym || '⸸', color: isColor(x.color) ? x.color : '#b48cff' };
 	}
 	/** Whether the mouse is on the mark of a character drawn at x, y with zoom. */
@@ -2488,7 +2524,7 @@
 		x.title = 'Close';
 		x.addEventListener('click', closePanel);
 		const head = make('header');
-		head.append(make('h2', '', (state && state.meta && state.meta.name) || 'Oculus Nihili'), make('span', 'status', statusLine()), x);
+		head.append(make('h2', '', state && state.meta ? ORDER_NAME : 'Oculus Nihili'), make('span', 'status', statusLine()), x);
 		p.append(head);
 		const list = tabs();
 		if (!list.some(([id]) => id === tab)) {
@@ -2627,7 +2663,7 @@
 			return `${structure().monsignor.name}s`;
 		}
 		if (g === 'unplaced') {
-			return 'Awaiting placement';
+			return `${NEOPHYTE}s`;
 		}
 		const [, id, sep, rest] = /^([a-z0-9-]+)(?:([/:])([a-z0-9-]+))?$/.exec(g) || [];
 		const b = branchOf(id);
@@ -2842,7 +2878,7 @@
 		return box;
 	}
 
-	// -- Members: the Founder and Monsignors, then each branch by rank from 5 down to 1, then those awaiting a place
+	// -- Members: the Founder and Monsignors, then each branch by rank from 5 down to 1, then the Neophytes
 	function drawMembers(/** @type {HTMLElement} */ body) {
 		const s = structure();
 		const on = state.members.filter((/** @type {any} */ m) => m.on).length;
@@ -2890,7 +2926,7 @@
 		}
 		const waiting = all.filter((/** @type {any} */ m) => !m.places.length && !m.mon && m.n !== founderN());
 		if (waiting.length) {
-			body.append(make('div', 'branch', `Awaiting placement · ${waiting.length}`));
+			body.append(make('div', 'branch', `${NEOPHYTE} · ${waiting.length}`));
 			for (const m of waiting) {
 				body.append(drawMemberRow(m, ''));
 			}
@@ -3016,7 +3052,7 @@
 	function drawJoin(/** @type {HTMLElement} */ body) {
 		if (!state.meta) {
 			if (!state.canFound) {
-				body.append(make('p', '', 'The Void Order has not been founded yet.'));
+				body.append(make('p', '', `The ${ORDER_NAME} has not been founded yet.`));
 				return;
 			}
 			body.append(
@@ -3024,10 +3060,8 @@
 				make(
 					'p',
 					'',
-					'You run the app. Name the Order and enter the founding code. You are its Founder until you hand that place to the Order’s own founder (under The Order); as the app admin you keep every power after.',
+					'You run the app. Enter the founding code. You are its Founder until you hand that place to the Order’s own founder (under The Order); as the app admin you keep every power after.',
 				),
-				label('Name'),
-				field('f:name', 'The Void Order', LIMITS.name),
 				label('About'),
 				field('f:about', '', LIMITS.about, 'textarea'),
 				label('Founding code'),
@@ -3038,7 +3072,6 @@
 						act(
 							{
 								t: 'found',
-								name: drafts['f:name'] || 'The Void Order',
 								about: drafts['f:about'] || '',
 								code: drafts['f:code'] || '',
 								myName: nick(w.Player),
@@ -3100,7 +3133,7 @@
 			make('p', '', 'Join now; an admin or a branch leader then gives you your place in a branch.'),
 			button(
 				'Join the Order',
-				() => act({ t: 'join', name: nick(w.Player) }, () => note(`Welcome to ${meta.name}. A branch leader will place you soon.`)),
+				() => act({ t: 'join', name: nick(w.Player) }, () => note(`Welcome to the ${ORDER_NAME}. A branch leader will place you soon.`)),
 				'b main',
 			),
 		);
@@ -3413,9 +3446,9 @@
 		const q = String(drafts['m:filter'] || '').toLowerCase();
 		const shown = (/** @type {any} */ m) => !q || m.name.toLowerCase().includes(q) || String(m.n).includes(q);
 		const waiting = unplacedFor().filter(shown);
-		body.append(make('h3', '', `Awaiting placement · ${waiting.length}`));
+		body.append(make('h3', '', `${NEOPHYTE}s (not yet in a branch) · ${waiting.length}`));
 		if (!waiting.length) {
-			body.append(make('p', 'dim', 'Nobody is waiting for a place.'));
+			body.append(make('p', 'dim', `No ${NEOPHYTE}s waiting for a branch.`));
 		}
 		for (const m of waiting) {
 			body.append(memberBox(m));
@@ -3441,8 +3474,6 @@
 		const meta = state.meta;
 		body.append(
 			make('h3', '', 'About page and joining'),
-			label('Name'),
-			field('a:name', meta.name, LIMITS.name),
 			label('About'),
 			field('a:about', meta.about, LIMITS.about, 'textarea'),
 			check(' Joining open', 'a:open' in drafts ? drafts['a:open'] === '1' : meta.open, (on) => {
@@ -3457,7 +3488,6 @@
 					act(
 						{
 							t: 'about',
-							name: drafts['a:name'] ?? meta.name,
 							about: drafts['a:about'] ?? meta.about,
 							open: 'a:open' in drafts ? drafts['a:open'] === '1' : meta.open,
 						},
@@ -3806,11 +3836,7 @@
 			}
 			document.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') {
-					if (document.getElementById('void-card')) {
-						document.getElementById('void-card')?.remove();
-					} else {
-						closePanel();
-					}
+					escape();
 				}
 			});
 			document.addEventListener('keydown', hotkeyDown, true);

@@ -115,7 +115,7 @@ async function peer(member, name, code = '') {
  * `slimebeep` puts a stand-in for SlimeBeep's add-on API on the page, recording the groups it joins in `sbJoined`.
  * @param {{ me: [number, string], other: [number, string], settings?: object, slimebeep?: boolean }} who
  */
-async function gamePage(browser, { me, other, settings = {}, slimebeep = false }) {
+async function gamePage(browser, { me, other, settings = {}, slimebeep = false, grabber = false }) {
 	const page = await browser.newPage();
 	await page.setViewport({ width: 1600, height: 900 });
 	const errors = [];
@@ -208,6 +208,19 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false }
 					group: () => null,
 				},
 			};
+		});
+	}
+	if (grabber) {
+		// Another add-on, loaded first, that sends typing to the chat box while `grabOn` (as some add-ons do).
+		await page.evaluate(() => {
+			window.addEventListener(
+				'keydown',
+				() => {
+					const chat = document.getElementById('InputChat');
+					if (window.grabOn && chat && document.activeElement !== chat) chat.focus();
+				},
+				true,
+			);
 		});
 	}
 	await page.addScriptTag({ path: path.join(__dirname, 'void.js') });
@@ -321,7 +334,7 @@ const openCardOf = async (page, name) => {
 	const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 	const peers = [];
 	try {
-		const { page, errors } = await gamePage(browser, { me: [11, 'Ann'], other: [12, 'Bea'] });
+		const { page, errors } = await gamePage(browser, { me: [11, 'Ann'], other: [12, 'Bea'], grabber: true });
 		check('/void is registered once the game is ready', true);
 		await page.waitForFunction(() => window.synced.includes('VoidOrder'), { timeout: 10000 });
 		const saved = await page.evaluate(() => Player.ExtensionSettings.VoidOrder);
@@ -332,7 +345,7 @@ const openCardOf = async (page, name) => {
 		await page.waitForFunction(() => /Found the Order/.test(document.getElementById('void-panel')?.innerText || ''), { timeout: 10000 });
 		await shot(page, '01-found');
 		await type(page, 'textarea', 'We gaze into the Void, and it gazes back.');
-		await type(page, 'input:not([type])', 'test-founding-code', 1);
+		await type(page, 'input:not([type])', 'test-founding-code', 0);
 		await click(page, 'Found the Order');
 		await page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const tabs = await page.evaluate(() => [...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'));
@@ -350,7 +363,11 @@ const openCardOf = async (page, name) => {
 		const badge = await page.evaluate(() => document.querySelector('#void-panel nav .badge')?.textContent);
 		check('Manage shows one member awaiting a place', badge === '1', badge);
 		await click(page, 'Manage');
-		check('Bea is listed under Awaiting placement', /Awaiting placement · 1\s+Bea #12/i.test(await panelText(page)), await panelText(page));
+		check(
+			'Bea is listed under the Neophytes',
+			/Neophytes \(not yet in a branch\) · 1\s+Bea #12/i.test(await panelText(page)),
+			await panelText(page),
+		);
 		await shot(page, '02-awaiting-placement');
 		await placeVia(page, 'Bea', 'paladin', 5);
 		await wait(500);
@@ -403,7 +420,7 @@ const openCardOf = async (page, name) => {
 		await click(fay.page, 'Join the Order');
 		await fay.page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const fayStatus = await fay.page.evaluate(() => document.querySelector('#void-panel .status').textContent);
-		check('Fay joins at once, awaiting placement', fayStatus === 'Awaiting placement', fayStatus);
+		check('Fay joins at once, a Neophyte', fayStatus === 'Neophyte', fayStatus);
 		await click(page, 'Members');
 		await click(page, 'Manage');
 		await placeVia(page, 'Fay', 'paladin', 4);
@@ -603,7 +620,7 @@ const openCardOf = async (page, name) => {
 		await shot(page, '21-card-weapon');
 		await page.evaluate(() => document.getElementById('void-card')?.remove());
 
-		// A branch leader's Manage: only the Paladins below her, and those awaiting a place.
+		// A branch leader's Manage: only the Paladins below her, and the Neophytes.
 		const eve = await peer(17, 'Eve');
 		peers.push(eve);
 		await eve.req({ t: 'join', name: 'Eve' });
@@ -611,7 +628,11 @@ const openCardOf = async (page, name) => {
 		await click(fay.page, 'Manage');
 		await wait(200);
 		const fm = await panelText(fay.page);
-		check('a rank 4 Paladin manages Cat (rank 2) and places Eve', /Awaiting placement · 1\s+Eve #17[\s\S]*Cat #13/i.test(fm), fm);
+		check(
+			'a rank 4 Paladin manages Cat (rank 2) and places Eve',
+			/Neophytes \(not yet in a branch\) · 1\s+Eve #17[\s\S]*Cat #13/i.test(fm),
+			fm,
+		);
 		check('but not Bea (rank 5), Gus (rank 4), Dan (a Priest) or Ann', !/Bea #12|Gus #16|Dan #14|Ann #11/.test(fm), fm);
 		const fayRanks = await fay.page.evaluate(() => {
 			const box = [...document.querySelectorAll('#void-panel .box')].find((b) => /^Cat #13/.test(b.textContent));
@@ -977,7 +998,8 @@ const openCardOf = async (page, name) => {
 		const shown = await fay.page.evaluate(() => window.sent.map(([m, d]) => `${m}:${d.Type}:${d.Content}`));
 		check(
 			'Show my ID sends the emote and the hidden note',
-			shown.includes('ChatRoomChat:Emote:shows their ID card of The Void Order.') && shown.includes('ChatRoomChat:Hidden:VoidOrder'),
+			shown.includes('ChatRoomChat:Emote:shows their ID card of the Holy Order of Void.') &&
+				shown.includes('ChatRoomChat:Hidden:VoidOrder'),
 			shown,
 		);
 		await shot(fay.page, '12-my-card');
@@ -1116,6 +1138,51 @@ const openCardOf = async (page, name) => {
 			(await second.page.evaluate(() => window.sbJoined.length)) === 0,
 			await second.page.evaluate(() => window.sbJoined),
 		);
+		// Another add-on that sends typing to the chat box (a window capture listener, there before ours, and a document
+		// listener after it): keys typed in the panel's fields stay there and the other add-on never sees them.
+		{
+			await slash(page, '');
+			await click(page, 'Manage');
+			const kept = await page.evaluate(() => {
+				const chat = document.createElement('input');
+				chat.id = 'InputChat';
+				document.body.append(chat);
+				window.grabOn = true;
+				let documentSaw = 0;
+				const later = () => documentSaw++;
+				document.addEventListener('keydown', later, true);
+				const results = [];
+				for (const field of [...document.querySelectorAll('#void-panel main input, #void-panel main textarea')].slice(0, 2)) {
+					field.focus();
+					for (const type of ['keydown', 'keypress', 'keyup']) {
+						field.dispatchEvent(new KeyboardEvent(type, { key: 'a', bubbles: true, cancelable: true }));
+					}
+					results.push(document.activeElement === field);
+				}
+				document.removeEventListener('keydown', later, true);
+				// Typing in the chat box itself, with the panel open, is not touched.
+				chat.focus();
+				chat.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }));
+				const chatKept = document.activeElement === chat;
+				window.grabOn = false;
+				chat.remove();
+				return { results, documentSaw, chatKept };
+			});
+			check(
+				'with another add-on grabbing keys for the chat, the panel’s fields keep the focus',
+				kept.results.length === 2 && kept.results.every(Boolean),
+				kept,
+			);
+			check('and listeners after ours never see keys typed in the panel', kept.documentSaw === 0, kept);
+			check('typing in the chat box is untouched', kept.chatKept, kept);
+			const esc = await page.evaluate(() => {
+				const field = document.querySelector('#void-panel main input');
+				field.focus();
+				field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+				return !document.getElementById('void-panel');
+			});
+			check('Esc in a field still closes the panel', esc);
+		}
 		check('no page errors', errors.length === 0 && fay.errors.length === 0 && second.errors.length === 0, [
 			...errors,
 			...fay.errors,

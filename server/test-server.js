@@ -144,6 +144,9 @@ async function joined(member, name) {
 	const pw = a.state.me.powers;
 	check(pw.founder && pw.admin && pw.appAdmin && pw.top, 'she is Founder and app admin', pw);
 	check((await a.req({ t: 'found', name: 'Again' })).why === 'unknown', 'the Order is founded once');
+	check(a.state.meta.name === 'Holy Order of Void', 'the Order has its fixed name, whatever founding sent', a.state.meta);
+	await a.req({ t: 'about', name: 'Renamed', about: 'We gaze back.', open: true });
+	check(a.state.meta.name === 'Holy Order of Void', 'the about page can’t rename it', a.state.meta);
 	check(listed(a, 11).on === 1 && listed(a, 11).room === 'Void Hall', 'the member list shows who is online and their room');
 
 	// The structure the Order uses.
