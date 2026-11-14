@@ -690,8 +690,9 @@ export class Order extends DurableObject {
 		if (a.member !== this.founderNumber) {
 			return this.no(ws, 'only the founder can found the Order', p);
 		}
-		const code = this.env.FOUND_CODE;
-		if (typeof code !== 'string' || code.length < 8 || typeof p.code !== 'string' || p.code.trim() !== code) {
+		// Trimmed both sides: a secret set from the command line can carry a line break.
+		const code = typeof this.env.FOUND_CODE === 'string' ? this.env.FOUND_CODE.trim() : '';
+		if (code.length < 8 || typeof p.code !== 'string' || p.code.trim() !== code) {
 			return this.no(ws, 'wrong founding code', p);
 		}
 		this.meta = {
