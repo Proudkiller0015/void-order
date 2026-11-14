@@ -1266,7 +1266,7 @@
 	function clickMark(/** @type {any} */ C, /** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) {
 		const bounty = targetOf(C);
 		if (bounty && onTarget(x, y, zoom)) {
-			guard(() => showContract(bounty.code));
+			guard(() => showContract(bounty.id));
 			return true;
 		}
 		const m = markedMember(C);
@@ -1540,7 +1540,21 @@
 	let huntBoard = null;
 	/** The contract shown highlighted on the board (by its code). */
 	let huntFocus = '';
-	/** The open contract on character C, if the targets are on. */
+	/** Whether a bounty is hidden by the hierarchy (an escaped inmate's key is "vop:<prison number>"). */
+	const huntHidden = (/** @type {string} */ key) => !!huntBoard && Array.isArray(huntBoard.hidden) && huntBoard.hidden.includes(key);
+	/** Whether you may use items on character C, as the game decides (its own permission check). */
+	function mayTouch(/** @type {any} */ C) {
+		try {
+			return typeof w.ServerChatRoomGetAllowItem === 'function' && !!w.ServerChatRoomGetAllowItem(w.Player, C);
+		} catch (e) {
+			return false;
+		}
+	}
+	/**
+	 * The bounty on character C, if the targets are on: their open contract on the hunting board, or, when the game lets
+	 * you use items on them, their escaped inmate's bounty or an Order bounty (not hidden). { id, text } for the target:
+	 * the board entry it opens and its words on hover.
+	 */
 	function targetOf(/** @type {any} */ C) {
 		if (!opts.huntTargets || !huntBoard || !C || !C.MemberNumber) {
 			return null;
@@ -1548,7 +1562,19 @@
 		if (typeof w.ChatRoomHideIconState === 'number' && w.ChatRoomHideIconState > 0) {
 			return null;
 		}
-		return huntBoard.contracts.find((/** @type {any} */ x) => x.member === C.MemberNumber && x.status === 'open') || null;
+		const n = C.MemberNumber;
+		const contract = huntBoard.contracts.find((/** @type {any} */ x) => x.member === n && x.status === 'open');
+		if (contract) {
+			return { id: contract.code, text: `Bounty: ${credits(contract)}` };
+		}
+		const escaped = (huntBoard.escaped || []).find((/** @type {any} */ x) => x.member === n && !huntHidden(`vop:${x.code}`));
+		const order = (huntBoard.order || []).find((/** @type {any} */ x) => x.member === n && !huntHidden(x.key));
+		if ((!escaped && !order) || !mayTouch(C)) {
+			return null;
+		}
+		return escaped
+			? { id: `vop:${escaped.code}`, text: `Escaped: L$ ${(escaped.bounty || 0).toLocaleString('en-US')}` }
+			: { id: order.key, text: `Order bounty${order.reward ? `: ${order.reward}` : ''}` };
 	}
 	/** Where the target sits: under the Void mark's spot, so the two never overlap. */
 	const TARGET = { x: MARK.x, y: MARK.y + MARK.size + 6, size: MARK.size };
@@ -1589,18 +1615,20 @@
 		}
 		g.drawImage(targetImage, x + TARGET.x * zoom, y + TARGET.y * zoom, TARGET.size * zoom, TARGET.size * zoom);
 		if (onTarget(x, y, zoom) && typeof w.DrawTextFit === 'function') {
-			w.DrawTextFit(`Bounty: ${credits(bounty)}`, x + 250 * zoom, y + (TARGET.y + TARGET.size / 2) * zoom, 150 * zoom, '#ffb38a', 'black');
+			w.DrawTextFit(bounty.text, x + 250 * zoom, y + (TARGET.y + TARGET.size / 2) * zoom, 150 * zoom, '#ffb38a', 'black');
 		}
 	}
 	/** A contract's reward in words: "1,500 credits", "1,500 credits + 100". */
 	const credits = (/** @type {any} */ c) =>
 		`${(c.reward || 0).toLocaleString('en-US')} credits${c.bonus ? ` + ${c.bonus.toLocaleString('en-US')}` : ''}`;
-	/** Opens the board on one contract. */
-	function showContract(/** @type {string} */ code) {
-		huntFocus = code;
+	/** The element id of a board entry (a contract's code, "vop:<prison number>" or an Order bounty's key). */
+	const huntId = (/** @type {string} */ id) => `hunt-${id.replace(/[^A-Za-z0-9-]/g, '_')}`;
+	/** Opens the board on one entry. */
+	function showContract(/** @type {string} */ id) {
+		huntFocus = id;
 		delete drafts['h:filter'];
 		openPanel('hunt');
-		document.getElementById(`hunt-${code}`)?.scrollIntoView({ block: 'center' });
+		document.getElementById(huntId(id))?.scrollIntoView({ block: 'center' });
 	}
 	/** A link to the board's own page: only to the board's site. */
 	function boardLink(/** @type {string} */ text, /** @type {string | null} */ href) {
@@ -1642,10 +1670,10 @@
 				(/** @type {any} */ a, /** @type {any} */ b) =>
 					Number(b.code === huntFocus) - Number(a.code === huntFocus) || Number(b.status === 'open') - Number(a.status === 'open'),
 			);
-		body.append(make('h3', '', `Contracts · ${list.length}`));
+		body.append(make('h3', '', `Hunting board (volunteers) · ${list.length}`));
 		for (const c of list) {
 			const box = make('div', `box contract${c.code === huntFocus ? ' focus' : ''}`);
-			box.id = `hunt-${c.code}`;
+			box.id = huntId(c.code);
 			const row = make('div', 'row');
 			const who = make('span', 'grow');
 			who.append(make('b', '', c.name), make('span', 'dim', c.member ? ` BC #${c.member}` : ''));
@@ -1698,6 +1726,101 @@
 				}
 				body.append(row);
 			}
+		}
+		drawEscaped(body, q);
+		drawOrderBounties(body, q);
+	}
+	/** Hide / Show again, for the hierarchy's top: for players who asked out of character to be left alone. */
+	function hideButton(/** @type {string} */ key) {
+		const hidden = huntHidden(key);
+		return button(hidden ? 'Show again' : 'Hide', () => act({ t: 'hidebounty', key, on: !hidden }));
+	}
+	/** Which bounties of a list you see: the hierarchy's top sees the hidden ones too, marked. */
+	const huntShown = (/** @type {string} */ key) => !huntHidden(key) || (isMember() && isTop(state.me));
+	/** The bounty board: the prison's escaped inmates, by bounty, with links to their files. */
+	function drawEscaped(/** @type {HTMLElement} */ body, /** @type {string} */ q) {
+		const all = (huntBoard.escaped || []).filter((/** @type {any} */ x) => huntShown(`vop:${x.code}`));
+		const list = all.filter((/** @type {any} */ x) => !q || x.name.toLowerCase().includes(q) || String(x.member || '').includes(q));
+		body.append(make('h3', '', `Bounty board (escaped) · ${list.length}`));
+		body.append(
+			make(
+				'p',
+				'dim',
+				`Escaped inmates of the prison, highest bounty first.${huntBoard.escapedAt ? ` Updated ${fromNow(huntBoard.escapedAt)}.` : ''}`,
+			),
+		);
+		const THREAT = { CRITICAL: '#ff5c7a', HIGH: '#ff9a5c', MEDIUM: '#ffd38a', LOW: '#9be3a0' };
+		for (const x of list) {
+			const key = `vop:${x.code}`;
+			const box = make('div', `box contract${key === huntFocus ? ' focus' : ''}`);
+			box.id = huntId(key);
+			const row = make('div', 'row');
+			const who = make('span', 'grow');
+			who.append(make('b', '', x.name), make('span', 'dim', x.member ? ` BC #${x.member}` : ''));
+			row.append(who, make('span', 'tag', x.code));
+			if (x.threat) {
+				const t = make('span', 'threat', x.threat);
+				t.style.color = THREAT[x.threat] || 'var(--v-dim)';
+				row.append(t);
+			}
+			if (huntHidden(key)) {
+				row.append(make('span', 'tag', 'Hidden'));
+			}
+			box.append(row);
+			if (x.bounty !== null) {
+				box.append(make('div', 'reward', `💰 L$ ${x.bounty.toLocaleString('en-US')}`));
+			}
+			const bits = [x.escapedFor ? `out for ${x.escapedFor.toLowerCase()}` : '', x.lastSeen ? `last seen in ${x.lastSeen}` : ''];
+			const foot = make('div', 'dim');
+			foot.append(document.createTextNode(`${bits.filter(Boolean).join(' · ') || 'Escaped'} · `), boardLink('Their file', x.url));
+			box.append(foot);
+			if (isMember() && isTop(state.me)) {
+				box.append(hideButton(key));
+			}
+			body.append(box);
+		}
+	}
+	/** The Holy Order of Void's own bounties, from its sheet. */
+	function drawOrderBounties(/** @type {HTMLElement} */ body, /** @type {string} */ q) {
+		const all = (huntBoard.order || []).filter((/** @type {any} */ x) => huntShown(x.key));
+		const list = all.filter((/** @type {any} */ x) => !q || x.name.toLowerCase().includes(q) || String(x.member).includes(q));
+		body.append(make('h3', '', `${ORDER_NAME} bounties · ${list.length}`));
+		body.append(make('p', 'dim', `Bounties the Order has put out.${huntBoard.orderAt ? ` Updated ${fromNow(huntBoard.orderAt)}.` : ''}`));
+		for (const x of list) {
+			const box = make('div', `box contract${x.key === huntFocus ? ' focus' : ''}`);
+			box.id = huntId(x.key);
+			const row = make('div', 'row');
+			const who = make('span', 'grow');
+			who.append(make('b', '', x.name), make('span', 'dim', ` BC #${x.member}`));
+			row.append(who);
+			if (x.expires) {
+				row.append(make('span', 'tag', `Until ${x.expires}`));
+			}
+			if (huntHidden(x.key)) {
+				row.append(make('span', 'tag', 'Hidden'));
+			}
+			box.append(row);
+			if (x.reward) {
+				box.append(make('div', 'reward', `💰 ${x.reward}`));
+			}
+			for (const [label, text] of [
+				['Why', x.reason],
+				['Last seen looking', x.look],
+				['Orders', x.instructions],
+				['Bring them to', x.where],
+				['What they are like', x.personality],
+			]) {
+				if (text) {
+					box.append(make('div', 'dim', label), make('div', 'notes', text));
+				}
+			}
+			if (x.at) {
+				box.append(make('div', 'dim', `Posted ${date(x.at)}`));
+			}
+			if (isMember() && isTop(state.me)) {
+				box.append(hideButton(x.key));
+			}
+			body.append(box);
 		}
 	}
 	/**

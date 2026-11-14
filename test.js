@@ -41,6 +41,14 @@ BOARD[0] = BOARD[0].replace('BC #100037', 'BC #12');
  * serves the hunt board too (dev:test's HUNT_BOARD_URL).
  */
 const relay = http.createServer((req, res) => {
+	if (req.url.startsWith('/bounty-board')) {
+		res.writeHead(200, { 'content-type': 'text/html' });
+		return res.end(fs.readFileSync(path.join(__dirname, 'server', 'test', 'fixtures', 'bounty-board.html')));
+	}
+	if (req.url.startsWith('/order-sheet.csv')) {
+		res.writeHead(200, { 'content-type': 'text/csv' });
+		return res.end(fs.readFileSync(path.join(__dirname, 'server', 'test', 'fixtures', 'order-sheet.csv')));
+	}
 	if (req.url.startsWith('/hunt-board')) {
 		res.writeHead(200, { 'content-type': 'text/html' });
 		return res.end(BOARD[/[?&]p=2\b/.test(req.url) ? 1 : 0]);
@@ -924,15 +932,22 @@ const openCardOf = async (page, name) => {
 		await page.bringToFront();
 		await click(page, '🎯 Hunt board');
 		await page
-			.waitForFunction(() => /Contracts · 102/.test(document.getElementById('void-panel')?.innerText || ''), { timeout: 15000 })
+			.waitForFunction(() => /Order of Void bounties · 3/i.test(document.getElementById('void-panel')?.innerText || ''), { timeout: 20000 })
 			.catch(() => {});
 		const board = await panelText(page);
 		check(
 			'the hunt board lists the contracts, with their notes, and the most wanted',
-			/Updated[\s\S]*CONTRACTS · 102[\s\S]*Ivy & “Moth” BC #12[\s\S]*BH-003170[\s\S]*1,500 credits \+ 100 \(taunted — alive only\)[\s\S]*“Run & hide!”[\s\S]*Their wants and limits\s+Catch me off guard[\s\S]*MOST WANTED[\s\S]*Escapee 1 VOP-000408[\s\S]*CRITICAL/.test(
+			/Updated[\s\S]*HUNTING BOARD \(VOLUNTEERS\) · 102[\s\S]*Ivy & “Moth” BC #12[\s\S]*BH-003170[\s\S]*1,500 credits \+ 100 \(taunted — alive only\)[\s\S]*“Run & hide!”[\s\S]*Their wants and limits\s+Catch me off guard[\s\S]*MOST WANTED[\s\S]*Escapee 1 VOP-000408[\s\S]*CRITICAL/.test(
 				board,
 			),
 			board.slice(0, 900),
+		);
+		check(
+			'then the bounty board (escaped inmates, with their files) and the Order’s own bounties',
+			/BOUNTY BOARD \(ESCAPED\) · 2[\s\S]*Escapee & One BC #100101[\s\S]*L\$ 217,657,242[\s\S]*Their file[\s\S]*HOLY ORDER OF VOID BOUNTIES · 3[\s\S]*Target Five BC #100005[\s\S]*Until 12\/31\/2099[\s\S]*A battle to the death/.test(
+				board,
+			),
+			board.slice(board.indexOf('BOUNTY BOARD'), board.indexOf('BOUNTY BOARD') + 900),
 		);
 		await shot(page, '18-hunt-board');
 		const targeted = () =>
@@ -975,6 +990,38 @@ const openCardOf = async (page, name) => {
 		await toggleSetting(page, 'A target over people with a bounty');
 		check('the setting turns the targets off', !(await targeted()));
 		await toggleSetting(page, 'A target over people with a bounty');
+		// An Order bounty on someone in the room: a target only if the game lets you use items on them, and none once hidden.
+		const orderTarget = (allow) =>
+			page.evaluate((allow) => {
+				const was = window.ServerChatRoomGetAllowItem;
+				window.ServerChatRoomGetAllowItem = () => allow;
+				const bea = ChatRoomCharacter[1];
+				const n = bea.MemberNumber;
+				bea.MemberNumber = 100004;
+				const g = document.getElementById('MainCanvas').getContext('2d');
+				g.clearRect(0, 0, 2000, 1000);
+				ChatRoomCharacterViewDrawOverlay(bea, 0, 0, 1);
+				bea.MemberNumber = n;
+				window.ServerChatRoomGetAllowItem = was;
+				const px = g.getImageData(343, 133, 1, 1).data;
+				return px[3] > 0 && px[0] > 150;
+			}, allow);
+		check('someone with an Order bounty has a target when the game lets you use items on them', await orderTarget(true));
+		check('and none when it doesn’t', !(await orderTarget(false)));
+		await click(page, '🎯 Hunt board');
+		await page.evaluate(() => {
+			const box = [...document.querySelectorAll('#void-panel .contract')].find((b) => /Target Four BC #100004/.test(b.innerText));
+			[...box.querySelectorAll('button')].find((b) => b.textContent === 'Hide').click();
+		});
+		await wait(800);
+		check('hidden by the Founder, it has no target any more', !(await orderTarget(true)));
+		await click(page, '🎯 Hunt board');
+		await page.evaluate(() => {
+			const box = [...document.querySelectorAll('#void-panel .contract')].find((b) => /Target Four BC #100004/.test(b.innerText));
+			[...box.querySelectorAll('button')].find((b) => b.textContent === 'Show again').click();
+		});
+		await wait(800);
+		check('shown again, it has its target back', await orderTarget(true));
 
 		// Someone showing their ID in the room: the card comes from the server.
 		await page.evaluate(() => {
