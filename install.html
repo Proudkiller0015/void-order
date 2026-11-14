@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install the Void Order</title>
+<style>
+	:root { --bg: #f6f2ff; --card: #ffffff; --ink: #2b1a45; --soft: #6e5a94; --pink: #7b3fe4; --line: #ddd0f7; }
+	@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0c0714; --card: #160d24; --ink: #e8defc; --soft: #a597c4; --pink: #b48cff; --line: #3d2a5c; } }
+	:root[data-theme="dark"] { --bg: #0c0714; --card: #160d24; --ink: #e8defc; --soft: #a597c4; --pink: #b48cff; --line: #3d2a5c; }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, "Segoe UI", sans-serif; }
+	main { max-width: 640px; margin: 0 auto; padding: 32px 16px 48px; }
+	header { text-align: center; margin-bottom: 24px; }
+	header .sigil { font: 600 64px/1 Georgia, serif; color: var(--pink); }
+	h1 { margin: 8px 0 4px; font: 600 30px Georgia, serif; letter-spacing: 4px; text-transform: uppercase; }
+	header p { margin: 0; color: var(--soft); }
+	section { background: var(--card); border: 2px solid var(--line); border-radius: 20px; padding: 18px 20px; margin: 16px 0; }
+	h2 { margin: 0 0 8px; font-size: 20px; }
+	ol { margin: 8px 0 0; padding-left: 22px; }
+	li { margin: 6px 0; }
+	.bm { display: inline-block; padding: 10px 22px; border-radius: 999px; background: linear-gradient(135deg, #8a4dff, #5b2bc4); color: #fff; font-weight: bold;
+		text-decoration: none; box-shadow: 0 3px 10px #7b3fe466; cursor: grab;
+		user-select: none; -webkit-user-select: none; -webkit-user-drag: element; }
+	.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+	button { font: inherit; border: 2px solid var(--pink); color: var(--pink); background: transparent; border-radius: 999px; padding: 7px 16px; cursor: pointer; }
+	textarea { width: 100%; height: 86px; resize: vertical; border: 2px solid var(--line); border-radius: 12px; padding: 8px; background: var(--bg); color: var(--ink);
+		font: 12px/1.4 Consolas, monospace; }
+	.hint { color: var(--soft); font-size: 14px; }
+		.pick { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0; font-weight: bold; }
+		.pick label { cursor: pointer; }
+		button.big { background: var(--pink); color: #fff; font-weight: bold; padding: 9px 20px; }
+		ul { margin: 4px 0; padding-left: 20px; }
+	.warn { margin-top: 6px; padding: 8px 10px; border-radius: 10px; border: 2px solid var(--pink); font-size: 14px; }
+	h3 { margin: 14px 0 4px; font-size: 16px; }
+	a { color: var(--pink); }
+	code { background: var(--bg); padding: 1px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<main>
+	<header>
+		<div class="sigil">⸸</div>
+		<h1>The Void Order</h1>
+		<p>The Order's add-on for Bondage Club: orders and photo sessions, the member list, ID cards and joining. By SlimeQueenSamantha.</p>
+	</header>
+
+	<section>
+		<h2>🔖 Bookmark (no extension needed, phones too)</h2>
+		<h3>💻 On a computer: drag it</h3>
+		<p>Show your bookmarks bar (<code>Ctrl</code> + <code>Shift</code> + <code>B</code>) and drag this button onto it:</p>
+		<div class="row"><a class="bm" id="drag" href="#" draggable="true" title="Drag me to your bookmarks bar">⸸ Void Order</a></div>
+		<h3>📱 On a phone (or if dragging doesn't work)</h3>
+		<ol>
+			<li><button class="big" id="copy">📋 Copy the bookmark</button> <span class="hint" id="copied"></span></li>
+			<li>Make a new bookmark: on a computer press <code>Ctrl</code> + <code>D</code> on this page; on a phone tap ☆ (or ⋮ › ☆).</li>
+			<li>Edit it (on a phone: ⋮ › Bookmarks, then the bookmark's ⋮ › Edit): name it <b>void</b>, and replace its address (URL) with what you copied. Save.
+				<div class="warn">⚠ The address must start with <code>javascript:</code>. Some browsers (Chrome) drop that word when you paste; if it's missing, type <code>javascript:</code> back at the very start. Without it the browser just searches for the code.</div></li>
+			<li>Open Bondage Club and log in, then open the bookmark:
+				<ul>
+					<li>Computer: click it in your bookmarks.</li>
+					<li>Phone: type <b>void</b> in the address bar and tap the <b>bookmark</b> in the suggestions, not a search (phones only run bookmarks this way).</li>
+				</ul>
+			</li>
+			<li>Type <code>/void</code> in a chat room (or click the ⸸ tab on the left) to open the Order.</li>
+		</ol>
+		<p class="hint">Open it each time you open the game. It always loads the newest version, so there's never anything to update. Opening it twice does nothing extra.</p>
+		<details>
+			<summary class="hint" style="cursor:pointer">Copy didn't work?</summary>
+			<p class="hint">Select all of this and copy it by hand:</p>
+			<textarea id="code" readonly></textarea>
+		</details>
+	</section>
+
+	<section>
+		<h2>🐒 Userscript (loads by itself)</h2>
+		<p>With <a href="https://violentmonkey.github.io/">Violentmonkey</a> or <a href="https://www.tampermonkey.net/">Tampermonkey</a>:
+			<a href="https://raw.githubusercontent.com/Proudkiller0015/void-order/main/void.user.js"><b>install the Void Order</b></a>. It starts with the game every time, and updates itself.</p>
+	</section>
+
+	<p class="hint" style="text-align:center">Code and docs: <a href="https://github.com/Proudkiller0015/void-order">github.com/Proudkiller0015/void-order</a></p>
+</main>
+<script>
+	// The bookmark: loads the newest void.js from GitHub Pages into the game page, once.
+	const code = "javascript:(function(){if(!window.VoidOrder){var s=document.createElement('script');s.src='https://proudkiller0015.github.io/void-order/void.js?v='+Date.now();s.crossOrigin='anonymous';document.head.appendChild(s);}})();";
+	const box = document.getElementById('code');
+	const drag = document.getElementById('drag');
+	box.value = code;
+	drag.href = code;
+	drag.addEventListener('selectstart', (e) => e.preventDefault());
+	drag.addEventListener('mousedown', (e) => e.stopPropagation());
+	drag.addEventListener('click', (e) => { e.preventDefault(); alert('Drag this button onto your bookmarks bar, then click the bookmark while you are in Bondage Club.'); });
+	document.getElementById('copy').addEventListener('click', async () => {
+		const out = document.getElementById('copied');
+		try { await navigator.clipboard.writeText(code); out.textContent = '✓ Copied! Now step 2.'; }
+		catch (e) { box.closest('details').open = true; box.select(); out.textContent = 'Copy it by hand from the box below.'; }
+	});
+</script>
+</body>
+</html>

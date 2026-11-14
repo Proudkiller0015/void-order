@@ -1,0 +1,14 @@
+{
+  "name": "void-order-server",
+  "private": true,
+  "description": "The Void Order add-on's server: members, ranks, applications and orders, in one Durable Object.",
+  "scripts": {
+    "dev": "wrangler dev --port 8788",
+    "dev:test": "wrangler dev --port 8788 --var ALLOW_ANY_ORIGIN:1 --var FOUNDER:11 --var ORDER_NAME:test",
+    "deploy": "wrangler deploy",
+    "test": "node test-server.js"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.0"
+  }
+}

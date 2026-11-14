@@ -1,0 +1,15 @@
+name = "void-order"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# The member number allowed to found the Order (the Order's first Head).
+[vars]
+FOUNDER = "255659"
+
+[[durable_objects.bindings]]
+name = "ORDER"
+class_name = "Order"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Order"]
