@@ -1148,7 +1148,8 @@ const openCardOf = async (page, name) => {
 		check('a checkbox clicked on the Extensions page shows in the panel', diceBox === false);
 		await toggleSetting(page, 'Play dice others roll');
 
-		// The ⸸ tab's side, the look, and the open/close key.
+		// The ⸸ tab (off now that there is a bubble), its side, the look, and the open/close key.
+		await toggleSetting(page, 'Show the side tab');
 		await chooseSetting(page, 'Side tab position', 'Right');
 		await chooseSetting(page, 'Look', 'Lighter');
 		check('the lighter look applies', await page.evaluate(() => /#2b2140/.test(document.getElementById('void-look').textContent)));
@@ -1165,7 +1166,56 @@ const openCardOf = async (page, name) => {
 		check('F2 opens the panel', await page.evaluate(() => !!document.getElementById('void-panel')));
 		await page.keyboard.press('F2');
 		check('and closes it', await page.evaluate(() => !document.getElementById('void-panel')));
+
+		// The Void bubble: a click opens and closes the panel, a drag moves it without opening, and it stays where it was left.
+		const bubble = () =>
+			page.evaluate(() => {
+				const b = document.getElementById('void-bubble');
+				const r = b?.getBoundingClientRect();
+				return b ? { x: Math.round(r.left), y: Math.round(r.top), badge: b.querySelector('.badge')?.textContent || '' } : null;
+			});
+		const press = (dx, dy) =>
+			page.evaluate(
+				(dx, dy) => {
+					const b = document.getElementById('void-bubble');
+					const r = b.getBoundingClientRect();
+					const x = r.left + r.width / 2;
+					const y = r.top + r.height / 2;
+					const at = (type, cx, cy, buttons) =>
+						b.dispatchEvent(new PointerEvent(type, { clientX: cx, clientY: cy, button: 0, buttons, pointerId: 7, bubbles: true }));
+					at('pointerdown', x, y, 1);
+					if (dx || dy) {
+						at('pointermove', x + dx / 2, y + dy / 2, 1);
+						at('pointermove', x + dx, y + dy, 1);
+					}
+					at('pointerup', x + dx, y + dy, 0);
+				},
+				dx,
+				dy,
+			);
+		const b0 = await bubble();
+		check('the Void bubble is there, on the right', !!b0 && b0.x > 1400, b0);
+		const ordersBadge = Number(await page.evaluate(() => document.querySelector('#void-panel nav .badge')?.textContent || 0));
+		check('its badge counts the orders waiting', !!b0 && Number(b0.badge || 0) >= ordersBadge, { b0, ordersBadge });
+		await press(0, 0);
+		check('a click on it opens the panel', await page.evaluate(() => !!document.getElementById('void-panel')));
+		await press(0, 0);
+		check('another closes it', await page.evaluate(() => !document.getElementById('void-panel')));
+		await press(-300, -200);
+		const b1 = await bubble();
+		check(
+			'a drag moves it, and doesn’t open the panel',
+			b1.x === b0.x - 300 && b1.y === b0.y - 200 && (await page.evaluate(() => !document.getElementById('void-panel'))),
+			{ b0, b1 },
+		);
+		await page.evaluate(() => document.getElementById('void-bubble').remove());
+		await wait(2500);
+		const b2 = await bubble();
+		check('drawn again, it is where it was left', !!b2 && b2.x === b1.x && b2.y === b1.y, { b1, b2 });
 		await slash(page, '');
+		await toggleSetting(page, 'Show the Void bubble');
+		check('the setting hides it', await page.evaluate(() => !document.getElementById('void-bubble')));
+		await toggleSetting(page, 'Show the Void bubble');
 
 		// My room shows in the list; a private one doesn't.
 		await wait(2500);

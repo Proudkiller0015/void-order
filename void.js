@@ -336,6 +336,10 @@
 		for (const f of serverListeners) {
 			guard(() => f(x));
 		}
+		if (x.t === 'report' && x.report && state && state.appAdmin === (w.Player && w.Player.MemberNumber) && tab !== 'reports') {
+			unseenReports++;
+			drawBubble();
+		}
 		if (x.t === 'state') {
 			state = x;
 			if (!signedIn) {
@@ -602,7 +606,7 @@
 
 	// ---- The look
 	const CSS = `
-		#void-panel, #void-card, .void-toast, #void-tab, #void-dice { --v-bg: #0c0714; --v-bg2: #160d24; --v-line: #3d2a5c; --v-text: #e8defc; --v-dim: #a597c4; --v-accent: #b48cff; --v-hot: #e05cff; --v-bad: #ff7a90;
+		#void-panel, #void-card, .void-toast, #void-tab, #void-dice, #void-bubble { --v-bg: #0c0714; --v-bg2: #160d24; --v-line: #3d2a5c; --v-text: #e8defc; --v-dim: #a597c4; --v-accent: #b48cff; --v-hot: #e05cff; --v-bad: #ff7a90;
 			font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--v-text); box-sizing: border-box; }
 		#void-panel *, #void-card * { box-sizing: border-box; }
 		#void-panel { position: fixed; z-index: 2147483001; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(820px, 96vw); height: min(680px, 92vh);
@@ -712,6 +716,13 @@
 		#void-card .copy { border: 1px solid #5b3d8f; border-radius: 999px; background: none; color: var(--v-dim); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
 		.void-toast { position: fixed; z-index: 2147483003; right: 16px; width: 300px; padding: 10px 14px; border-radius: 12px; cursor: pointer;
 			border: 1px solid #7a52c4; background: #12091fee; box-shadow: 0 8px 30px #000c; transition: opacity .4s; }
+		#void-bubble { position: fixed; z-index: 2147483000; width: 52px; height: 52px; padding: 0; border-radius: 50%; border: 2px solid var(--v-accent); display: flex; align-items: center; justify-content: center;
+			background: radial-gradient(circle at 35% 30%, #3a1c66, #12091f 70%); color: #f1e9ff; font: 600 12px/1 Georgia, 'Segoe UI Historic', serif; cursor: pointer; touch-action: none; user-select: none;
+			box-shadow: 0 4px 16px #000c, 0 0 18px #6a2cff66; text-shadow: 0 0 8px var(--v-accent); }
+		#void-bubble.small { width: 40px; height: 40px; font-size: 9px; }
+		#void-bubble.dragging { cursor: grabbing; opacity: .85; }
+		#void-bubble .badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: 9px; background: var(--v-hot); color: #fff;
+			font: bold 11px/14px system-ui, sans-serif; text-align: center; border: 2px solid #12091f; text-shadow: none; }
 		#void-tab { position: fixed; z-index: 2147483000; left: 0; top: 50%; transform: translateY(-50%); width: 26px; height: 54px; border: 1px solid #5b3d8f; border-left: 0;
 			border-radius: 0 10px 10px 0; background: #12091fdd; color: #c9a8ff; font: 600 16px Georgia, serif; cursor: pointer; padding: 0; text-shadow: 0 0 8px #9b59ff; }
 		#void-tab.right { left: auto; right: 0; border-left: 1px solid #5b3d8f; border-right: 0; border-radius: 10px 0 0 10px; }
@@ -2368,7 +2379,19 @@
 			dflt: true,
 			hint: 'An open contract on the Void Order Prison’s hunt board; click the target to read it.',
 		},
-		{ k: 'sideTab', group: 'Panel', label: 'Show the side tab', kind: 'bool', dflt: true },
+		{ k: 'bubble', group: 'Panel', label: 'Show the Void bubble', kind: 'bool', dflt: true },
+		{
+			k: 'bubbleSize',
+			group: 'Panel',
+			label: 'Bubble size',
+			kind: 'choice',
+			dflt: 'normal',
+			choices: [
+				['normal', 'Normal'],
+				['small', 'Small'],
+			],
+		},
+		{ k: 'sideTab', group: 'Panel', label: 'Show the side tab', kind: 'bool', dflt: false },
 		{
 			k: 'tabSide',
 			group: 'Panel',
@@ -2474,7 +2497,7 @@
 			document.head.append(el);
 		}
 		const accent = isColor(opts.accent) ? opts.accent : ACCENTS[0][0];
-		el.textContent = `#void-panel, #void-card, .void-toast, #void-tab, #void-dice { --v-accent: ${accent}; }${opts.look === 'light' ? LIGHT_CSS : ''}`;
+		el.textContent = `#void-panel, #void-card, .void-toast, #void-tab, #void-dice, #void-bubble { --v-accent: ${accent}; }${opts.look === 'light' ? LIGHT_CSS : ''}`;
 	}
 	/** @type {AudioContext | null} */
 	let audio = null;
@@ -2761,6 +2784,9 @@
 		if (!p) {
 			drawTab();
 			return;
+		}
+		if (tab === 'reports') {
+			unseenReports = 0;
 		}
 		const active = document.activeElement;
 		if (!force && active && p.contains(active) && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) {
@@ -3906,6 +3932,9 @@
 	}
 	// -- My card
 	function drawMe(/** @type {HTMLElement} */ body) {
+		if (state && state.me) {
+			setPref('medalsSeen', state.me.medalCount || 0);
+		}
 		const me = state.me;
 		body.append(make('h3', '', 'Your ID card'));
 		const row = make('div', 'row');
@@ -3994,7 +4023,134 @@
 	}
 
 	// ---- The side tab, the room, and the clock
+	// ---- The Void bubble: a round button over the game (on every screen but the login one) that opens and closes the
+	// panel. It is dragged anywhere and kept on screen; where it was left is kept in this browser. It starts on the right,
+	// above SlimeBeep's slime, and never on top of it.
+	/** Problem reports that came in while you (the app admin) weren't looking at them. */
+	let unseenReports = 0;
+	const between = (/** @type {number} */ v, /** @type {number} */ lo, /** @type {number} */ hi) => Math.max(lo, Math.min(hi, v));
+	/** Commendations you haven't seen on your card yet (none the first time: those were there before the bubble). */
+	function newMedals() {
+		const count = (state && state.me && state.me.medalCount) || 0;
+		const seen = pref('medalsSeen', null);
+		if (seen === null && state && state.me) {
+			setPref('medalsSeen', count);
+			return 0;
+		}
+		return Math.max(0, count - (seen || 0));
+	}
+	/** What the bubble's badge counts: orders waiting for you, new problem reports and new commendations. */
+	const bubbleCount = () => (isMember() ? openOrders() + newMedals() : 0) + unseenReports;
+	function drawBubble() {
+		const want = !!w.Player && !!w.Player.MemberNumber && opts.bubble && !!w.CurrentScreen && w.CurrentScreen !== 'Login';
+		let b = document.getElementById('void-bubble');
+		if (!want) {
+			b?.remove();
+			return;
+		}
+		if (!b) {
+			style();
+			b = make('button');
+			b.id = 'void-bubble';
+			b.title = 'Oculus Nihili (drag to move)';
+			b.append(make('span', 'eye', '𓁹‿𓁹'));
+			wireBubble(b);
+			document.body.append(b);
+		}
+		b.classList.toggle('small', opts.bubbleSize === 'small');
+		const n = bubbleCount();
+		let badge = b.querySelector('.badge');
+		if (n && !badge) {
+			badge = make('span', 'badge');
+			b.append(badge);
+		}
+		if (badge) {
+			if (n) {
+				badge.textContent = n > 99 ? '99+' : String(n);
+			} else {
+				badge.remove();
+			}
+		}
+		placeBubble();
+	}
+	/** Puts the bubble where it was left, inside the window; the first time on the right, clear of SlimeBeep's slime. */
+	function placeBubble() {
+		const b = document.getElementById('void-bubble');
+		if (!b) {
+			return;
+		}
+		const size = b.offsetWidth || 52;
+		const pos = pref('bubble', null);
+		let x = innerWidth - size - 14;
+		let y = innerHeight - size - 84;
+		if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+			x = pos.x * innerWidth;
+			y = pos.y * innerHeight;
+		} else {
+			const slime = document.getElementById('sb-toggle')?.getBoundingClientRect();
+			for (let i = 0; i < 8 && slime && slime.width; i++) {
+				const clear = x + size <= slime.left || x >= slime.right || y + size <= slime.top || y >= slime.bottom;
+				if (clear) {
+					break;
+				}
+				y = slime.top - size - 10;
+			}
+		}
+		b.style.left = `${between(x, 0, innerWidth - size)}px`;
+		b.style.top = `${between(y, 0, innerHeight - size)}px`;
+	}
+	/** A click opens or closes the panel; a drag (by mouse, pen or touch) moves the bubble, and doesn't open it. */
+	function wireBubble(/** @type {HTMLElement} */ b) {
+		/** @type {{ dx: number, dy: number, x0: number, y0: number, moved: boolean } | null} */
+		let drag = null;
+		b.addEventListener('pointerdown', (e) => {
+			if (e.button !== 0) {
+				return;
+			}
+			const r = b.getBoundingClientRect();
+			drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY, moved: false };
+			try {
+				b.setPointerCapture(e.pointerId);
+			} catch (err) {
+				/* works without capture */
+			}
+		});
+		b.addEventListener('pointermove', (e) => {
+			if (!drag) {
+				return;
+			}
+			const x = between(e.clientX, 0, innerWidth);
+			const y = between(e.clientY, 0, innerHeight);
+			if (!drag.moved && Math.hypot(x - drag.x0, y - drag.y0) < 8) {
+				return;
+			}
+			drag.moved = true;
+			b.classList.add('dragging');
+			const size = b.offsetWidth || 52;
+			setPref('bubble', {
+				x: between(x - drag.dx, 0, innerWidth - size) / innerWidth,
+				y: between(y - drag.dy, 0, innerHeight - size) / innerHeight,
+			});
+			placeBubble();
+		});
+		const end = (/** @type {boolean} */ click) => {
+			if (!drag) {
+				return;
+			}
+			const moved = drag.moved;
+			drag = null;
+			b.classList.remove('dragging');
+			if (click && !moved) {
+				guard(() => (document.getElementById('void-panel') ? closePanel() : openPanel()));
+			}
+		};
+		b.addEventListener('pointerup', () => end(true));
+		b.addEventListener('pointercancel', () => end(false));
+		b.addEventListener('lostpointercapture', () => end(false));
+	}
+	addEventListener('resize', placeBubble);
 	function drawTab() {
+		drawBubble();
 		const want =
 			!!w.Player && !!w.Player.MemberNumber && opts.sideTab && !document.getElementById('void-panel') && w.CurrentScreen === 'ChatRoom';
 		let t = document.getElementById('void-tab');

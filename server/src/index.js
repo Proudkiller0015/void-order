@@ -693,7 +693,13 @@ export class Order extends DurableObject {
 		const all = Object.values(this.members);
 		if (status === 'member') {
 			const me = this.members[a.member];
-			s.me = { ...this.listed(me, on, me.n), bio: me.bio, roomFor: me.roomFor || 'all', powers: this.powersOf(a.member) };
+			s.me = {
+				...this.listed(me, on, me.n),
+				bio: me.bio,
+				roomFor: me.roomFor || 'all',
+				powers: this.powersOf(a.member),
+				medalCount: (me.medals || []).length,
+			};
 			s.members = all.map((m) => this.listed(m, on, me.n));
 			if (this.isTop(a.member)) {
 				s.log = this.log.slice(-50);
