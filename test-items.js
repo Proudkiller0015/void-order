@@ -182,11 +182,26 @@ async function gamePage(browser, { hostile = '', after = '', vanilla = false, as
 }
 
 /** Waits for the characters' pictures to load, redrawing them meanwhile. */
+// Redraws the room's characters until their pictures stop changing (every picture loaded; at least 5 s, at most 16 s):
+// a fixed wait was sometimes too short on a busy machine, and a weapon not loaded yet measured as nothing drawn.
 const settle = (page) =>
 	page.evaluate(async () => {
-		for (let i = 0; i < 25; i++) {
+		const sum = () => {
+			let h = 0;
+			for (const c of ChatRoomCharacter) {
+				if (!c.Canvas) continue;
+				const d = c.Canvas.getContext('2d').getImageData(0, 0, c.Canvas.width, c.Canvas.height).data;
+				for (let i = 3; i < d.length; i += 16) h = (h * 31 + d[i] + d[i - 1] * 3) | 0;
+			}
+			return h;
+		};
+		let last = null;
+		for (let i = 0, still = 0; i < 80 && (i < 25 || still < 3); i++) {
 			for (const c of ChatRoomCharacter) CharacterLoadCanvas(c);
 			await new Promise((r) => setTimeout(r, 200));
+			const h = sum();
+			still = h === last ? still + 1 : 0;
+			last = h;
 		}
 	});
 
@@ -381,11 +396,23 @@ const playAround = (page) =>
 				}
 				PoseSetActive(Player, null, true);
 				CharacterRefresh(Player, false);
-				for (let i = 0; i < 10; i++) {
+				// Rebuilt until the picture stops changing (every picture loaded), not a fixed time: on a busy machine a
+				// glove still loading in one snapshot and not the other made them differ.
+				const c = Player.Canvas.getContext('2d');
+				const sum = () => {
+					const d = c.getImageData(0, 0, Player.Canvas.width, Player.Canvas.height).data;
+					let h = 0;
+					for (let i = 0; i < d.length; i += 4) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7 + d[i + 3] * 11) | 0;
+					return h;
+				};
+				let last = null;
+				for (let i = 0, still = 0; i < 80 && still < 3; i++) {
 					CharacterAppearanceBuildCanvas(Player);
 					await wait(100);
+					const h = sum();
+					still = h === last ? still + 1 : 0;
+					last = h;
 				}
-				const c = Player.Canvas.getContext('2d');
 				return { all: c.getImageData(0, 0, Player.Canvas.width, Player.Canvas.height).data, w: Player.Canvas.width };
 			};
 			const same = (a, b) => {
