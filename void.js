@@ -606,7 +606,7 @@
 
 	// ---- The look
 	const CSS = `
-		#void-panel, #void-card, .void-toast, #void-tab, #void-dice, #void-bubble { --v-bg: #0c0714; --v-bg2: #160d24; --v-line: #3d2a5c; --v-text: #e8defc; --v-dim: #a597c4; --v-accent: #b48cff; --v-hot: #e05cff; --v-bad: #ff7a90;
+		#void-panel, #void-card, .void-toast, #void-tab, #void-dice, #void-bubble, #void-roller { --v-bg: #0c0714; --v-bg2: #160d24; --v-line: #3d2a5c; --v-text: #e8defc; --v-dim: #a597c4; --v-accent: #b48cff; --v-hot: #e05cff; --v-bad: #ff7a90;
 			font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--v-text); box-sizing: border-box; }
 		#void-panel *, #void-card * { box-sizing: border-box; }
 		#void-panel { position: fixed; z-index: 2147483001; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(820px, 96vw); height: min(680px, 92vh);
@@ -833,11 +833,36 @@
 		#void-tab.right { left: auto; right: 0; border-left: 1px solid #5b3d8f; border-right: 0; border-radius: 10px 0 0 10px; }
 		#void-panel .setting { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }
 		#void-panel .setting .hint { flex-basis: 100%; margin: -2px 0 0 26px; }
-		#void-dice { position: fixed; z-index: 2147483004; left: 50%; bottom: 14vh; transform: translateX(-50%); width: min(380px, 94vw); border-radius: 20px; padding: 0 0 10px; cursor: pointer;
-			border: 1px solid #7a52c4; background: radial-gradient(120% 100% at 50% 40%, #2a1250 0%, #0e0619 70%); box-shadow: 0 16px 50px #000d, 0 0 50px #8a4dff55; transition: opacity .4s; text-align: center; }
-		#void-dice canvas { position: static; margin: 0; display: block; width: 100%; height: 190px; }
-		#void-dice .who { font: 600 14px Georgia, serif; letter-spacing: 1px; color: #e9dcff; padding: 0 12px; }
-		#void-dice .sum { font: 600 13px system-ui, sans-serif; color: var(--v-dim); min-height: 18px; padding: 0 12px; }
+		#void-dice { position: fixed; inset: 0; z-index: 2147483004; pointer-events: none; transition: opacity .4s; }
+		#void-dice.still { animation: void-fade-in .3s ease-out; }
+		@keyframes void-fade-in { from { opacity: 0; } }
+		#void-dice canvas { position: absolute; left: 0; top: 0; margin: 0; display: block; width: 100%; height: 100%; }
+		#void-dice .banner { position: absolute; left: 50%; transform: translateX(-50%); max-width: 92vw; padding: 6px 16px 8px; border-radius: 14px; text-align: center;
+			border: 1px solid #7a52c4; background: #0e0619e6; box-shadow: 0 8px 30px #000a, 0 0 30px #8a4dff44; }
+		#void-dice .who { font: 600 14px Georgia, serif; letter-spacing: 1px; color: #e9dcff; }
+		#void-dice .sum { font: 600 13px system-ui, sans-serif; color: var(--v-dim); min-height: 18px; }
+		#void-roller { position: fixed; z-index: 2147483003; width: 300px; max-width: 94vw; padding: 10px 12px 12px; border-radius: 14px; border: 1px solid #7a52c4;
+			background: radial-gradient(120% 90% at 50% 0%, #2a1650 0%, #0c0714 70%); box-shadow: 0 12px 40px #000d, 0 0 30px #6a2cff33; color: var(--v-text);
+			font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+		#void-roller * { box-sizing: border-box; }
+		#void-roller .top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+		#void-roller .top b { flex: 1; font: 600 13px Georgia, serif; letter-spacing: 2px; text-transform: uppercase; color: var(--v-accent); }
+		#void-roller .x { border: 0; background: none; color: var(--v-dim); font-size: 16px; cursor: pointer; }
+		#void-roller .dice { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+		#void-roller .dice button { display: flex; flex-direction: column; align-items: center; padding: 2px 0; border-radius: 9px; border: 1px solid var(--v-line); cursor: pointer;
+			background: radial-gradient(circle at 50% 35%, #3a1d66, #0d0618); color: #f1e9ff; font: 600 11px Georgia, serif; }
+		#void-roller .dice button:hover { border-color: var(--v-accent); }
+		#void-roller .dice canvas { width: 26px; height: 26px; margin: 0; position: static; }
+		#void-roller .pool { margin: 8px 0 6px; min-height: 24px; font: 600 18px Georgia, serif; text-align: center; }
+		#void-roller .row { display: flex; align-items: center; gap: 6px; }
+		#void-roller .row .grow { flex: 1; }
+		#void-roller button.b { border: 1px solid var(--v-line); border-radius: 999px; background: #ffffff0a; color: var(--v-text); padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+		#void-roller button.b.main { background: linear-gradient(180deg, #8a4dff, #5b2bc4); border-color: #9b6bff; color: #fff; }
+		#void-roller button.b.step { width: 28px; padding: 4px 0; }
+		#void-roller .mod { min-width: 34px; text-align: center; font: 600 15px Georgia, serif; }
+		#void-roller .msg { min-height: 1.2em; color: var(--v-hot); font-size: 12px; margin-top: 4px; }
+		#void-roller .hist { margin-top: 6px; border-top: 1px solid #ffffff14; padding-top: 6px; font-size: 12px; color: var(--v-dim); max-height: 120px; overflow: auto; }
+		#void-roller .hist div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 		#void-dice .sum b { font: 600 22px Georgia, serif; color: #fff; text-shadow: 0 0 14px #e05cff; margin-left: 6px; }
 		#void-dice .warn { font-size: 11px; color: #ffb36b; }
 	`;
@@ -940,7 +965,7 @@
 		}
 	};
 	/** Whether an element is part of the add-on's own windows (the panel, an ID card, the dice tray). */
-	const inOurs = (/** @type {any} */ el) => el instanceof Element && !!el.closest('#void-panel, #void-card, #void-dice');
+	const inOurs = (/** @type {any} */ el) => el instanceof Element && !!el.closest('#void-panel, #void-card, #void-dice, #void-roller');
 	/**
 	 * Keys typed in the add-on's windows, caught on the window before anything else (registered as soon as the add-on
 	 * runs): the add-on's own Esc and hotkey are handled here, and the key goes no further, so another add-on that sends
@@ -968,9 +993,10 @@
 	}
 	/** Esc: closes the topmost of ours: a picture shown big, then an ID card, then the dice tray, then the panel. */
 	function escape() {
-		const top = ['void-zoom', 'void-card', 'void-dice'].map((id) => document.getElementById(id)).find(Boolean);
+		const top = ['void-zoom', 'void-roller', 'void-card', 'void-dice'].map((id) => document.getElementById(id)).find(Boolean);
 		if (top) {
 			top.remove();
+			render();
 		} else {
 			closePanel();
 		}
@@ -981,13 +1007,16 @@
 	 * or right after the bubble opened the panel); an Esc meant for the game, in its chat or elsewhere, is left alone.
 	 */
 	let withUs = false;
-	const OURS = '#void-panel, #void-card, #void-dice, #void-bubble, #void-tab';
+	const OURS = '#void-panel, #void-card, #void-dice, #void-bubble, #void-tab, #void-roller';
 	/** A click: on ours, the player is with us; anywhere but on an open ID card, the card closes. */
 	function pointerDown(/** @type {PointerEvent} */ e) {
 		const t = e.target instanceof Element ? e.target : null;
 		withUs = !!t && !!t.closest(OURS);
 		if (!t || !t.closest('#void-card')) {
 			document.getElementById('void-card')?.remove();
+		}
+		if (!t || !t.closest('#void-roller, [data-roller]')) {
+			document.getElementById('void-roller')?.remove();
 		}
 	}
 	/** Esc on the page itself, or on the bubble or side tab, while the player is with us (listened before the game). */
@@ -1286,12 +1315,34 @@
 	const roomCards = new Map();
 	/** @type {Map<number, number>} When each person's last roll shown in the room came. */
 	const roomRolls = new Map();
+	/** @type {Map<number, number>} When each person's last Void dice line was played. */
+	const roomLines = new Map();
+	/**
+	 * A Void dice line in the room: its dice play, landing on the faces it gives, for the message's sender (not the name
+	 * in the text). Not your own (played when you rolled), at most one a second from each person and a few waiting, and
+	 * only while other people's dice are on.
+	 */
+	function rollFromLine(/** @type {string} */ text, /** @type {any} */ sender) {
+		const n = sender && sender.MemberNumber;
+		if (!n || !w.Player || n === w.Player.MemberNumber || !opts.roomDice) {
+			return;
+		}
+		const r = readRollLine(text);
+		if (!r || Date.now() - (roomLines.get(n) || 0) < 1000 || diceQueue.length >= DICE_QUEUE) {
+			return;
+		}
+		roomLines.set(n, Date.now());
+		playRoll({ ...r, id: '', by: n, name: nick(sender) }, '');
+	}
 	/**
 	 * A hidden Void Order note in the room: someone showing their card, or a dice roll. The card or roll comes from the
 	 * server, not the note, and a roll only counts if it is the sender's own and fresh.
 	 */
 	function onRoomMessage(/** @type {any} */ data, /** @type {any} */ sender) {
 		guard(() => {
+			if (data && data.Type === 'Emote' && typeof data.Content === 'string' && data.Content.includes(ROLL_LINE)) {
+				return rollFromLine(data.Content, sender);
+			}
 			if (!data || data.Type !== 'Hidden' || data.Content !== HIDDEN || !sender || !sender.MemberNumber || !ws || !state) {
 				return;
 			}
@@ -2112,12 +2163,71 @@
 			r.dice.map((/** @type {any} */ d) => d.s),
 			r.mod,
 		);
+	/** A roll's dice grouped by kind in the order first rolled, as its spec names them ("2d6+d4": the d6s, then the d4). */
+	const groupedDice = (/** @type {any} */ r) => {
+		const kinds = [...new Set(r.dice.map((/** @type {any} */ d) => d.s))];
+		return kinds.flatMap((k) => r.dice.filter((/** @type {any} */ d) => d.s === k));
+	};
 	/** A roll's faces and modifier added up: "4 + 6 + 3". */
 	const rollSum = (/** @type {any} */ r) =>
-		`${r.dice.map((/** @type {any} */ d) => d.v).join(' + ')}${r.mod > 0 ? ` + ${r.mod}` : r.mod < 0 ? ` - ${-r.mod}` : ''}`;
+		`${groupedDice(r)
+			.map((/** @type {any} */ d) => d.v)
+			.join(' + ')}${r.mod > 0 ? ` + ${r.mod}` : r.mod < 0 ? ` - ${-r.mod}` : ''}`;
 	/** A roll in words: "2d6+3: 4 + 6 + 3 = 13", "d20: 17". */
 	const rollText = (/** @type {any} */ r) =>
 		r.dice.length === 1 && !r.mod ? `${rollSpec(r)}: ${r.total}` : `${rollSpec(r)}: ${rollSum(r)} = ${r.total}`;
+	/**
+	 * The Void dice line: the one format that posting and reading both use. It goes to the room as an Emote, so everyone
+	 * reads "*Name rolls the Void dice: d20+2d6+3: 14 + 4 + 6 + 3 = 27*"; one die with no modifier reads "d6: 3". The
+	 * dice are grouped by kind in the order first rolled, the faces follow in that order, then the modifier (" + 3" or
+	 * " - 2") and the total. Any client may post this line (SlimeBeep's panel too): Oculus Nihili plays the dice from the
+	 * text itself, for the message's sender, so the line proves nothing about who rolled it.
+	 */
+	const ROLL_LINE = 'rolls the Void dice: ';
+	const rollLine = (/** @type {any} */ r) => `${ROLL_LINE}${rollText(r)}`;
+	/**
+	 * Reads a Void dice line (see ROLL_LINE): { dice: [{ s, v }], mod, total }, or null when it isn't one, doesn't add
+	 * up, or is too long.
+	 */
+	function readRollLine(/** @type {string} */ text) {
+		const str = String(text || '');
+		const at = str.indexOf(ROLL_LINE);
+		if (str.length > 300 || at < 0 || at > 60) {
+			return null;
+		}
+		const m = /^([^:]+): (.+?)\*?\s*$/.exec(str.slice(at + ROLL_LINE.length));
+		const spec = m && parseDice(m[1]);
+		if (!m || !spec || !spec.dice) {
+			return null;
+		}
+		const mod = spec.mod || 0;
+		/** @type {number[]} */
+		let faces;
+		let total;
+		if (/^\d+$/.test(m[2])) {
+			if (spec.dice.length !== 1 || mod) {
+				return null;
+			}
+			faces = [Number(m[2])];
+			total = faces[0];
+		} else {
+			const sum = /^(\d+(?: \+ \d+)*)(?: - (\d+))? = (-?\d+)$/.exec(m[2]);
+			if (!sum) {
+				return null;
+			}
+			faces = sum[1].split(' + ').map(Number);
+			const written = sum[2] ? -Number(sum[2]) : mod > 0 ? Number(faces.pop()) : 0;
+			if (written !== mod) {
+				return null;
+			}
+			total = Number(sum[3]);
+		}
+		const dice = spec.dice;
+		if (faces.length !== dice.length || faces.some((v, i) => v < 1 || v > dice[i]) || faces.reduce((a, b) => a + b, mod) !== total) {
+			return null;
+		}
+		return { dice: dice.map((sides, i) => ({ s: sides, v: faces[i] })), mod, total };
+	}
 	/**
 	 * Dice notation: "d20", "2d6+3", "3d6+1d4-2", "d%" for d100. Returns the dice and modifier, or why it can't be rolled.
 	 * @returns {{ dice?: number[], mod?: number, why?: string }}
@@ -2167,16 +2277,41 @@
 		recentRolls.unshift(r.roll);
 		recentRolls.length = Math.min(recentRolls.length, 8);
 		if (w.CurrentScreen === 'ChatRoom') {
-			w.ServerSend('ChatRoomChat', { Content: `rolls the Void dice: ${rollText(r.roll)}`, Type: 'Emote' });
+			w.ServerSend('ChatRoomChat', { Content: rollLine(r.roll), Type: 'Emote' });
 			w.ServerSend('ChatRoomChat', { Content: HIDDEN, Type: 'Hidden', Dictionary: [{ roll: r.roll.id }] });
 		}
 		render();
+		drawRoller();
 		return '';
 	}
 	/** @type {any[]} Your rolls in this session, newest first. */
 	const recentRolls = [];
-	/** Queues a roll for the tray: one at a time, a few waiting, your own always (dropping the oldest other). */
+	/** @type {Map<string, number>} Rolls played lately (by sender, dice and faces), so a line and its note play once. */
+	const playedRolls = new Map();
+	const ONCE_FOR = 8000;
+	/** Whether this roll from member n was played in the last few seconds; marks it played. */
+	function playedLately(/** @type {any} */ r, /** @type {number} */ n) {
+		const key = `${n}|${rollText(r)}`;
+		const now = Date.now();
+		for (const [k, at] of playedRolls) {
+			if (now - at > ONCE_FOR) {
+				playedRolls.delete(k);
+			}
+		}
+		if (playedRolls.has(key)) {
+			return true;
+		}
+		playedRolls.set(key, now);
+		return false;
+	}
+	/** Queues a roll for the dice overlay: one at a time, a few waiting, your own always (dropping the oldest other). */
 	function playRoll(/** @type {any} */ r, /** @type {string} */ warn, mine = false) {
+		if (!mine && playedLately(r, r.by)) {
+			return;
+		}
+		if (mine) {
+			playedLately(r, r.by);
+		}
 		if (diceQueue.length >= DICE_QUEUE) {
 			if (!mine) {
 				return;
@@ -2268,51 +2403,57 @@
 		}
 	}
 	/**
-	 * The dice tray: the roll's dice tumble in and settle on their faces (about 1.2 s), the total glows, then it fades.
-	 * Drawn on a canvas, no pictures. Clicking it closes it.
+	 * The dice overlay: over the whole game, never in the way (it takes no clicks), the roll's dice are thrown in from
+	 * the side, bounce and settle on their faces (about 1.2 s); a small banner names the roller and the total, then it
+	 * fades. With reduced motion the dice simply appear, settled. Esc closes it early.
 	 */
 	function showTray(/** @type {any} */ r, /** @type {string} */ warn, /** @type {() => void} */ done) {
 		style();
 		document.getElementById('void-dice')?.remove();
-		const tray = make('div');
+		const still = !!w.matchMedia && w.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const tray = make('div', still ? 'still' : '');
 		tray.id = 'void-dice';
-		tray.dataset.roll = r.id;
-		tray.dataset.faces = r.dice.map((/** @type {any} */ d) => d.v).join(',');
+		tray.dataset.roll = r.id || `line:${r.by}:${Date.now()}`;
+		const ordered = groupedDice(r);
+		tray.dataset.faces = ordered.map((/** @type {any} */ d) => d.v).join(',');
 		const canvas = make('canvas');
-		const who = make('div', 'who', `${r.name} rolls ${rollSpec(r)}`);
+		const banner = make('div', 'banner');
 		const sum = make('div', 'sum');
-		tray.append(canvas, who, sum);
+		banner.append(make('div', 'who', `${r.name} rolls ${rollSpec(r)}`), sum);
 		if (warn) {
-			tray.append(make('div', 'warn', `⚠ ${warn}`));
+			banner.append(make('div', 'warn', `⚠ ${warn}`));
 		}
+		tray.append(canvas, banner);
 		document.body.append(tray);
-		const W = 380;
-		const H = 190;
+		const W = innerWidth;
+		const H = innerHeight;
 		const dpr = Math.min(2, window.devicePixelRatio || 1);
 		canvas.width = W * dpr;
 		canvas.height = H * dpr;
 		const g = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
 		g.scale(dpr, dpr);
-		const n = r.dice.length;
+		const n = ordered.length;
 		const rows = n > 5 ? 2 : 1;
 		const perRow = Math.ceil(n / rows);
-		const size = Math.min(30, (W - 40) / perRow / 2.4, rows === 2 ? 28 : 30);
-		const dice = r.dice.map((/** @type {any} */ d, /** @type {number} */ i) => {
+		const size = Math.max(22, Math.min(46, (W * 0.7) / perRow / 2.5));
+		const cy = H * 0.42;
+		banner.style.top = `${cy + (rows === 2 ? size * 2.6 : size * 1.6) + 12}px`;
+		const dice = ordered.map((/** @type {any} */ d, /** @type {number} */ i) => {
 			const row = Math.floor(i / perRow);
 			const inRow = row === rows - 1 ? n - perRow * (rows - 1) : perRow;
 			const col = i - row * perRow;
 			return {
 				...d,
 				x: W / 2 + (col - (inRow - 1) / 2) * size * 2.5,
-				y: rows === 1 ? H / 2 + 6 : H / 2 + 6 + (row - 0.5) * size * 2.4,
-				from: -60 - Math.random() * 80,
-				lift: 30 + Math.random() * 50,
+				y: rows === 1 ? cy : cy + (row - 0.5) * size * 2.4,
+				from: -size * 2 - Math.random() * W * 0.15,
+				lift: 60 + Math.random() * 90,
 				spin: (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 6),
 				delay: i * 45,
 			};
 		});
 		const start = performance.now();
-		const ROLL = 1150;
+		const ROLL = still ? 0 : 1150;
 		let settled = false;
 		let ended = false;
 		const end = () => {
@@ -2323,19 +2464,17 @@
 			tray.remove();
 			done();
 		};
-		tray.addEventListener('click', end);
 		const frame = (/** @type {number} */ now) => {
 			if (ended || !tray.isConnected) {
 				return end();
 			}
 			const t = now - start;
 			g.clearRect(0, 0, W, H);
-			drawBackdrop(g, W, H, t);
 			for (const d of dice) {
-				const k = Math.min(1, Math.max(0, (t - d.delay) / (ROLL - d.delay)));
+				const k = still ? 1 : Math.min(1, Math.max(0, (t - d.delay) / (ROLL - d.delay)));
 				drawDie(g, d, k, size, t);
 			}
-			if (!settled && t >= ROLL + 100) {
+			if (!settled && t >= ROLL + (still ? 0 : 100)) {
 				settled = true;
 				tray.dataset.settled = '1';
 				sum.textContent = r.dice.length > 1 || r.mod ? rollSum(r) : '';
@@ -2350,48 +2489,6 @@
 			requestAnimationFrame(frame);
 		};
 		requestAnimationFrame(frame);
-	}
-	/** The tray behind the dice: a slow ring of runes around the Void's eye. */
-	function drawBackdrop(
-		/** @type {CanvasRenderingContext2D} */ g,
-		/** @type {number} */ W,
-		/** @type {number} */ H,
-		/** @type {number} */ t,
-	) {
-		const cx = W / 2;
-		const cy = H / 2 + 6;
-		g.save();
-		// The eye: an almond, its iris and the dark pupil, breathing.
-		const open = 0.75 + 0.25 * Math.sin(t / 380);
-		g.globalAlpha = 0.22;
-		g.strokeStyle = '#b48cff';
-		g.lineWidth = 2;
-		g.beginPath();
-		g.moveTo(cx - 70, cy);
-		g.quadraticCurveTo(cx, cy - 60 * open, cx + 70, cy);
-		g.quadraticCurveTo(cx, cy + 60 * open, cx - 70, cy);
-		g.stroke();
-		const iris = g.createRadialGradient(cx, cy, 2, cx, cy, 26);
-		iris.addColorStop(0, '#000');
-		iris.addColorStop(0.45, '#000');
-		iris.addColorStop(0.5, '#e05cff');
-		iris.addColorStop(1, '#3a1d6600');
-		g.fillStyle = iris;
-		g.beginPath();
-		g.arc(cx, cy, 26 * open, 0, Math.PI * 2);
-		g.fill();
-		// The rune ring.
-		g.globalAlpha = 0.35;
-		g.fillStyle = '#c9a8ff';
-		g.font = '13px Georgia, serif';
-		g.textAlign = 'center';
-		g.textBaseline = 'middle';
-		const runes = '⸸☿✦≈☨✙⸸ᚱᚢᚾᛖ✦☿≈⸸ᛟᚦ';
-		for (let i = 0; i < runes.length; i++) {
-			const a = (i / runes.length) * Math.PI * 2 + t / 2600;
-			g.fillText(runes[i], cx + Math.cos(a) * (W / 2 - 24), cy + Math.sin(a) * (H / 2 - 22));
-		}
-		g.restore();
 	}
 	/** One die at progress k (0 thrown, 1 settled): it flies in tumbling, bounces, and lands on its face. */
 	function drawDie(
@@ -3068,13 +3165,12 @@
 		/** @type {[string, string][]} */
 		const admin = adminViews().length ? [['admin', '🛡 Admin']] : [];
 		if (!isMember()) {
-			return [['join', state && state.meta ? 'The Order' : 'Found'], ['dice', 'Dice'], ['hunt', '🎯 Hunt board'], ...extra, ...admin];
+			return [['join', state && state.meta ? 'The Order' : 'Found'], ['hunt', '🎯 Hunt board'], ...extra, ...admin];
 		}
 		return [
 			['orders', 'Orders'],
 			['members', 'Members'],
 			['order', 'The Order'],
-			['dice', 'Dice'],
 			['armory', 'Armory'],
 			['hunt', '🎯 Hunt board'],
 			...extra,
@@ -3158,6 +3254,11 @@
 		} else {
 			head.append(make('span', 'status', statusLine()));
 		}
+		const dice = make('button', `icon${document.getElementById('void-roller') ? ' on' : ''}`, '🎲');
+		dice.title = 'Roll the Void dice';
+		dice.dataset.roller = '1';
+		dice.addEventListener('click', () => guard(() => toggleRoller(dice)));
+		head.append(dice);
 		const gear = make('button', `icon${tab === 'settings' ? ' on' : ''}`, '⚙');
 		gear.title = 'Settings';
 		gear.addEventListener('click', () => go('settings'));
@@ -3188,7 +3289,6 @@
 					orders: drawOrders,
 					members: drawMembers,
 					order: drawOrder,
-					dice: drawDice,
 					admin: drawAdmin,
 					me: drawMe,
 					join: drawJoin,
@@ -3790,93 +3890,122 @@
 		);
 	}
 
-	// -- Dice
-	function drawDice(/** @type {HTMLElement} */ body) {
-		body.append(
-			make('h3', '', 'The Void dice'),
-			make(
-				'p',
-				'dim',
-				'Click dice to add them, then roll. In a chat room everyone sees the result, and Oculus Nihili users watch the dice fall.',
-			),
-		);
-		const pool = /** @type {number[]} */ (drafts['d:pool'] ? JSON.parse(drafts['d:pool']) : []);
-		const pick = make('div', 'dice-pick');
-		for (const s of DICE) {
-			const d = make('button', 'die');
-			d.title = `Add a d${s}`;
-			const icon = make('canvas');
-			icon.width = icon.height = 60;
-			const g = /** @type {CanvasRenderingContext2D} */ (icon.getContext('2d'));
-			g.translate(30, 30);
-			g.strokeStyle = '#c9a8ff';
-			g.lineWidth = 3;
-			const shape = dieShape(s);
-			traceDie(g, shape, 24);
-			g.stroke();
-			g.lineWidth = 1.5;
-			g.globalAlpha = 0.6;
-			strokeEdges(g, shape, 24);
-			d.append(icon, make('span', '', s === 100 ? 'd%' : `d${s}`));
-			d.addEventListener('click', () =>
-				guard(() => {
-					if (pool.length >= LIMITS.dice) {
-						panelSay(`⚠ ${LIMITS.dice} dice at most.`);
-						return;
-					}
-					drafts['d:pool'] = JSON.stringify([...pool, s]);
-					render(true);
-				}, panelSay),
-			);
-			pick.append(d);
+	// -- The dice roller: a small pop-up from the 🎲 in the panel's header (or /void roll): dice, modifier, Roll, history
+	/** A die's outline as a small picture. */
+	function dieIcon(/** @type {number} */ sides) {
+		const icon = make('canvas');
+		icon.width = icon.height = 52;
+		const g = /** @type {CanvasRenderingContext2D} */ (icon.getContext('2d'));
+		g.translate(26, 26);
+		g.strokeStyle = '#c9a8ff';
+		g.lineWidth = 3;
+		const shape = dieShape(sides);
+		traceDie(g, shape, 20);
+		g.stroke();
+		g.lineWidth = 1.5;
+		g.globalAlpha = 0.6;
+		strokeEdges(g, shape, 20);
+		return icon;
+	}
+	/**
+	 * Opens the roller by `anchor` (under it, kept on screen), or near the bottom of the screen without one; closes it
+	 * when it is open.
+	 */
+	function toggleRoller(/** @type {HTMLElement | null} */ anchor) {
+		const open = document.getElementById('void-roller');
+		if (open) {
+			open.remove();
+			render();
+			return;
 		}
-		body.append(pick);
+		style();
+		const box = make('div');
+		box.id = 'void-roller';
+		keepKeys(box);
+		document.body.append(box);
+		withUs = true;
+		drawRoller();
+		const r = box.getBoundingClientRect();
+		const a = anchor && anchor.isConnected ? anchor.getBoundingClientRect() : null;
+		const x = a ? a.right - r.width : (innerWidth - r.width) / 2;
+		const y = a ? a.bottom + 6 : innerHeight - r.height - 90;
+		box.style.left = `${Math.max(6, Math.min(innerWidth - r.width - 6, x))}px`;
+		box.style.top = `${Math.max(6, Math.min(innerHeight - r.height - 6, y))}px`;
+		render();
+	}
+	/** Draws the roller's insides again (after a pick or a roll), if it is open. */
+	function drawRoller(say = '') {
+		const box = document.getElementById('void-roller');
+		if (!box) {
+			return;
+		}
+		const pool = /** @type {number[]} */ (drafts['d:pool'] ? JSON.parse(drafts['d:pool']) : []);
 		const mod = Number(drafts['d:mod'] || 0);
-		body.append(make('div', 'pool', pool.length ? diceSpec(pool, mod) : 'No dice yet'));
+		const redraw = (/** @type {string} */ text = '') => guard(() => drawRoller(text));
+		box.replaceChildren();
+		const top = make('div', 'top');
+		const x = make('button', 'x', '✕');
+		x.title = 'Close';
+		x.addEventListener('click', () => toggleRoller(null));
+		top.append(make('b', '', '🎲 The Void dice'), x);
+		const dice = make('div', 'dice');
+		for (const sides of DICE) {
+			const d = make('button');
+			d.title = `Add a d${sides}`;
+			d.dataset.die = String(sides);
+			d.append(dieIcon(sides), make('span', '', sides === 100 ? 'd%' : `d${sides}`));
+			d.addEventListener('click', () => {
+				if (pool.length >= LIMITS.dice) {
+					return redraw(`${LIMITS.dice} dice at most.`);
+				}
+				drafts['d:pool'] = JSON.stringify([...pool, sides]);
+				redraw();
+			});
+			dice.append(d);
+		}
 		const row = make('div', 'row');
-		const modIn = make('input', 'auto');
-		modIn.type = 'number';
-		modIn.min = String(-LIMITS.mod);
-		modIn.max = String(LIMITS.mod);
-		modIn.value = String(mod);
-		modIn.style.width = '80px';
-		modIn.addEventListener('input', () => {
-			drafts['d:mod'] = modIn.value;
-		});
-		modIn.addEventListener('change', () => render(true));
-		row.append(
-			make('span', 'dim', 'Modifier'),
-			modIn,
-			button(
-				'🎲 Roll',
-				async () => {
-					const m = Number(drafts['d:mod'] || 0);
-					if (!pool.length) {
-						panelSay('⚠ Add some dice first.');
-						return;
-					}
-					if (!Number.isInteger(m) || Math.abs(m) > LIMITS.mod) {
-						panelSay(`⚠ The modifier goes from -${LIMITS.mod} to +${LIMITS.mod}.`);
-						return;
-					}
-					const why = await roll(pool, m);
-					panelSay(why ? `⚠ ${why}` : w.CurrentScreen === 'ChatRoom' ? '' : 'Not in a chat room: only you saw it.');
-				},
-				'b main',
-			),
-			button('Clear', () => {
-				delete drafts['d:pool'];
-				delete drafts['d:mod'];
-				render(true);
+		const setMod = (/** @type {number} */ v) => {
+			drafts['d:mod'] = String(Math.max(-LIMITS.mod, Math.min(LIMITS.mod, v)));
+			redraw();
+		};
+		const down = make('button', 'b step', '−');
+		down.title = 'Modifier −1';
+		down.addEventListener('click', () => setMod(mod - 1));
+		const up = make('button', 'b step', '+');
+		up.title = 'Modifier +1';
+		up.addEventListener('click', () => setMod(mod + 1));
+		const go = make('button', 'b main', 'Roll');
+		go.addEventListener('click', () =>
+			guard(async () => {
+				if (!pool.length) {
+					return redraw('Add some dice first.');
+				}
+				const why = await roll(pool, mod);
+				drawRoller(why ? `⚠ ${why}` : w.CurrentScreen === 'ChatRoom' ? '' : 'Not in a chat room: only you saw it.');
 			}),
 		);
-		body.append(row);
-		body.append(make('p', 'dim', 'Or type /void roll 2d6+3, /void roll d20 in the chat.'));
+		const clear = make('button', 'b', 'Clear');
+		clear.addEventListener('click', () => {
+			delete drafts['d:pool'];
+			delete drafts['d:mod'];
+			redraw();
+		});
+		row.append(
+			make('span', 'dim', 'Mod'),
+			down,
+			make('span', 'mod', mod > 0 ? `+${mod}` : String(mod)),
+			up,
+			make('span', 'grow'),
+			clear,
+			go,
+		);
+		box.append(top, dice, make('div', 'pool', pool.length ? diceSpec(pool, mod) : 'Pick dice'), row, make('div', 'msg', say));
 		if (recentRolls.length) {
-			body.append(make('h3', '', 'Your rolls'));
-			for (const r of recentRolls) {
-				body.append(make('div', '', `${fromNow(r.at)} · ${rollText(r)}`));
+			const hist = make('div', 'hist');
+			for (const r of recentRolls.slice(0, 6)) {
+				hist.append(make('div', '', `${fromNow(r.at)} · ${rollText(r)}`));
 			}
+			box.append(hist);
 		}
 	}
 
@@ -5044,7 +5173,9 @@
 		}
 		if (sub === 'roll') {
 			if (!arg) {
-				openPanel('dice');
+				if (!document.getElementById('void-roller')) {
+					toggleRoller(null);
+				}
 				return;
 			}
 			const r = parseDice(arg);

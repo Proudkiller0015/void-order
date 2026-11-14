@@ -377,7 +377,7 @@ const openCardOf = async (page, name) => {
 		await click(page, 'Found the Order');
 		await page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const tabs = await page.evaluate(() => [...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'));
-		check('founding gives the Founder every tab', tabs === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|🛡 Admin', tabs);
+		check('founding gives the Founder every tab', tabs === 'Orders|Members|The Order|Armory|🎯 Hunt board|🛡 Admin', tabs);
 
 		// Bea joins at once and waits for a place; Ann places her from Manage as a Paladin rank 5.
 		const bea = await peer(12, 'Bea');
@@ -789,19 +789,53 @@ const openCardOf = async (page, name) => {
 			await fay.page.evaluate(() => window.local),
 		);
 
-		// The Void dice: Ann rolls d20 + 2d6 + 3 from the tray.
+		// The Void dice: Ann rolls d20 + 2d6 + 3 from the 🎲 roller in the panel's header.
 		// Animations only run in the tab in front, as in the game.
 		await page.bringToFront();
-		await click(page, 'Dice');
-		await click(page, 'd20');
-		await click(page, 'd6');
-		await click(page, 'd6');
-		await type(page, 'input[type=number]', '3');
+		/** Clicks a button in the dice roller: a die (by its sides) or one whose text starts with `text`. */
+		const inRoller = (pg, text, die = 0) =>
+			pg.evaluate(
+				(text, die) => {
+					const box = document.getElementById('void-roller');
+					const b = die
+						? box?.querySelector(`button[data-die="${die}"]`)
+						: [...(box?.querySelectorAll('button') || [])].find((x) => x.textContent.trim().startsWith(text));
+					b?.click();
+					return !!b;
+				},
+				text,
+				die,
+			);
+		await click(page, '🎲');
+		const roller = await page.evaluate(() => {
+			const r = document.getElementById('void-roller')?.getBoundingClientRect();
+			return r && { inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, w: r.width };
+		});
+		check('🎲 in the panel’s header opens a small dice roller, on screen', !!roller && roller.inside && roller.w <= 320, roller);
+		await inRoller(page, '', 20);
+		await inRoller(page, '', 6);
+		await inRoller(page, '', 6);
+		for (let i = 0; i < 3; i++) await inRoller(page, '+');
+		check(
+			'the roller shows the dice picked',
+			(await page.evaluate(() => document.querySelector('#void-roller .pool')?.textContent)) === 'd20+2d6+3',
+		);
+		await shot(page, '23-dice-roller');
 		await page.evaluate(() => (window.sent = []));
-		await click(page, '🎲 Roll');
+		await inRoller(page, 'Roll');
 		await page.waitForSelector('#void-dice', { timeout: 5000 });
 		await wait(450);
-		check('the tray tumbles, not yet settled', await page.evaluate(() => !document.getElementById('void-dice').dataset.settled));
+		check('the dice tumble, not yet settled', await page.evaluate(() => !document.getElementById('void-dice').dataset.settled));
+		const overlay = await page.evaluate(() => {
+			const t = document.getElementById('void-dice');
+			const r = t.getBoundingClientRect();
+			const under = document.elementFromPoint(innerWidth / 2, innerHeight * 0.42);
+			return {
+				full: r.width === innerWidth && r.height === innerHeight,
+				through: getComputedStyle(t).pointerEvents === 'none' && !t.contains(under),
+			};
+		});
+		check('they roll over the whole screen, and clicks go through to the game', overlay.full && overlay.through, overlay);
 		await shot(page, '09-dice-rolling');
 		await page.waitForFunction(() => document.getElementById('void-dice')?.dataset.settled === '1', { timeout: 4000 });
 		await shot(page, '10-dice-settled');
@@ -832,7 +866,19 @@ const openCardOf = async (page, name) => {
 				fromServer.roll.total === total,
 			fromServer,
 		);
-		check('the tray names the roller and the total', new RegExp(`Ann rolls d20\\+2d6\\+3[\\s\\S]*= ${total}`).test(tray.text), tray.text);
+		check('the banner names the roller and the total', new RegExp(`Ann rolls d20\\+2d6\\+3[\\s\\S]*= ${total}`).test(tray.text), tray.text);
+		check(
+			'your roll is in the roller’s history',
+			new RegExp(`d20\\+2d6\\+3: ${faces.join(' \\+ ')} \\+ 3 = ${total}`).test(
+				await page.evaluate(() => document.querySelector('#void-roller .hist')?.textContent || ''),
+			),
+		);
+		await page.evaluate(() => document.querySelector('#void-roller .x').focus());
+		await page.keyboard.press('Escape');
+		check(
+			'Esc closes the roller and leaves the panel open',
+			await page.evaluate(() => !document.getElementById('void-roller') && !!document.getElementById('void-panel')),
+		);
 
 		// Fay, in the same room, gets the hidden note: her client fetches the roll and plays the same dice.
 		await fay.page.bringToFront();
@@ -848,7 +894,67 @@ const openCardOf = async (page, name) => {
 		});
 		check('another Void user sees the same roll fall', seen.faces === tray.faces && /Ann rolls d20\+2d6\+3/.test(seen.text), seen);
 		await shot(fay.page, '11-dice-seen-by-another');
-		await fay.page.evaluate(() => document.getElementById('void-dice')?.click());
+		await fay.page.evaluate(() => document.getElementById('void-dice')?.remove());
+
+		// A Void dice line in the room plays from its text, for the message's sender; a bad one doesn't play.
+		/** Hands Fay's room handler a message from the character at `who` in her room. */
+		const fromRoom = (msg, who = 1) =>
+			fay.page.evaluate(
+				(msg, who) => {
+					const h = ChatRoomMessageHandlers.find((x) => x.Description === 'Oculus Nihili: ID cards, dice and marks');
+					h.Callback(msg, ChatRoomCharacter[who], '', {});
+				},
+				msg,
+				who,
+			);
+		const lastTray = () =>
+			fay.page.evaluate(() => {
+				const t = document.getElementById('void-dice');
+				return t && { faces: t.dataset.faces, text: t.innerText, settled: t.dataset.settled === '1' };
+			});
+		await fay.page.evaluate(() => (window.trays = []));
+		await fromRoom({ Type: 'Emote', Content: 'rolls the Void dice: d20+2d6+3: 14 + 4 + 6 + 3 = 27' });
+		await wait(1600);
+		const typed = await lastTray();
+		check(
+			'a Void dice line plays with its faces, for its sender',
+			!!typed && typed.faces === '14,4,6' && /^Ann rolls d20\+2d6\+3[\s\S]*= 27/.test(typed.text),
+			typed,
+		);
+		await fay.page.evaluate(() => document.getElementById('void-dice')?.remove());
+		await wait(1100);
+		await fay.page.evaluate(() => (window.trays = []));
+		for (const bad of [
+			'rolls the Void dice: d6: 9',
+			'rolls the Void dice: d20+2d6+3: 14 + 4 + 6 + 3 = 99',
+			'rolls the Void dice: 2d7: 3 + 4 = 7',
+			`rolls the Void dice: ${'d6+'.repeat(80)}d6: 1`,
+		]) {
+			await fromRoom({ Type: 'Emote', Content: bad });
+			await wait(1100);
+		}
+		check('lines that don’t add up, or with dice the Void has not, don’t play', (await fay.page.evaluate(() => window.trays.length)) === 0);
+		// A real roll sends both the line and the hidden note: it plays once.
+		await page.evaluate(() => (window.sent = []));
+		await slash(page, 'roll d8-2');
+		await wait(300);
+		const pair = await page.evaluate(() => ({
+			line: window.sent.find(([, d]) => d.Type === 'Emote')?.[1].Content,
+			id: window.sent.find(([, d]) => d.Type === 'Hidden')?.[1].Dictionary[0].roll,
+		}));
+		await fromRoom({ Type: 'Emote', Content: pair.line });
+		await fromRoom({ Type: 'Hidden', Content: 'VoidOrder', Dictionary: [{ roll: pair.id }] });
+		await wait(5200);
+		check('a roll whose line and note both arrive plays once', (await fay.page.evaluate(() => window.trays.length)) === 1, pair);
+		// With reduced motion, the dice appear settled at once.
+		await fay.page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+		await fromRoom({ Type: 'Emote', Content: 'rolls the Void dice: d12: 7' });
+		await wait(250);
+		const still = await lastTray();
+		check('with reduced motion the dice simply appear, settled', !!still && still.settled && still.faces === '7', still);
+		await fay.page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+		await fay.page.evaluate(() => document.getElementById('void-dice')?.remove());
+		await wait(1100);
 
 		// A roll shown by someone who didn't make it is not played; nor is a flood from one person.
 		await fay.page.evaluate(() => (window.trays = []));
@@ -858,17 +964,18 @@ const openCardOf = async (page, name) => {
 		}, tray.id);
 		await wait(800);
 		check("a roll id shown by someone else than the roller isn't played", (await fay.page.evaluate(() => window.trays.length)) === 0);
+		await page.evaluate(() => (window.sent = []));
 		await slash(page, 'roll 2d6+1');
 		await wait(300);
 		const rolled = await page.evaluate(() => window.sent.filter((x) => x[1].Type === 'Hidden').map((x) => x[1].Dictionary[0].roll));
 		check(
 			'/void roll 2d6+1 rolls from the chat',
-			rolled.length === 2 &&
+			rolled.length === 1 &&
 				(await page.evaluate(() => window.sent.some(([, d]) => /^rolls the Void dice: 2d6\+1: \d+ \+ \d+ \+ 1 = \d+$/.test(d.Content)))),
 		);
 		await fay.page.evaluate((ids) => {
 			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'Oculus Nihili: ID cards, dice and marks');
-			for (const id of [...ids, ...ids, ...ids])
+			for (const id of [...ids, ...ids, ...ids, ...ids, ...ids, ...ids])
 				h.Callback({ Type: 'Hidden', Content: 'VoidOrder', Dictionary: [{ roll: id }] }, ChatRoomCharacter[1], '', {});
 		}, rolled);
 		await wait(5000);
@@ -1466,7 +1573,7 @@ const openCardOf = async (page, name) => {
 		);
 		check(
 			'another device with the same account signs in as the same member',
-			tabs2 === 'Orders|Members|The Order|Dice|Armory|🎯 Hunt board|🛡 Admin',
+			tabs2 === 'Orders|Members|The Order|Armory|🎯 Hunt board|🛡 Admin',
 			tabs2,
 		);
 		const noteOnLogin = await second.page.evaluate(() => window.local.join('\n'));
