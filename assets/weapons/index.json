@@ -1,0 +1,1451 @@
+[
+	{
+		"id": 1,
+		"name": "Old sawed-off shotgun",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Shotguns",
+		"stats": [
+			"+3 Base damage",
+			"+1 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 2,
+		"name": "Old hunting rifle",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+4 Base damage",
+			"-2 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 3,
+		"name": "Crackhead illegal gun",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Submachine guns",
+		"stats": [
+			"+1 Base damage",
+			"+3 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 4,
+		"name": "Simple hand crossbow",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Crossbows",
+		"stats": [
+			"+3 Base damage",
+			"+1 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 5,
+		"name": "Crackhead PM pistol",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Pistols",
+		"stats": [
+			"Damage (dependable on player atributes)",
+			"+4 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 6,
+		"name": "Void Factory made HK-USP",
+		"rarity": "Common",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Pistols",
+		"stats": [
+			"+2 Base damage"
+		],
+		"sprite": true
+	},
+	{
+		"id": 7,
+		"name": "Void Factory made HK-416",
+		"rarity": "Common",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+3 Base damage",
+			"+2 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 8,
+		"name": "Flinta",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+6 Base damage",
+			"+3 Damage received",
+			"+1 Luck"
+		],
+		"sprite": false
+	},
+	{
+		"id": 9,
+		"name": "Old AK",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+4 Base damage",
+			"-1 Speed",
+			"+3 HP"
+		],
+		"sprite": true
+	},
+	{
+		"id": 10,
+		"name": "Glock Pistol",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Pistols",
+		"stats": [
+			"+2 Base damage",
+			"+2 Speed",
+			"+1 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 11,
+		"name": "Pump Action Shotgun",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Shotguns",
+		"stats": [
+			"+5 Base damage",
+			"+3 Speed",
+			"+5 Damage received"
+		],
+		"sprite": true
+	},
+	{
+		"id": 12,
+		"name": "Mp5K",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Submachine guns",
+		"stats": [
+			"+2 Base damage",
+			"+5 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 13,
+		"name": "Small crossbow",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Crossbows",
+		"stats": [
+			"+5 Base Damage",
+			"-3 Speed",
+			"+1 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 14,
+		"name": "PKM",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+4 Base damage",
+			"-4 Speed",
+			"+4 Defence"
+		],
+		"sprite": true
+	},
+	{
+		"id": 15,
+		"name": "Commando AKSU",
+		"rarity": "Uncommon",
+		"heroic": true,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+4 Base damage",
+			"+2 Speed",
+			"+4 Damage received"
+		],
+		"sprite": true
+	},
+	{
+		"id": 16,
+		"name": "R700",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+7 Base damage",
+			"-3 Speed",
+			"+1 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 17,
+		"name": "Overupgraded M4",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+4 Base damage",
+			"+1 Speed",
+			"-7 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 18,
+		"name": "Void experimental blessed HK416",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+4 Base damage",
+			"+2 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 19,
+		"name": "Void HK USP",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Pistols",
+		"stats": [
+			"+3 Base damage"
+		],
+		"sprite": true
+	},
+	{
+		"id": 20,
+		"name": "Good AK rifle",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+6 Base damage",
+			"-1 Speed",
+			"+5 HP"
+		],
+		"sprite": true
+	},
+	{
+		"id": 21,
+		"name": "Tactical AK rifle",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+6 Base damage",
+			"+1 Speed",
+			"-5 HP"
+		],
+		"sprite": true
+	},
+	{
+		"id": 22,
+		"name": "Modernized Steyr Aug",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+5 Base damage",
+			"+2 Speed",
+			"+1 Defence"
+		],
+		"sprite": true
+	},
+	{
+		"id": 23,
+		"name": "PL-15 Pistol",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Pistols",
+		"stats": [
+			"+3 Base damage",
+			"+3 Speed",
+			"+2 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 24,
+		"name": "Upgraded Mini Uzi",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Submachine guns",
+		"stats": [
+			"+4 Base damage",
+			"+5 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 25,
+		"name": "SVDS",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+7 Base damage",
+			"-3 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 26,
+		"name": "Saiga shotgun",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Shotguns",
+		"stats": [
+			"+8 Base damage",
+			"+4 Speed",
+			"+7 Damage received"
+		],
+		"sprite": true
+	},
+	{
+		"id": 27,
+		"name": "Good crossbow",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Crossbows",
+		"stats": [
+			"+6 Base Damage",
+			"-2 Speed",
+			"+2 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 28,
+		"name": "Void MR Rifle",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+8 Base damage",
+			"-2 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 29,
+		"name": "Prototype V-02 rifle",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+5 Base damage",
+			"+1 Speed",
+			"+2 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 30,
+		"name": "Void Paladin elite HK416",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+6 Base damage",
+			"+2 Speed",
+			"+1 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 31,
+		"name": "FN 57 Pistol",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Pistols",
+		"stats": [
+			"+6 Base damage",
+			"+4 Speed",
+			"-5 HP"
+		],
+		"sprite": true
+	},
+	{
+		"id": 32,
+		"name": "Desert eagle pistol",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Pistols",
+		"stats": [
+			"+7 Base damage",
+			"+3 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 33,
+		"name": "M60",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+5 Base damage",
+			"-5 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 34,
+		"name": "Upgraded AK rifle",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+7 Base damage",
+			"-1 Speed",
+			"+10 HP",
+			"+2 Defence"
+		],
+		"sprite": true
+	},
+	{
+		"id": 35,
+		"name": "Vector SMG",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Submachine guns",
+		"stats": [
+			"+6 Base damage",
+			"+7 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 36,
+		"name": "P100 SMG",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Submachine guns",
+		"stats": [
+			"+6 Base damage",
+			"+4 Speed",
+			"+1 Luck",
+			"+3 Damage received"
+		],
+		"sprite": true
+	},
+	{
+		"id": 37,
+		"name": "Modern crossbow",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Crossbows",
+		"stats": [
+			"+7 Base Damage",
+			"-2 Speed",
+			"+3 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 38,
+		"name": "Void Marksman HK-416",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+7 Base damage",
+			"-1 Speed",
+			"+2 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 39,
+		"name": "Void Division Ranger Crusader RSASS",
+		"rarity": "Very rare",
+		"heroic": true,
+		"void": true,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+8 Base damage",
+			"-3 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 40,
+		"name": "Void Division Bellator Crusader MP155 Ultima",
+		"rarity": "Very rare",
+		"heroic": true,
+		"void": true,
+		"melee": false,
+		"kind": "Shotguns",
+		"stats": [
+			"+10 Base damage",
+			"+3 Speed",
+			"+5 Damage received"
+		],
+		"sprite": true
+	},
+	{
+		"id": 41,
+		"name": "Void Division Salvatoris Crusader MCX",
+		"rarity": "Very rare",
+		"heroic": true,
+		"void": true,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+7 Base damage",
+			"+2 Speed",
+			"+1 Luck",
+			"+3 Defence"
+		],
+		"sprite": true
+	},
+	{
+		"id": 42,
+		"name": "Misery (KS-23 Shotgun)",
+		"rarity": "Cursed",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Shotguns",
+		"stats": [
+			"+13 Base Damage",
+			"+3 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 43,
+		"name": "Bloodshot (Mosin rifle)",
+		"rarity": "Cursed",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+6 Base Damage (Casual)",
+			"+12 Base Damage (Charged)",
+			"-3 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 44,
+		"name": "Bucky",
+		"rarity": "Legendary",
+		"heroic": true,
+		"void": false,
+		"melee": false,
+		"kind": "Pistols",
+		"stats": [
+			"+7 Base damage",
+			"+3 Speed",
+			"+3 Luck",
+			"+50 of being drunk with Firebite Cinnamon Whiskey"
+		],
+		"sprite": true
+	},
+	{
+		"id": 45,
+		"name": "AK-50",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+15 Base damage",
+			"+10 HP",
+			"+3 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 46,
+		"name": "Experimental AK Rifle",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": false,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"+10 Base Damage",
+			"+5 Speed",
+			"+10 HP",
+			"+5 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 47,
+		"name": "Void Champion AS VAL",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Rifles",
+		"stats": [
+			"Damage (dependable on player atributes)",
+			"+5 Speed",
+			"+3 Luck"
+		],
+		"sprite": false
+	},
+	{
+		"id": 48,
+		"name": "Void NTW-20 Sniper rifle",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": true,
+		"melee": false,
+		"kind": "Sniper rifles",
+		"stats": [
+			"+15 Base damage",
+			"+5 Defence"
+		],
+		"sprite": true
+	},
+	{
+		"id": 49,
+		"name": "Recider",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+3 Base damage",
+			"+5 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 50,
+		"name": "Basical",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+5 Base damage",
+			"+1 Defence"
+		],
+		"sprite": true
+	},
+	{
+		"id": 51,
+		"name": "Mirandus",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+7 Base damage",
+			"-2 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 52,
+		"name": "Skórzniak",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+8 Base damage",
+			"+3 Damage received",
+			"+3 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 53,
+		"name": "Nidilus",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+10 Base damage",
+			"-3 Luck",
+			"-3 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 54,
+		"name": "Bandzior",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+10 Base damage",
+			"-4 Speed",
+			"+1 Defence"
+		],
+		"sprite": true
+	},
+	{
+		"id": 55,
+		"name": "Macuahuitl",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Maces and hammers",
+		"stats": [
+			"+5 Base damage",
+			"+1 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 56,
+		"name": "Old Mace",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Maces and hammers",
+		"stats": [
+			"+7 Base damage",
+			"-1 Speed",
+			"+1 Defence"
+		],
+		"sprite": false
+	},
+	{
+		"id": 57,
+		"name": "Void Unblessed sword",
+		"rarity": "Common",
+		"heroic": false,
+		"void": true,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+5 Base damage",
+			"+1 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 58,
+		"name": "Bidenhander",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+10 Base damage",
+			"-4 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 59,
+		"name": "Signari",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+7 Base damage",
+			"-1 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 60,
+		"name": "The Sneaki Valore",
+		"rarity": "Uncommon",
+		"heroic": true,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+5 Base damage",
+			"+5 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 61,
+		"name": "Zmora",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+5 Base damage",
+			"-3 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 62,
+		"name": "Shamshir",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+5 Base damage",
+			"+4 Speed"
+		],
+		"sprite": true
+	},
+	{
+		"id": 63,
+		"name": "Battle hammer",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Maces and hammers",
+		"stats": [
+			"+8 Base damage",
+			"-1 Speed",
+			"+2 Defence"
+		],
+		"sprite": false
+	},
+	{
+		"id": 64,
+		"name": "Ineluctabilis",
+		"rarity": "Uncommon",
+		"heroic": true,
+		"void": true,
+		"melee": true,
+		"kind": "Knives and machetes",
+		"stats": [
+			"+7 Base damage",
+			"+3 Speed",
+			"+3 Damage received"
+		],
+		"sprite": true
+	},
+	{
+		"id": 65,
+		"name": "The Paladin Void Knife",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": true,
+		"melee": true,
+		"kind": "Knives and machetes",
+		"stats": [
+			"+3 Base damage",
+			"+5 Speed",
+			"+1 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 66,
+		"name": "Antecessor",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+10 Base damage"
+		],
+		"sprite": true
+	},
+	{
+		"id": 67,
+		"name": "Mist Elegance",
+		"rarity": "Rare",
+		"heroic": true,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+8 Base Damage",
+			"+3 Speed",
+			"+5 Luck",
+			"+3 Damage received"
+		],
+		"sprite": false
+	},
+	{
+		"id": 68,
+		"name": "Lovebite",
+		"rarity": "Rare",
+		"heroic": true,
+		"void": false,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+14 Base damage",
+			"-3 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 69,
+		"name": "Bury Brzetysław",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+16 Base damage",
+			"-3 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 70,
+		"name": "Silverwing",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+12 Base damage",
+			"-1 Speed",
+			"+3 Luck"
+		],
+		"sprite": false
+	},
+	{
+		"id": 71,
+		"name": "Pole hammer",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Maces and hammers",
+		"stats": [
+			"+10 Base damage",
+			"-3 Speed",
+			"+5 Defence"
+		],
+		"sprite": false
+	},
+	{
+		"id": 72,
+		"name": "The Paladin Void Blade",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": true,
+		"melee": true,
+		"kind": "Knives and machetes",
+		"stats": [
+			"+12 Base damage",
+			"+3 Defence",
+			"+1 Luck"
+		],
+		"sprite": true
+	},
+	{
+		"id": 73,
+		"name": "Dominator",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+20 Base damage",
+			"-3 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 74,
+		"name": "Blessing of Sin",
+		"rarity": "Very rare",
+		"heroic": true,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+10 Base damage",
+			"+4 Speed",
+			"+5 Damage received"
+		],
+		"sprite": false
+	},
+	{
+		"id": 75,
+		"name": "Cookie Slicer",
+		"rarity": "Very rare",
+		"heroic": true,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+13 Base damage",
+			"+3 Speed",
+			"+3 Damage received"
+		],
+		"sprite": false
+	},
+	{
+		"id": 76,
+		"name": "Dragon's Bane",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+15 Base damage"
+		],
+		"sprite": false
+	},
+	{
+		"id": 77,
+		"name": "The Sprinkler",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Maces and hammers",
+		"stats": [
+			"+15 Base damage",
+			"-3 Speed",
+			"+5 Defence"
+		],
+		"sprite": false
+	},
+	{
+		"id": 78,
+		"name": "St. George Sword",
+		"rarity": "Very rare",
+		"heroic": true,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+15 Base damage"
+		],
+		"sprite": false
+	},
+	{
+		"id": 79,
+		"name": "Excellentia Nihili",
+		"rarity": "Very rare",
+		"heroic": true,
+		"void": true,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+15 Base damage",
+			"+3 Defence",
+			"+3 Luck"
+		],
+		"sprite": false
+	},
+	{
+		"id": 80,
+		"name": "Kugarinn (The Opressor)",
+		"rarity": "Cursed",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+45 Base damage",
+			"-3 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 81,
+		"name": "Sanguisuga (The Bloodsucker)",
+		"rarity": "Cursed",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+20 Base damage",
+			"+3 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 82,
+		"name": "Ikari (Rage)",
+		"rarity": "Cursed",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+25 Base damage",
+			"-1 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 83,
+		"name": "Ira Infernalis (Hellwrath)",
+		"rarity": "Cursed",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+25 Base damage",
+			"-3 Speed",
+			"+7 Damage received"
+		],
+		"sprite": false
+	},
+	{
+		"id": 84,
+		"name": "Humbler",
+		"rarity": "Cursed",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"-5 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 85,
+		"name": "Serpens Palustris",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+20 Base Damage",
+			"+3 Speed",
+			"+15 HP"
+		],
+		"sprite": false
+	},
+	{
+		"id": 86,
+		"name": "Invictus Maneo",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+20 Base Damage",
+			"+5 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 87,
+		"name": "Triquetra",
+		"rarity": "Legendary",
+		"heroic": true,
+		"void": false,
+		"melee": true,
+		"kind": "Swords",
+		"stats": [
+			"+25 Base damage",
+			"+5 Defence",
+			"+10 HP"
+		],
+		"sprite": false
+	},
+	{
+		"id": 88,
+		"name": "Sihilis Manm",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+25 Base damage"
+		],
+		"sprite": false
+	},
+	{
+		"id": 89,
+		"name": "The Bravery Simbol",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Maces and hammers",
+		"stats": [
+			"+30 Base damage",
+			"+5 Defence",
+			"+5 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 90,
+		"name": "Gloria Nihil",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": true,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+30 Base damage",
+			"+5 Defence"
+		],
+		"sprite": false
+	},
+	{
+		"id": 91,
+		"name": "Unguis Nihilis",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": true,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+30 Base damage"
+		],
+		"sprite": false
+	},
+	{
+		"id": 92,
+		"name": "Ira Baccae",
+		"rarity": "Legendary",
+		"heroic": true,
+		"void": true,
+		"melee": true,
+		"kind": "Glowing blades",
+		"stats": [
+			"+30 Base damage",
+			"+3 Speed",
+			"+3 Defence",
+			"+3 Luck"
+		],
+		"sprite": false
+	},
+	{
+		"id": 93,
+		"name": "The Root",
+		"rarity": "Common",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Staffs",
+		"stats": [
+			"+3 Base damage",
+			"+2 Speed"
+		],
+		"sprite": false
+	},
+	{
+		"id": 94,
+		"name": "False Flame",
+		"rarity": "Uncommon",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Staffs",
+		"stats": [
+			"+3 Base damage",
+			"-1 Luck",
+			"+3 Damage received"
+		],
+		"sprite": false
+	},
+	{
+		"id": 95,
+		"name": "Bone finger",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Staffs",
+		"stats": [
+			"+3 Base damage",
+			"-5 HP",
+			"+3 Defence"
+		],
+		"sprite": false
+	},
+	{
+		"id": 96,
+		"name": "The Void Crosier",
+		"rarity": "Rare",
+		"heroic": false,
+		"void": true,
+		"melee": true,
+		"kind": "Staffs",
+		"stats": [
+			"+3 Base damage",
+			"+5 HP",
+			"+3 Luck",
+			"+5 Damage received"
+		],
+		"sprite": false
+	},
+	{
+		"id": 97,
+		"name": "Shining crystal",
+		"rarity": "Very rare",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Staffs",
+		"stats": [
+			"+3 Base damage",
+			"-4 Speed",
+			"+5 Damage received"
+		],
+		"sprite": false
+	},
+	{
+		"id": 98,
+		"name": "Wabbajack",
+		"rarity": "Cursed",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Staffs",
+		"stats": [],
+		"sprite": false
+	},
+	{
+		"id": 99,
+		"name": "Serpens Aesulapius",
+		"rarity": "Legendary",
+		"heroic": false,
+		"void": false,
+		"melee": true,
+		"kind": "Staffs",
+		"stats": [
+			"+5 Base damage",
+			"+5 Speed",
+			"+10 HP",
+			"+5 Luck"
+		],
+		"sprite": false
+	},
+	{
+		"id": 100,
+		"name": "Queen's Wrath",
+		"rarity": "Personal",
+		"heroic": false,
+		"void": true,
+		"melee": true,
+		"kind": null,
+		"stats": [],
+		"sprite": true
+	}
+]
