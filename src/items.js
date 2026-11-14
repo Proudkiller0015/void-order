@@ -39,6 +39,31 @@
 		};
 		/** Whether an asset is one of the Armory's. */
 		const isArmory = (/** @type {any} */ asset) => !!asset && !!asset.Group && asset.Group.Name === GROUP && items.has(asset.Name);
+		/** The item C wears of this asset. */
+		const wornIn = (/** @type {any} */ C, /** @type {any} */ asset) =>
+			Array.isArray(C.Appearance) ? C.Appearance.find((/** @type {any} */ i) => i && i.Asset === asset) : null;
+		/**
+		 * Whether the Layering screen moved, resized or rotated an item (or one of its layers). The game's texture masks
+		 * don't follow those (in WebGL even a move shifts them), so such a weapon is drawn whole: its Hand layer is left
+		 * out, rather than cutting holes beside the hands.
+		 */
+		function transformed(/** @type {any} */ item) {
+			const p = (item && item.Property) || {};
+			const off = (/** @type {any} */ v, /** @type {number} */ dflt) =>
+				v != null && (typeof v === 'object' ? Object.values(v).some((x) => x != null && x !== dflt) : v !== dflt);
+			return (
+				off(p.TranslationX, 0) ||
+				off(p.TranslationY, 0) ||
+				off(p.ScaleX, 1) ||
+				off(p.ScaleY, 1) ||
+				off(p.Rotation, 0) ||
+				off(p.LayerTranslationX, 0) ||
+				off(p.LayerTranslationY, 0) ||
+				off(p.LayerScaleX, 1) ||
+				off(p.LayerScaleY, 1) ||
+				off(p.LayerRotation, 0)
+			);
+		}
 
 		/**
 		 * The Armory weapon a character holds: the item's name, the weapon (key, name and catalog category), its option
@@ -155,6 +180,16 @@
 				}
 			}
 			guard.hookGame('ValidationResolveRemoveDiff', 0, 'Keeping weapons on', keepOnRemove);
+			if (guard.gameFunction('CharacterAppearanceBuildMasks')) {
+				guard.hookGame('CharacterAppearanceBuildMasks', 0, 'Hand layer', (args, next) => {
+					const masks = next(args);
+					const C = args[0];
+					if (!Array.isArray(masks) || !C) {
+						return masks;
+					}
+					return masks.filter((/** @type {any} */ l) => !(l && l.Name === 'Hand' && isArmory(l.Asset) && transformed(wornIn(C, l.Asset))));
+				});
+			}
 			ready = true;
 			for (const f of whenReady.splice(0)) {
 				runReady(f);

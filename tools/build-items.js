@@ -226,6 +226,12 @@ function main() {
 				continue;
 			}
 			const cat = Object.keys(layer.AllowTypes).find((k) => k !== 'Position');
+			if (!cat) {
+				// For every weapon of every item (the Hand layer: by carry only).
+				layers.push({ ...layer, AllowTypes: { ...layer.AllowTypes } });
+				copyImage(path.join(art, `Weapons_${layer.Name}.png`), `img/Weapons_${layer.Name}.png`);
+				continue;
+			}
 			const numbers = allowed(layer.AllowTypes[cat])
 				.map((n) => numberOf.get(`${cat}:${n}`))
 				.filter((n) => n !== undefined);

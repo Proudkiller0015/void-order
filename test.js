@@ -576,8 +576,9 @@ const openCardOf = async (page, name) => {
 				wrathKind: box(100)?.previousElementSibling?.textContent,
 				wabbajackStats: !!box(98)?.querySelector('.stats'),
 				wabbajackPicture: !!box(98)?.querySelector('.void-sprite img'),
-				// The one weapon whose art isn't finished yet (#47) shows a plain mark.
-				unfinishedPlain: !!box(47)?.querySelector('.void-sprite.none'),
+				// Every weapon has its picture now (the AS VAL, #47, was the last).
+				unpictured: document.querySelectorAll('#void-panel .weapon .void-sprite.none').length,
+				asValPicture: !!box(47)?.querySelector('.void-sprite img'),
 				shotgun: box(1)?.innerText,
 				shotgunPicture: box(1)?.querySelector('.void-sprite img')?.getAttribute('src'),
 			};
@@ -589,7 +590,8 @@ const openCardOf = async (page, name) => {
 				/^Scythes · 1$/.test(arms.wrathKind || '') &&
 				!arms.wabbajackStats &&
 				arms.wabbajackPicture &&
-				arms.unfinishedPlain &&
+				arms.unpictured === 0 &&
+				arms.asValPicture &&
 				/Old sawed-off shotgun[\s\S]*Common[\s\S]*\+3 Base damage · \+1 Speed/.test(arms.shotgun) &&
 				/\/void-assets\/weapons\/1\.png$/.test(arms.shotgunPicture || ''),
 			arms,
@@ -1850,6 +1852,40 @@ const openCardOf = async (page, name) => {
 			prayer.includes('VoidAskVoid') && !prayer.includes('VoidChannel'),
 			prayer,
 		);
+		// A shot at nobody: into the air, on your own hands; no roll.
+		const air = async (item, name) => {
+			await hold(ap, item, { w: 0, Position: 0 });
+			const menu = await ap.evaluate(() => ActivityAllowedForGroup(Player, 'ItemHands').map((a) => a.Activity.Name));
+			await ap.evaluate((name) => {
+				window.sent = [];
+				const act = ActivityAllowedForGroup(Player, 'ItemHands').find((a) => a.Activity.Name === name);
+				if (act) ActivityRun(Player, Player, AssetGroupGet('Female3DCG', 'ItemHands'), act);
+			}, name);
+			await wait(1200);
+			const line = await lineOf(ap);
+			const rolled = await ap.evaluate(() => window.sent.some(([, d]) => d && d.Type === 'Hidden'));
+			return { menu, line: line && line.text, rolled };
+		};
+		const rifleAir = await air('VoidRifles', 'VoidAir');
+		check(
+			'a gun fires into the air, with no roll',
+			rifleAir.menu.includes('VoidAir') &&
+				!rifleAir.menu.includes('VoidAirBlast') &&
+				/^Ann fires the .+ into the air\.$/.test(rifleAir.line || '') &&
+				!rifleAir.rolled,
+			rifleAir,
+		);
+		const shotgunAir = await air('VoidShotguns', 'VoidAirBlast');
+		check(
+			'a shotgun fires a blast into the air',
+			shotgunAir.menu.includes('VoidAirBlast') &&
+				!shotgunAir.menu.includes('VoidAir') &&
+				/^Ann fires a warning shot into the air with the .+\.$/.test(shotgunAir.line || '') &&
+				!shotgunAir.rolled,
+			shotgunAir,
+		);
+		const swordAir = await air('VoidSwords', 'VoidAir');
+		check('a sword has no shot into the air', !swordAir.menu.includes('VoidAir') && !swordAir.menu.includes('VoidAirBlast'), swordAir.menu);
 		await hold(ap, 'VoidSwords', { w: 0 });
 		await ap.evaluate(() => (ChatRoomCharacter[1].ArousalSettings.Active = 'Inactive'));
 		const offMenu = await menuOn(ap, 'ItemArms');

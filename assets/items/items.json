@@ -1,6 +1,6 @@
 {
 	"group": "ItemHandheld",
-	"source": "cf00b3ef5",
+	"source": "da7ddbe7a",
 	"items": [
 		{
 			"name": "VoidPistols",
@@ -83,6 +83,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "CrackheadPMPistolMetal",
@@ -1320,7 +1341,8 @@
 			"layerNames": {
 				"ItemHandheldVoidPistolsMetal": "Metal",
 				"ItemHandheldVoidPistolsGrip": "Grip and stock",
-				"ItemHandheldVoidPistolsGlow": "Glow"
+				"ItemHandheldVoidPistolsGlow": "Glow",
+				"ItemHandheldVoidPistolsHand": "Hand layer"
 			}
 		},
 		{
@@ -1390,6 +1412,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "CrackheadIllegalGunMetal",
@@ -2688,7 +2731,8 @@
 			"layerNames": {
 				"ItemHandheldVoidSMGsMetal": "Metal",
 				"ItemHandheldVoidSMGsGrip": "Grip and stock",
-				"ItemHandheldVoidSMGsGlow": "Glow"
+				"ItemHandheldVoidSMGsGlow": "Glow",
+				"ItemHandheldVoidSMGsHand": "Hand layer"
 			}
 		},
 		{
@@ -2769,6 +2813,11 @@
 					"key": "ExperimentalAKRifle",
 					"name": "Experimental AK Rifle",
 					"cat": "Rifles"
+				},
+				{
+					"key": "VoidChampionASVAL",
+					"name": "Void Champion AS VAL",
+					"cat": "Rifles"
 				}
 			],
 			"carries": [
@@ -2808,6 +2857,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "HK416Metal",
@@ -6702,6 +6772,360 @@
 							"AllFours": "Hide",
 							"Hogtied": "Hide"
 						}
+					},
+					{
+						"Name": "VoidChampionASVALMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 88,
+						"Top": 336,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 88,
+						"Top": 336,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 88,
+						"Top": 336,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALPortArmsMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 76,
+						"Top": 259,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 1
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALPortArmsGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 76,
+						"Top": 259,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 1
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALPortArmsGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 76,
+						"Top": 259,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 1
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALShoulderMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 142,
+						"Top": 207,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 2
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALShoulderBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 142,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 2
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALShoulderGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 142,
+						"Top": 207,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 2
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALShoulderBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 142,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 2
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALShoulderGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 142,
+						"Top": 207,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 2
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALShoulderBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 142,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 2
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALOnBackMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 132,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 3
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALBoundMetal",
+						"CopyLayerColor": "Metal",
+						"Left": 132,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15
+						},
+						"PoseMapping": {
+							"TapedHands": "TapedHands",
+							"BaseUpper": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALOnBackGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 132,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 3
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALBoundGrip",
+						"CopyLayerColor": "Grip",
+						"Left": 132,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15
+						},
+						"PoseMapping": {
+							"TapedHands": "TapedHands",
+							"BaseUpper": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALOnBackGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 132,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15,
+							"Position": 3
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
+					},
+					{
+						"Name": "VoidChampionASVALBoundGlow",
+						"CopyLayerColor": "Glow",
+						"Left": 132,
+						"Top": 207,
+						"Priority": 6,
+						"AllowTypes": {
+							"w": 15
+						},
+						"PoseMapping": {
+							"TapedHands": "TapedHands",
+							"BaseUpper": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					}
 				]
 			},
@@ -6848,6 +7272,15 @@
 										"Default"
 									]
 								}
+							},
+							{
+								"Property": {
+									"DefaultColor": [
+										"#26272D",
+										"#232532",
+										"#3A50FF"
+									]
+								}
 							}
 						],
 						"DrawData": {
@@ -6896,6 +7329,9 @@
 								},
 								{
 									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/ExperimentalAKRifle.png"
+								},
+								{
+									"imagePath": "https://proudkiller0015.github.io/void-order/assets/items/options/VoidChampionASVAL.png"
 								}
 							]
 						}
@@ -6946,6 +7382,8 @@
 				"ItemHandheldVoidRiflesSetw13": "SourceCharacter puts the Void Division Salvatoris Crusader MCX in DestinationCharacter hands.",
 				"ItemHandheldVoidRiflesOptionw14": "Experimental AK Rifle",
 				"ItemHandheldVoidRiflesSetw14": "SourceCharacter puts the Experimental AK Rifle in DestinationCharacter hands.",
+				"ItemHandheldVoidRiflesOptionw15": "Void Champion AS VAL",
+				"ItemHandheldVoidRiflesSetw15": "SourceCharacter puts the Void Champion AS VAL in DestinationCharacter hands.",
 				"ItemHandheldVoidRiflesModulePosition": "Carry",
 				"ItemHandheldVoidRiflesSelectPosition": "How to carry it:",
 				"ItemHandheldVoidRiflesOptionPosition0": "Hand on the trigger",
@@ -6960,7 +7398,8 @@
 			"layerNames": {
 				"ItemHandheldVoidRiflesMetal": "Metal",
 				"ItemHandheldVoidRiflesGrip": "Grip and stock",
-				"ItemHandheldVoidRiflesGlow": "Glow"
+				"ItemHandheldVoidRiflesGlow": "Glow",
+				"ItemHandheldVoidRiflesHand": "Hand layer"
 			}
 		},
 		{
@@ -7055,6 +7494,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "OldHuntingRifleMetal",
@@ -10193,7 +10653,8 @@
 			"layerNames": {
 				"ItemHandheldVoidSniperRiflesMetal": "Metal",
 				"ItemHandheldVoidSniperRiflesGrip": "Grip and stock",
-				"ItemHandheldVoidSniperRiflesGlow": "Glow"
+				"ItemHandheldVoidSniperRiflesGlow": "Glow",
+				"ItemHandheldVoidSniperRiflesHand": "Hand layer"
 			}
 		},
 		{
@@ -10263,6 +10724,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "OldSawedOffShotgunMetal",
@@ -11679,7 +12161,8 @@
 			"layerNames": {
 				"ItemHandheldVoidShotgunsMetal": "Metal",
 				"ItemHandheldVoidShotgunsGrip": "Grip and stock",
-				"ItemHandheldVoidShotgunsGlow": "Glow"
+				"ItemHandheldVoidShotgunsGlow": "Glow",
+				"ItemHandheldVoidShotgunsHand": "Hand layer"
 			}
 		},
 		{
@@ -11743,6 +12226,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "SimpleHandCrossbowMetal",
@@ -12654,7 +13158,8 @@
 			"layerNames": {
 				"ItemHandheldVoidCrossbowsMetal": "Metal",
 				"ItemHandheldVoidCrossbowsGrip": "Grip and stock",
-				"ItemHandheldVoidCrossbowsGlow": "Glow"
+				"ItemHandheldVoidCrossbowsGlow": "Glow",
+				"ItemHandheldVoidCrossbowsHand": "Hand layer"
 			}
 		},
 		{
@@ -12812,6 +13317,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "ReciderMetal",
@@ -16197,7 +16723,8 @@
 			"layerNames": {
 				"ItemHandheldVoidSwordsMetal": "Metal",
 				"ItemHandheldVoidSwordsGrip": "Grip and stock",
-				"ItemHandheldVoidSwordsGlow": "Glow"
+				"ItemHandheldVoidSwordsGlow": "Glow",
+				"ItemHandheldVoidSwordsHand": "Hand layer"
 			}
 		},
 		{
@@ -16300,6 +16827,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "LovebiteMetal",
@@ -18562,7 +19110,8 @@
 			"layerNames": {
 				"ItemHandheldVoidGlowingBladesMetal": "Metal",
 				"ItemHandheldVoidGlowingBladesGrip": "Grip and stock",
-				"ItemHandheldVoidGlowingBladesGlow": "Glow"
+				"ItemHandheldVoidGlowingBladesGlow": "Glow",
+				"ItemHandheldVoidGlowingBladesHand": "Hand layer"
 			}
 		},
 		{
@@ -18617,6 +19166,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "IneluctabilisMetal",
@@ -18858,7 +19428,8 @@
 			"layerNames": {
 				"ItemHandheldVoidShortBladesMetal": "Metal",
 				"ItemHandheldVoidShortBladesGrip": "Grip and stock",
-				"ItemHandheldVoidShortBladesGlow": "Glow"
+				"ItemHandheldVoidShortBladesGlow": "Glow",
+				"ItemHandheldVoidShortBladesHand": "Hand layer"
 			}
 		},
 		{
@@ -18931,6 +19502,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "MacuahuitlMetal",
@@ -19798,7 +20390,8 @@
 			"layerNames": {
 				"ItemHandheldVoidBluntMetal": "Metal",
 				"ItemHandheldVoidBluntGrip": "Grip and stock",
-				"ItemHandheldVoidBluntGlow": "Glow"
+				"ItemHandheldVoidBluntGlow": "Glow",
+				"ItemHandheldVoidBluntHand": "Hand layer"
 			}
 		},
 		{
@@ -19876,6 +20469,27 @@
 					{
 						"Name": "Glow",
 						"HasImage": false
+					},
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": {
+							"Position": 0
+						},
+						"PoseMapping": {
+							"TapedHands": "Hide",
+							"Yoked": "Hide",
+							"OverTheHead": "Hide",
+							"BackBoxTie": "Hide",
+							"BackElbowTouch": "Hide",
+							"BackCuffs": "Hide",
+							"AllFours": "Hide",
+							"Hogtied": "Hide"
+						}
 					},
 					{
 						"Name": "TheRootMetal",
@@ -20871,7 +21485,8 @@
 			"layerNames": {
 				"ItemHandheldVoidStaffsMetal": "Metal",
 				"ItemHandheldVoidStaffsGrip": "Grip and stock",
-				"ItemHandheldVoidStaffsGlow": "Glow"
+				"ItemHandheldVoidStaffsGlow": "Glow",
+				"ItemHandheldVoidStaffsHand": "Hand layer"
 			}
 		},
 		{
@@ -20909,6 +21524,22 @@
 					"TapedHands": "Hide"
 				},
 				"Layer": [
+					{
+						"Name": "Hand",
+						"TextureMask": {},
+						"BlendingMode": "destination-out",
+						"Priority": 56,
+						"Left": 0,
+						"Top": 0,
+						"AllowTypes": [
+							{
+								"Position": 0
+							},
+							{
+								"Position": 1
+							}
+						]
+					},
 					{
 						"Name": "Shaft",
 						"HasImage": false,
@@ -21278,7 +21909,8 @@
 				"ItemHandheldQueensWrathCrystals": "Crystals",
 				"ItemHandheldQueensWrathChain": "Chain",
 				"ItemHandheldQueensWrathGem": "Gem",
-				"ItemHandheldQueensWrathGlow": "Glow"
+				"ItemHandheldQueensWrathGlow": "Glow",
+				"ItemHandheldQueensWrathHand": "Hand layer"
 			}
 		}
 	],
@@ -21308,6 +21940,7 @@
 		"img/QueensWrath_GlowHeld.png",
 		"img/QueensWrath_GlowHeldLow.png",
 		"img/QueensWrath_GlowOnBack.png",
+		"img/QueensWrath_Hand.png",
 		"img/QueensWrath_ShaftFront.png",
 		"img/QueensWrath_ShaftHeld.png",
 		"img/QueensWrath_ShaftHeldLow.png",
@@ -21560,6 +22193,7 @@
 		"img/Weapons_HK416ShoulderBackMetal.png",
 		"img/Weapons_HK416ShoulderGrip.png",
 		"img/Weapons_HK416ShoulderMetal.png",
+		"img/Weapons_Hand.png",
 		"img/Weapons_HumblerBoundGlow.png",
 		"img/Weapons_HumblerBoundGrip.png",
 		"img/Weapons_HumblerBoundMetal.png",
@@ -22066,6 +22700,24 @@
 		"img/Weapons_VectorSMGShoulderBackMetal.png",
 		"img/Weapons_VectorSMGShoulderGrip.png",
 		"img/Weapons_VectorSMGShoulderMetal.png",
+		"img/Weapons_VoidChampionASVALBoundGlow.png",
+		"img/Weapons_VoidChampionASVALBoundGrip.png",
+		"img/Weapons_VoidChampionASVALBoundMetal.png",
+		"img/Weapons_VoidChampionASVALGlow.png",
+		"img/Weapons_VoidChampionASVALGrip.png",
+		"img/Weapons_VoidChampionASVALMetal.png",
+		"img/Weapons_VoidChampionASVALOnBackGlow.png",
+		"img/Weapons_VoidChampionASVALOnBackGrip.png",
+		"img/Weapons_VoidChampionASVALOnBackMetal.png",
+		"img/Weapons_VoidChampionASVALPortArmsGlow.png",
+		"img/Weapons_VoidChampionASVALPortArmsGrip.png",
+		"img/Weapons_VoidChampionASVALPortArmsMetal.png",
+		"img/Weapons_VoidChampionASVALShoulderBackGlow.png",
+		"img/Weapons_VoidChampionASVALShoulderBackGrip.png",
+		"img/Weapons_VoidChampionASVALShoulderBackMetal.png",
+		"img/Weapons_VoidChampionASVALShoulderGlow.png",
+		"img/Weapons_VoidChampionASVALShoulderGrip.png",
+		"img/Weapons_VoidChampionASVALShoulderMetal.png",
 		"img/Weapons_VoidDivisionBellatorCrusaderMP155UltimaBoundGlow.png",
 		"img/Weapons_VoidDivisionBellatorCrusaderMP155UltimaBoundGrip.png",
 		"img/Weapons_VoidDivisionBellatorCrusaderMP155UltimaBoundMetal.png",
@@ -22325,6 +22977,7 @@
 		"options/UpgradedAKRifle.png",
 		"options/UpgradedMiniUzi.png",
 		"options/VectorSMG.png",
+		"options/VoidChampionASVAL.png",
 		"options/VoidDivisionBellatorCrusaderMP155Ultima.png",
 		"options/VoidDivisionRangerCrusaderRSASS.png",
 		"options/VoidDivisionSalvatorisCrusaderMCX.png",

@@ -73,7 +73,7 @@ const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,Back
 	const [outName, ...specs] = process.argv.slice(2);
 	const rows = specs.map((spec) => {
 		const m = /^([A-Za-z]+)(?::(\d+))?(?:@(\d+))?$/.exec(spec);
-		return { spec, item: m[1], carry: Number(m[2] || 0), weapon: Number(m[3] || 0), layers: !!process.env.LAYERS, probe: process.env.PROBE || '' };
+		return { spec, item: m[1], carry: Number(m[2] || 0), weapon: Number(m[3] || 0), layers: !!process.env.LAYERS, probe: process.env.PROBE || '', wear: (process.env.WEAR || '').split(',').filter(Boolean) };
 	});
 	const full = [];
 	for (const row of rows) {
@@ -82,6 +82,12 @@ const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,Back
 				async (row, pose) => {
 					window.LAYERS = row.layers;
 					CharacterAppearanceSetDefault(Player);
+					// WEAR: extra clothes, "Group:Asset,…" (a cloth asset replaces the default clothes).
+					for (const spec of row.wear) {
+						const [group, asset] = spec.split(':');
+						if (group.startsWith('Cloth')) ['Cloth', 'ClothLower', 'ClothOuter'].forEach((g) => InventoryRemove(Player, g));
+						InventoryWear(Player, asset, group);
+					}
 					InventoryWear(Player, row.item, 'ItemHandheld');
 					const item = InventoryGet(Player, 'ItemHandheld');
 					const data = ModularItemDataLookup[`ItemHandheld${row.item}`];

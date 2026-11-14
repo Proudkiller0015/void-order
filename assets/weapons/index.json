@@ -687,7 +687,7 @@
 			"+5 Speed",
 			"+3 Luck"
 		],
-		"sprite": false
+		"sprite": true
 	},
 	{
 		"id": 48,

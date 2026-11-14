@@ -345,6 +345,164 @@ const playAround = (page) =>
 			CharacterAppearanceSetDefault(Player);
 			return out;
 		});
+		// The Hand layer: the game's own texture mask on our item. In the held carry the hands show over the weapon;
+		// lowered below the weapon (Layering's priority) the weapon covers them; it stays on the hands when the weapon is
+		// moved, resized or rotated; it only ever erases our weapon (gloves, mittens stay); without its picture the
+		// weapon is drawn whole. In both the WebGL and the 2D path.
+		const hand = await page.evaluate(async () => {
+			const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+			const img = new Image();
+			img.src = `${window.VoidOrderAssets}items/img/Weapons_Hand.png`;
+			await img.decode();
+			const mc = document.createElement('canvas');
+			mc.width = img.width;
+			mc.height = img.height;
+			mc.getContext('2d').drawImage(img, 0, 0);
+			const md = mc.getContext('2d').getImageData(0, 0, img.width, img.height).data;
+			const top = typeof CanvasUpperOverflow === 'number' ? CanvasUpperOverflow : 0;
+			const px = [];
+			for (let y = 0; y < img.height; y++)
+				for (let x = 0; x < img.width; x++) if (md[(y * img.width + x) * 4 + 3] > 0) px.push([x, y + top]);
+			const snap = async (spec) => {
+				CharacterAppearanceSetDefault(Player);
+				if (spec.gloves) InventoryWear(Player, 'Gloves1', 'Gloves');
+				if (spec.mittens) InventoryWear(Player, 'LeatherMittens', 'ItemHands');
+				if (spec.weapon) {
+					InventoryWear(Player, 'VoidRifles', 'ItemHandheld');
+					const it = InventoryGet(Player, 'ItemHandheld');
+					ExtendedItemSetOptionByRecord(
+						Player,
+						it,
+						{ ...(it.Property?.TypeRecord || {}), w: 0, Position: 0 },
+						{ push: false, refresh: false },
+					);
+					Object.assign(it.Property, spec.prop || {});
+				}
+				PoseSetActive(Player, null, true);
+				CharacterRefresh(Player, false);
+				for (let i = 0; i < 10; i++) {
+					CharacterAppearanceBuildCanvas(Player);
+					await wait(100);
+				}
+				const c = Player.Canvas.getContext('2d');
+				return { all: c.getImageData(0, 0, Player.Canvas.width, Player.Canvas.height).data, w: Player.Canvas.width };
+			};
+			const same = (a, b) => {
+				let n = 0;
+				for (const [x, y] of px) {
+					const i = (y * a.w + x) * 4;
+					if (Math.abs(a.all[i] - b.all[i]) + Math.abs(a.all[i + 1] - b.all[i + 1]) + Math.abs(a.all[i + 2] - b.all[i + 2]) < 12) n++;
+				}
+				return Math.round((1000 * n) / px.length) / 1000;
+			};
+			// Pixels outside the hands where the weapon is missing although it is drawn there unmasked (a hole).
+			const inMask = new Set(px.map(([x, y]) => y * 100000 + x));
+			const holes = (a, b) => {
+				let n = 0;
+				for (let i = 0; i < a.all.length; i += 4) {
+					const p = i / 4;
+					const x = p % a.w;
+					const y = Math.floor(p / a.w);
+					if (inMask.has(y * 100000 + x)) continue;
+					if (Math.abs(a.all[i] - b.all[i]) + Math.abs(a.all[i + 1] - b.all[i + 1]) + Math.abs(a.all[i + 2] - b.all[i + 2]) > 30) n++;
+				}
+				return n;
+			};
+			const moved = (a, b) => {
+				let n = 0;
+				for (let i = 0; i < a.all.length; i += 4) if (a.all[i + 3] !== b.all[i + 3]) n++;
+				return n;
+			};
+			const run = async () => {
+				const none = await snap({});
+				const on = await snap({ weapon: true });
+				const off = await snap({ weapon: true, prop: { OverridePriority: { Hand: 0 } } });
+				const shifted = await snap({ weapon: true, prop: { TranslationX: 40, ScaleX: 1.2, ScaleY: 1.2, Rotation: 8 } });
+				const shiftedOff = await snap({
+					weapon: true,
+					prop: { TranslationX: 40, ScaleX: 1.2, ScaleY: 1.2, Rotation: 8, OverridePriority: { Hand: 0 } },
+				});
+				const each = {};
+				for (const [k, prop] of Object.entries({
+					move: { TranslationX: 40 },
+					resize: { ScaleX: 1.2, ScaleY: 1.2 },
+					rotate: { Rotation: 8 },
+				})) {
+					const a = await snap({ weapon: true, prop });
+					const b = await snap({ weapon: true, prop: { ...prop, OverridePriority: { Hand: 0 } } });
+					each[k] = { keeps: same(a, none), holes: holes(a, b) };
+				}
+				const gloves = await snap({ gloves: true });
+				const glovesOn = await snap({ gloves: true, weapon: true });
+				const mitts = await snap({ mittens: true });
+				const mittsOn = await snap({ mittens: true, weapon: true });
+				// Time 10 builds with the mask and 10 with it lowered (no mask).
+				const time = async (prop) => {
+					await snap({ weapon: true, prop });
+					const t0 = performance.now();
+					for (let i = 0; i < 10; i++) CharacterAppearanceBuildCanvas(Player);
+					return Math.round(performance.now() - t0);
+				};
+				const msOn = await time({});
+				const msOff = await time({ OverridePriority: { Hand: 0 } });
+				// Without the mask's picture: the game skips the mask, so the weapon is whole (as when lowered).
+				const get = DrawImageCache.get.bind(DrawImageCache);
+				DrawImageCache.get = (u) => (/_Hand\.png$/.test(String(u)) ? undefined : get(u));
+				const getImage = DrawGetImage;
+				DrawGetImage = (u) => (/_Hand\.png$/.test(String(u)) ? null : getImage(u));
+				DrawCacheTextureAlphaMasks.clear();
+				if (GLDrawCanvas && GLDrawCanvas.GL && GLDrawCanvas.GL.maskCache) GLDrawCanvas.GL.maskCache.clear();
+				let missing;
+				try {
+					missing = await snap({ weapon: true });
+				} finally {
+					DrawImageCache.get = get;
+					DrawGetImage = getImage;
+					DrawCacheTextureAlphaMasks.clear();
+					if (GLDrawCanvas && GLDrawCanvas.GL && GLDrawCanvas.GL.maskCache) GLDrawCanvas.GL.maskCache.clear();
+				}
+				return {
+					onKeepsHands: same(on, none),
+					offCoversHands: same(off, none),
+					shiftedKeepsHands: same(shifted, none),
+					shiftedMoved: moved(shifted, on),
+					shiftedHoles: holes(shifted, shiftedOff),
+					each,
+					glovesKept: same(glovesOn, gloves),
+					mittensKept: same(mittsOn, mitts),
+					missingIsWhole: same(missing, off),
+					msOn,
+					msOff,
+				};
+			};
+			const gl = !(GLVersion === 'No WebGL' || !GLDrawCanvas || !GLDrawCanvas.GL);
+			const out = { gl, maskPx: px.length };
+			if (gl) out.webgl = await run();
+			const was = GLVersion;
+			GLVersion = 'No WebGL';
+			try {
+				out.canvas = await run();
+			} finally {
+				GLVersion = was;
+			}
+			CharacterAppearanceSetDefault(Player);
+			CharacterRefresh(Player, false);
+			return out;
+		});
+		console.log('hand layer', JSON.stringify(hand));
+		for (const [path, r] of Object.entries({ webgl: hand.webgl, canvas: hand.canvas })) {
+			if (!r) continue;
+			check(`${path}: the hands show over a held weapon (overhand)`, r.onKeepsHands >= 0.97 && r.offCoversHands <= 0.9, r);
+			check(
+				`${path}: a weapon moved, resized or rotated in Layering is drawn whole, with no holes beside the hands`,
+				r.shiftedMoved > 500 && r.shiftedHoles === 0 && Object.values(r.each).every((e) => e.holes === 0),
+				r,
+			);
+			check(`${path}: gloves and mittens stay whole`, r.glovesKept >= 0.97 && r.mittensKept >= 0.97, r);
+			check(`${path}: without the Hand layer's picture the weapon is drawn whole`, r.missingIsWhole >= 0.97, r);
+			check(`${path}: the mask costs little (10 builds)`, r.msOn <= r.msOff * 1.5 + 20, r);
+		}
+		check('the WebGL path was tested', !!hand.webgl, hand.gl);
 		const want = {
 			'VoidRifles:0 BaseUpper': 'held',
 			'VoidRifles:0 TapedHands': 'bound',

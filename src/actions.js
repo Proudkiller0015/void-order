@@ -72,6 +72,8 @@
 		VoidSweep: ['ItemLegs', 'ItemFeet'],
 		VoidHook: ['ItemNeck', 'ItemArms'],
 		VoidLend: ['ItemHands'],
+		VoidAir: ['ItemHands'],
+		VoidAirBlast: ['ItemHands'],
 		VoidRecall: ['ItemHands'],
 	};
 	// ---- Breaking free
@@ -185,7 +187,7 @@
 	 * when that's on); `fills`: what an upkeep action refills. `ownerOnly`: Queen's Wrath's owner only.
 	 * @typedef {{ name: string, label: string, kinds: string[], target?: string[], self?: string[],
 	 *   say: (a: string, b: string, wpn: string, zone: string) => string, attack?: boolean, uses?: string, fills?: string,
-	 *   ownerOnly?: boolean, special?: string, prayer?: boolean, melee?: boolean, when?: (target: any, group: string) => boolean }} Def
+	 *   ownerOnly?: boolean, special?: string, prayer?: boolean, melee?: boolean, air?: boolean, when?: (target: any, group: string) => boolean }} Def
 	 * @type {Def[]}
 	 */
 	const DEFS = [
@@ -361,6 +363,25 @@
 			say: (a, b) => `${a} shoots at ${b}'s lock.`,
 		},
 		// Upkeep, on your own hands.
+		// A shot at nobody: into the air (a round spent, no roll).
+		{
+			name: 'VoidAir',
+			label: 'Fire into the air',
+			kinds: GUNS.filter((k) => k !== 'Shotguns'),
+			self: ZONES_FOR.VoidAir,
+			uses: 'shot',
+			air: true,
+			say: (a, b, x) => `${a} fires the ${x} into the air.`,
+		},
+		{
+			name: 'VoidAirBlast',
+			label: 'Fire a blast into the air',
+			kinds: ['Shotguns'],
+			self: ZONES_FOR.VoidAirBlast,
+			uses: 'shot',
+			air: true,
+			say: (a, b, x) => `${a} fires a warning shot into the air with the ${x}.`,
+		},
 		{
 			name: 'VoidReload',
 			label: 'Reload',
@@ -655,8 +676,9 @@
 			} else if (fullOf(h)) {
 				const n = left(h);
 				if (n <= 0) {
-					text =
-						d.uses === 'shot'
+					text = d.air
+						? `${a} raises the ${nameOf(h)} and pulls the trigger: click. It's empty.`
+						: d.uses === 'shot'
 							? `${a} pulls the trigger of the ${nameOf(h)} at ${b}: click. It's empty.`
 							: `${a} raises ${isQw(h) ? QW_NAME : `the ${nameOf(h)}`} at ${b}, but its power is spent.`;
 					sendActivity(w.Player, acted, group, name, text);
