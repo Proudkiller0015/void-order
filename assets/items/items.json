@@ -4,7 +4,7 @@
 	"items": [
 		{
 			"name": "VoidPistols",
-			"description": "Armory: Pistols",
+			"description": "Void pistol",
 			"weapons": [
 				{
 					"key": "CrackheadPMPistol",
@@ -780,7 +780,7 @@
 		},
 		{
 			"name": "VoidSMGs",
-			"description": "Armory: Submachine guns",
+			"description": "Void SMG",
 			"weapons": [
 				{
 					"key": "CrackheadIllegalGun",
@@ -1369,7 +1369,7 @@
 		},
 		{
 			"name": "VoidRifles",
-			"description": "Armory: Rifles",
+			"description": "Void rifle",
 			"weapons": [
 				{
 					"key": "HK416",
@@ -3091,7 +3091,7 @@
 		},
 		{
 			"name": "VoidSniperRifles",
-			"description": "Armory: Sniper rifles",
+			"description": "Void sniper rifle",
 			"weapons": [
 				{
 					"key": "OldHuntingRifle",
@@ -4349,7 +4349,7 @@
 		},
 		{
 			"name": "VoidShotguns",
-			"description": "Armory: Shotguns",
+			"description": "Void shotgun",
 			"weapons": [
 				{
 					"key": "OldSawedOffShotgun",
@@ -4979,7 +4979,7 @@
 		},
 		{
 			"name": "VoidCrossbows",
-			"description": "Armory: Crossbows",
+			"description": "Void crossbow",
 			"weapons": [
 				{
 					"key": "SimpleHandCrossbow",
@@ -5549,7 +5549,7 @@
 		},
 		{
 			"name": "VoidSwords",
-			"description": "Armory: Swords",
+			"description": "Void sword",
 			"weapons": [
 				{
 					"key": "Recider",
@@ -6494,7 +6494,7 @@
 		},
 		{
 			"name": "VoidGlowingBlades",
-			"description": "Armory: Glowing blades",
+			"description": "Void glowing blade",
 			"weapons": [
 				{
 					"key": "Lovebite",
@@ -7067,7 +7067,7 @@
 		},
 		{
 			"name": "VoidShortBlades",
-			"description": "Armory: Knives and machetes",
+			"description": "Void short blade",
 			"weapons": [
 				{
 					"key": "Ineluctabilis",
@@ -7272,7 +7272,7 @@
 		},
 		{
 			"name": "QueensWrath",
-			"description": "Queen's Wrath",
+			"description": "Queen's Wrath scythe",
 			"weapons": [
 				{
 					"key": "QueensWrath",

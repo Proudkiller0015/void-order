@@ -84,7 +84,14 @@ async function gamePage(browser, { hostile = '', after = '', vanilla = false, as
 	await page.setViewport({ width: 2000, height: 1000 });
 	const errors = [];
 	const warnings = [];
-	page.on('pageerror', (e) => errors.push(String(e.message).split('\n')[0]));
+	// Only errors that pass through the add-on's own files count: in a game missing a function, the game's own code
+	// calling it throws too, and that isn't ours to prevent.
+	page.on('pageerror', (e) => {
+		const stack = String(e.stack || '');
+		if (!stack.includes('\n') || /void\.js|\/void-src\//.test(stack)) {
+			errors.push(process.env.STACKS ? stack || String(e.message) : String(e.message).split('\n')[0]);
+		}
+	});
 	page.on('console', (m) => {
 		if (/Oculus Nihili/.test(m.text())) warnings.push(m.text());
 	});
@@ -321,7 +328,7 @@ const playAround = (page) =>
 		const names = await page.evaluate(() => ChatRoomCharacter.map((c) => InventoryGet(c, 'ItemHandheld')?.Asset.Description));
 		check(
 			'Ann holds Queen’s Wrath, Bea the weapon reaching furthest right',
-			names[0] === "Queen's Wrath" && /^Armory/.test(names[1]),
+			names[0] === "Queen's Wrath scythe" && /^Void /.test(names[1]),
 			names,
 		);
 		const ann = await edges(page, { member: 11 });

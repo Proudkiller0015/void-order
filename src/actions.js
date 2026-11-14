@@ -1,6 +1,6 @@
 // Oculus Nihili: what you can do with a weapon of the Armory in your hands. Holding one adds its actions to the game's
 // activity menu: combat on others by body zone (aim, shoot, slash, strike, cast…), upkeep on your own hands (reload,
-// hone, recharge, check the scope, channel), and Queen's Wrath's own set. Each sends a line everyone in the room reads,
+// hone, recharge, check the scope, ask the Void for help), and Queen's Wrath's own set. Each sends a line everyone in the room reads,
 // add-on or not, and may roll Void dice from the weapon's stats. Taking up, switching and carrying a weapon get a line
 // too, and ammunition and charge can be counted (off by default).
 //
@@ -57,7 +57,7 @@
 	 * when that's on); `fills`: what an upkeep action refills. `ownerOnly`: Queen's Wrath's owner only.
 	 * @typedef {{ name: string, label: string, kinds: string[], target?: string[], self?: string[],
 	 *   say: (a: string, b: string, wpn: string, zone: string) => string, attack?: boolean, uses?: string, fills?: string,
-	 *   ownerOnly?: boolean, special?: string, when?: (target: any) => boolean }} Def
+	 *   ownerOnly?: boolean, special?: string, prayer?: boolean, when?: (target: any) => boolean }} Def
 	 * @type {Def[]}
 	 */
 	const DEFS = [
@@ -221,13 +221,20 @@
 			fills: 'charge',
 			say: (a, b, x) => `${a} lets the glow of the ${x} build again.`,
 		},
+		// The Order serves the Void; it never commands it. Help is asked for, and the Void decides.
 		{
-			name: 'VoidChannel',
-			label: 'Channel the Void',
-			kinds: ['Staffs', 'QW'],
+			name: 'VoidAskVoid',
+			label: 'Request help from the Void',
+			kinds: ['Staffs', 'GlowingBlades', 'QW'],
 			self: ['ItemHands'],
 			fills: 'charge',
-			say: (a, b, x) => `${a} channels the Void into ${x === QW_NAME ? x : `the ${x}`}.`,
+			prayer: true,
+			say: (a) =>
+				[
+					`${a} bows low and asks the Void for aid.`,
+					`${a} whispers a prayer to the Void, asking for its help.`,
+					`${a} requests the Void's help; whether it answers is the Void's to decide.`,
+				][Math.floor(Math.random() * 3)],
 		},
 		{
 			name: 'VoidRecallSelf',
@@ -326,6 +333,11 @@
 	 * An activity line: the game's activity message, with its text carried in the message so players without the
 	 * add-on read it too (their game finds no text for our activity and shows ours in its place).
 	 */
+	/**
+	 * A line for an action, everyone in the room reads it, add-on or not. It goes as a plain Action (the game shows the
+	 * text in place of its 'Beep' placeholder), never as an Activity message, so neither the game nor any add-on counts
+	 * it as a sexual activity: no arousal, no activity preferences. It names the action and its target for the add-on.
+	 */
 	function sendActivity(
 		/** @type {any} */ actor,
 		/** @type {any} */ acted,
@@ -333,14 +345,15 @@
 		/** @type {string} */ name,
 		/** @type {string} */ text,
 	) {
-		const key = `${acted.IsPlayer && acted.IsPlayer() ? 'ChatSelf' : 'ChatOther'}-${group}-${name}`;
-		/** @type {any[]} */
-		let dict = [];
-		if (typeof w.DictionaryBuilder === 'function') {
-			dict = new w.DictionaryBuilder().sourceCharacter(actor).targetCharacter(acted).focusGroup(group).build();
-		}
-		dict.push({ Tag: `MISSING TEXT IN "ActivityDictionary.csv": ${key}`, Text: text });
-		w.ServerSend('ChatRoomChat', { Content: key, Type: 'Activity', Dictionary: dict });
+		w.ServerSend('ChatRoomChat', {
+			Content: 'Beep',
+			Type: 'Action',
+			Dictionary: [
+				{ Tag: 'Beep', Text: text },
+				{ Tag: 'VoidOrderAction', Text: name },
+				{ Tag: 'VoidOrderTarget', Text: String(acted && acted.MemberNumber) },
+			],
+		});
 	}
 	/** A plain action line (the game shows the text for the 'Beep' placeholder). */
 	function sendLine(/** @type {string} */ text) {
@@ -358,6 +371,13 @@
 		const h = items.held(w.Player);
 		const self = C.MemberNumber === w.Player.MemberNumber;
 		const isOwner = w.Player.MemberNumber === owner();
+		// The game's own blocks: arms that can't act, or a character you aren't allowed to use items on.
+		if (typeof w.Player.CanInteract === 'function' && !w.Player.CanInteract()) {
+			return [];
+		}
+		if (!self && C.AllowItem === false) {
+			return [];
+		}
 		return DEFS.filter((d) => {
 			const zones = self ? d.self : d.target;
 			if (!zones || !zones.includes(group)) {
@@ -438,8 +458,9 @@
 				w.CharacterSetFacialExpression(w.Player, 'Eyebrows', 'Angry', 4);
 			}
 		});
-		if (d.attack && h && on('actionDice')) {
-			const roll = attackDice(h);
+		if ((d.attack || d.prayer) && h && on('actionDice')) {
+			// An attack: the weapon's attack dice. A prayer: 1d20, whether the Void answers.
+			const roll = d.prayer ? { dice: [20], mod: 0 } : attackDice(h);
 			const why = await ctx.roll(roll.dice, roll.mod);
 			if (why) {
 				ctx.note(why);
@@ -588,12 +609,17 @@
 		w.ChatRoomRegisterMessageHandler({
 			Description: 'Oculus Nihili: weapon actions',
 			Priority: 220,
-			Callback: (/** @type {any} */ data, /** @type {any} */ sender, /** @type {any} */ msg, /** @type {any} */ meta) => {
+			Callback: (/** @type {any} */ data, /** @type {any} */ sender) => {
 				ctx.guard(
 					() => {
-						const name = /-(Void[A-Za-z]+)$/.exec(String((data && data.Content) || ''));
-						const d = name && data.Type === 'Activity' && byName.get(name[1]);
-						if (d && d.attack && meta && meta.TargetCharacter && meta.TargetCharacter.IsPlayer() && sender && !sender.IsPlayer()) {
+						if (!data || data.Type !== 'Action' || !Array.isArray(data.Dictionary)) {
+							return;
+						}
+						const tag = (/** @type {string} */ t) => data.Dictionary.find((/** @type {any} */ e) => e && e.Tag === t);
+						const d = byName.get(String((tag('VoidOrderAction') || {}).Text || ''));
+						const at = Number((tag('VoidOrderTarget') || {}).Text);
+						const faceOk = !w.Player.ArousalSettings || w.Player.ArousalSettings.AffectExpression !== false;
+						if (d && d.attack && at === w.Player.MemberNumber && sender && !sender.IsPlayer() && faceOk) {
 							w.CharacterSetFacialExpression?.(w.Player, 'Eyes', 'Closed', 2);
 						}
 					},

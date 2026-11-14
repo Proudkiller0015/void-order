@@ -19,6 +19,18 @@ const OUT = path.join(REPO, 'assets', 'items');
 const INDEX = path.join(__dirname, 'items-index.json');
 const PAGES = 'https://proudkiller0015.github.io/void-order/assets/items';
 const GROUP = 'ItemHandheld';
+/** Each kind's item name, as it reads after the game's "a" ("swaps a void sword for a void rifle"). */
+const DESCRIPTIONS = {
+	Pistols: 'Void pistol',
+	SMGs: 'Void SMG',
+	Rifles: 'Void rifle',
+	SniperRifles: 'Void sniper rifle',
+	Shotguns: 'Void shotgun',
+	Crossbows: 'Void crossbow',
+	Swords: 'Void sword',
+	GlowingBlades: 'Void glowing blade',
+	ShortBlades: 'Void short blade',
+};
 /** Where a category goes when it has too few weapons to be an item of its own. */
 const MERGE_INTO = {
 	SMGs: 'Pistols',
@@ -236,7 +248,8 @@ function main() {
 		}
 		items.push({
 			name,
-			description: `Armory: ${strings[`${GROUP}WeaponsModule${cat}`] || cat}`,
+			// The game writes "a <description>" in lower case in its lines ("uses a void rifle on…").
+			description: DESCRIPTIONS[cat] || `Void ${cat.toLowerCase()}`,
 			weapons: weapons.map((w) => ({ key: w.key, name: w.name, cat: w.cat })),
 			source: 'Weapons',
 			def: { Name: name, ...base, Layer: layers },
@@ -269,7 +282,7 @@ function main() {
 	copyImage(path.join(art, 'Preview', 'QueensWrath.png'), 'preview/QueensWrath.png');
 	items.push({
 		name: 'QueensWrath',
-		description: "Queen's Wrath",
+		description: "Queen's Wrath scythe",
 		weapons: [{ key: 'QueensWrath', name: "Queen's Wrath", cat: 'Scythes' }],
 		source: 'QueensWrath',
 		def: wrathDef,

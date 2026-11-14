@@ -134,7 +134,7 @@
 					w.AssetAdd(
 						group,
 						gameDefinition(item.def),
-						item.extended ? { [data.group]: { [item.name]: item.extended } } : undefined,
+						item.extended ? { [data.group]: { [item.name]: withoutGameMessages(item.extended) } } : undefined,
 						groupDef,
 					);
 				} catch (e) {
@@ -156,6 +156,15 @@
 			for (const f of whenReady.splice(0)) {
 				runReady(f);
 			}
+		}
+		/**
+		 * The extended item config, sending no message of the game's own when the weapon or the carry changes: the game
+		 * looks its text up in its own files, where our items have none, so every player saw "MISSING TEXT". The
+		 * holder's add-on says it in a line everyone reads instead (src/actions.js).
+		 * @param {any} extended
+		 */
+		function withoutGameMessages(extended) {
+			return { ...extended, ScriptHooks: { ...(extended.ScriptHooks || {}), PublishAction: () => {} } };
 		}
 		/** Takes a half-added item back out of the game's lists. */
 		function unregister(/** @type {any} */ group, /** @type {string} */ name) {

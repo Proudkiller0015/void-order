@@ -179,6 +179,8 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false, 
 				Character: [],
 				MapData: {},
 			};
+			// As a room's sync would: Ann may use items on Bea.
+			them.AllowItem = true;
 			ChatRoomCharacter = [Player, them];
 			CurrentScreen = 'ChatRoom';
 			window.sent = [];
@@ -1351,12 +1353,13 @@ const openCardOf = async (page, name) => {
 			);
 		const lineOf = (pg) =>
 			pg.evaluate(() => {
-				const m = window.sent.find(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Activity');
+				const m = window.sent.find(
+					([t, d]) => t === 'ChatRoomChat' && Array.isArray(d.Dictionary) && d.Dictionary.some((e) => e.Tag === 'VoidOrderAction'),
+				);
 				if (!m) return null;
-				const entry = m[1].Dictionary.find((e) => e.Tag && String(e.Tag).startsWith('MISSING'));
-				// What a game without the add-on looks up for this message, and so replaces with the text.
-				const vanilla = TextGetInScope(ScreenFileGetPath('ActivityDictionary.csv', 'Character', 'Preference'), m[1].Content);
-				return { content: m[1].Content, text: entry && entry.Text, matches: !!entry && entry.Tag === vanilla };
+				const tag = (t) => (m[1].Dictionary.find((e) => e.Tag === t) || {}).Text;
+				// A plain Action: every game shows the text in place of its 'Beep' placeholder.
+				return { type: m[1].Type, content: m[1].Content, text: tag('Beep'), action: tag('VoidOrderAction') };
 			});
 		await runOn(ap, 'ItemArms', 'VoidSlash');
 		await wait(1500);
@@ -1364,14 +1367,84 @@ const openCardOf = async (page, name) => {
 		check(
 			'a slash sends a line players without the add-on read',
 			!!slashed &&
-				slashed.content === 'ChatOther-ItemArms-VoidSlash' &&
+				slashed.type === 'Action' &&
+				slashed.content === 'Beep' &&
 				slashed.text === "Ann slashes at Bea's arm with the Recider." &&
-				slashed.matches,
+				slashed.action === 'VoidSlash',
 			slashed,
 		);
 		check('an attack rolls Void dice', await ap.evaluate(() => window.sent.some(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Hidden')));
 		const selfMenu = await ap.evaluate(() => ActivityAllowedForGroup(Player, 'ItemHands').map((a) => a.Activity.Name));
 		check('your own hands offer the upkeep', selfMenu.includes('VoidHone'), selfMenu);
+		// Not sexual: no arousal for either, nothing in the activity preferences, and a target with them off is still slashed.
+		const arousal = () =>
+			ap.evaluate(() => ({
+				me: Player.ArousalSettings.Progress,
+				bea: ChatRoomCharacter[1].ArousalSettings && ChatRoomCharacter[1].ArousalSettings.Progress,
+				prefs: JSON.stringify(Player.ArousalSettings.Activity || ''),
+			}));
+		await ap.evaluate(() => {
+			Player.ArousalSettings.Active = 'Hybrid';
+			Player.ArousalSettings.Progress = 10;
+			ChatRoomCharacter[1].ArousalSettings = { ...(ChatRoomCharacter[1].ArousalSettings || {}), Active: 'Hybrid', Progress: 10 };
+		});
+		const aroused0 = await arousal();
+		await runOn(ap, 'ItemArms', 'VoidSlash');
+		await hold(ap, 'VoidPistols');
+		await runOn(ap, 'ItemTorso', 'VoidShoot');
+		await hold(ap, 'QueensWrath');
+		await runOn(ap, 'ItemTorso', 'VoidReap');
+		await wait(1500);
+		const aroused1 = await arousal();
+		check(
+			'a slash, a shot and a reap leave both characters’ arousal as it was',
+			aroused1.me === aroused0.me && aroused1.bea === aroused0.bea,
+			{
+				aroused0,
+				aroused1,
+			},
+		);
+		check('nothing is added to the activity preferences', aroused1.prefs === aroused0.prefs);
+		check(
+			'and none of ours is an activity the game knows (so none is listed in the arousal preferences)',
+			!(await ap.evaluate(() => AssetAllActivities('Female3DCG').some((a) => /^Void/.test(a.Name)))),
+		);
+		check(
+			'nothing goes out as an Activity message',
+			!(await ap.evaluate(() => window.sent.some(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Activity'))),
+		);
+		const prayer = await ap.evaluate(() => ActivityAllowedForGroup(Player, 'ItemHands').map((a) => a.Activity.Name));
+		check(
+			'Queen’s Wrath asks the Void for help, it never channels it',
+			prayer.includes('VoidAskVoid') && !prayer.includes('VoidChannel'),
+			prayer,
+		);
+		await hold(ap, 'VoidSwords', { w: 0 });
+		await ap.evaluate(() => (ChatRoomCharacter[1].ArousalSettings.Active = 'Inactive'));
+		const offMenu = await menuOn(ap, 'ItemArms');
+		check('a target with sexual activities off can still be slashed', offMenu.includes('VoidSlash:VoidSwords'), offMenu);
+		const blocked = await ap.evaluate(() => {
+			ChatRoomCharacter[1].AllowItem = false;
+			const names = ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemArms').map((a) => a.Activity.Name);
+			ChatRoomCharacter[1].AllowItem = true;
+			return names;
+		});
+		check('but not someone you may not use items on', !blocked.includes('VoidSlash'), blocked);
+		await ap.evaluate(() => (ChatRoomCharacter[1].ArousalSettings.Active = 'Hybrid'));
+		// The game's own messages for our items: none (it has no text for them); and names that read well after "a".
+		const quiet = await ap.evaluate(() => {
+			window.sent = [];
+			const data = ModularItemDataLookup.ItemHandheldVoidRifles;
+			const item = InventoryGet(Player, 'ItemHandheld');
+			const pos = data.modules.find((m) => m.Name === 'Position');
+			window[`${data.functionPrefix}PublishAction`](Player, item, pos.Options[1], pos.Options[0]);
+			return window.sent.filter(([t]) => t === 'ChatRoomChat').map(([, d]) => d.Content);
+		});
+		check('changing a gun’s carry sends no message the game has no text for', quiet.length === 0, quiet);
+		const names = await ap.evaluate(() =>
+			['VoidRifles', 'VoidGlowingBlades', 'QueensWrath'].map((n) => AssetGet('Female3DCG', 'ItemHandheld', n).Description),
+		);
+		check('the items read well after the game’s "a"', names.join('|') === "Void rifle|Void glowing blade|Queen's Wrath scythe", names);
 		// The carry: moving a gun to port arms says so in the room.
 		await hold(ap, 'VoidRifles', { w: 0, Position: 0 });
 		await wait(1800);
