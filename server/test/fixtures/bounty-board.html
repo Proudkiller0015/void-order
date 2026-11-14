@@ -1,0 +1,53 @@
+<!doctype html>
+<html><body>
+<!-- A made-up copy of the prison registry's escaped list, in its markup (names and numbers are placeholders). -->
+<!-- ══ INMATE GRID ══════════════════════════════════════════ -->
+<div class="inmate-grid">
+        <div class="inmate-card">
+            <a href="inmate.php?id=421" class="card-photo-link">
+                <div class="card-photo">
+                    <img src="uploads/photo-1.jpg" alt="Inmate VOP-000408" loading="lazy">
+                    <div class="stamp stamp-escaped">ESCAPED</div>
+                </div>
+            </a>
+            <div class="card-info">
+                <div class="card-barcode">ID: VOP-000408 &middot; 100101</div>
+                <div class="card-name">
+                    Escapee &amp; One                            </div>
+                <span class="card-threat threat-critical">&#x26A0; CRITICAL</span>                        <div class="card-tags">
+                    <span class="tag-badge">Violent</span>
+                </div>
+                <div class="card-meta">Admitted 2026-09-09</div>
+                <div class="card-meta" style="color:var(--gold);font-weight:700">&#x1F4B0; 217,657,242 L$ BOUNTY</div>
+                <div class="card-meta" style="color:var(--text-dim)">&#9203; 2 MO, 4 DAYS</div>
+                <div class="card-actions">
+                    <a href="inmate.php?id=421" class="btn btn-sm">VIEW FILE</a>
+                </div>
+            </div>
+        </div>
+        <div class="inmate-card">
+            <a href="inmate.php?id=670" class="card-photo-link">
+                <div class="card-photo">
+                    <img src="uploads/photo-2.png" alt="Inmate VOP-000655" loading="lazy">
+                    <div class="stamp stamp-escaped">ESCAPED</div>
+                </div>
+            </a>
+            <div class="card-info">
+                <div class="card-barcode">ID: VOP-000655 &middot; 100102</div>
+                <div class="card-name">
+                    Escapee Two                            </div>
+                <span class="card-threat threat-high">&#x26A0; HIGH</span>                                                <div class="card-meta">Admitted 2026-10-09</div>
+                <div class="card-meta" style="color:var(--gold);font-weight:700">&#x1F4B0; 3,000,000 L$ BOUNTY</div>
+                <div class="card-meta" style="color:var(--text-dim)">&#9203; 1 MO, 5 DAYS</div>
+                <div class="card-actions">
+                    <a href="inmate.php?id=670" class="btn btn-sm">VIEW FILE</a>
+                </div>
+            </div>
+        </div>
+</div>
+<!-- ══ PAGINATION ═══════════════════════════════════════════ -->
+<div class="pagination">
+<span class="page-info">PAGE 1 / 10 &mdash; 118 RESULTS</span>
+<a href="index.php?status=escaped&sort=bounty&per_page=12&page=2" class="page-btn">NEXT &#8594;</a>
+</div>
+</body></html>
