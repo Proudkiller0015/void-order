@@ -541,6 +541,32 @@ async function joined(member, name) {
 	await b.req({ t: 'issue', member: 13, weapon: 7, on: false });
 	check(listed(a, 13).weapons.length === 0 && listed(a, 13).carry === 0, 'taken back, she no longer carries it');
 	check((await a.req({ t: 'carry', weapon: 100 })).t === 'ok' && listed(b, 11).carry === 100, 'the app admin carries her own scythe');
+	// Carrying: at most 2 (the app admin 4), Queen's Wrath not counted.
+	await b.req({ t: 'issue', member: 13, weapon: 1 });
+	await b.req({ t: 'issue', member: 13, weapon: 2 });
+	await b.req({ t: 'issue', member: 13, weapon: 3 });
+	check(listed(a, 13).carryLimit === 2 && listed(b, 11).carryLimit === 4, 'members carry 2, the app admin 4', [
+		listed(a, 13),
+		listed(b, 11).carryLimit,
+	]);
+	check((await c2.req({ t: 'carry', weapons: [1, 2] })).t === 'ok' && listed(a, 13).carried.join() === '1,2', 'Cat carries two');
+	check(
+		(await c2.req({ t: 'carry', weapons: [1, 2, 3] })).why === 'you carry at most 2: put one down first' &&
+			listed(a, 13).carried.join() === '1,2',
+		'a third is refused, and she keeps the two',
+	);
+	check(
+		(await c2.req({ t: 'carry', weapons: [3, 2] })).t === 'ok' && listed(a, 13).carried.join() === '3,2',
+		'she swaps one for the third',
+	);
+	check((await d.req({ t: 'card', member: 13 })).card.carried.join() === '3,2', 'her card has the two she carries');
+	check(
+		(await a.req({ t: 'carry', weapons: [1, 2, 3, 4, 100] })).t === 'ok' && listed(b, 11).carried.length === 5,
+		'the app admin carries 4 and Queen’s Wrath on top',
+	);
+	check((await a.req({ t: 'carry', weapons: [1, 2, 3, 4, 5] })).why === 'you carry at most 4: put one down first', 'but not a fifth');
+	await b.req({ t: 'issue', member: 13, weapon: 3, on: false });
+	check(listed(a, 13).carried.join() === '2', 'a weapon taken back is put down');
 
 	// The hunt board: fetched one page at a time, joined, sent to everyone signed in, and kept when the site fails.
 	const boardOf = (c) => [...c.got].reverse().find((x) => x.t === 'hunt' && x.board)?.board;

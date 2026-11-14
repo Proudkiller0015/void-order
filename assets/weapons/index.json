@@ -1440,12 +1440,13 @@
 	{
 		"id": 100,
 		"name": "Queen's Wrath",
-		"rarity": "Personal",
+		"rarity": "Legendary",
 		"heroic": false,
 		"void": true,
 		"melee": true,
-		"kind": null,
+		"kind": "Scythes",
 		"stats": [],
-		"sprite": true
+		"sprite": true,
+		"lore": "Slime Queen Samantha's signature scythe. It weighs 2 tons, and at its Queen's will anything from 5 kg to 1,000 tons; it casts spells and changes its form."
 	}
 ]

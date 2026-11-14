@@ -568,7 +568,7 @@ const openCardOf = async (page, name) => {
 		check(
 			'the Armory lists the catalog: pictures, rarity, Void and stats; the app admin holds every weapon',
 			arms.count === 100 &&
-				/Queen's Wrath[\s\S]*Personal[\s\S]*Void Order[\s\S]*Signature weapon[\s\S]*Held by Ann/.test(arms.wrath) &&
+				/Queen's Wrath[\s\S]*Legendary[\s\S]*Void Order[\s\S]*Slime’s signature[\s\S]*2 tons[\s\S]*Held by Ann/.test(arms.wrath) &&
 				/^Scythes · 1$/.test(arms.wrathKind || '') &&
 				!arms.wabbajackStats &&
 				arms.wabbajackPlain &&
@@ -603,12 +603,15 @@ const openCardOf = async (page, name) => {
 		await openCardOf(page, 'Ann');
 		await page.waitForSelector('#void-card .carried img', { timeout: 5000 }).catch(() => {});
 		check(
-			'the ID card shows the weapon carried, big, and the rest in a row',
+			'the ID card shows only what is carried (Queen’s Wrath in its own slot), not the whole armory',
 			await page.evaluate(
 				() =>
-					/Queen's Wrath/.test(document.querySelector('#void-card .carried')?.innerText || '') &&
-					document.querySelectorAll('#void-card .arms .void-sprite').length === 99,
+					/Queen's Wrath[\s\S]*Bound, comes when called/.test(document.querySelector('#void-card .carried')?.innerText || '') &&
+					document.querySelectorAll('#void-card .carried').length === 1 &&
+					!document.querySelector('#void-card .arms') &&
+					/0 of 4 carried · slime body · 100 weapons in their armory/.test(document.getElementById('void-card')?.innerText || ''),
 			),
+			await page.evaluate(() => document.getElementById('void-card')?.innerText),
 		);
 		await page.evaluate(() => document.getElementById('void-card')?.remove());
 		await openCardOf(page, 'Cat');

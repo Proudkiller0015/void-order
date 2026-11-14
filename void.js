@@ -39,6 +39,8 @@
 	const NEOPHYTE_COLOR = '#9a8fb8';
 	/** The Order's name: fixed, like its structure (the name stored when it was founded is never shown). */
 	const ORDER_NAME = 'Holy Order of Void';
+	/** Queen's Wrath, the Keeper's signature scythe: a carry slot of its own, never counted. */
+	const QUEENS_WRATH = 100;
 	const TIERS = 5;
 	const CHAPTER_FROM = 2;
 	const LEADS_FROM = 4;
@@ -1265,7 +1267,7 @@
 			row.append(make('span', 'tag', 'Heroic'));
 		}
 		if (x.id === SIGNATURE) {
-			row.append(make('span', 'tag', 'Signature weapon'));
+			row.append(make('span', 'tag', 'Slime’s signature'));
 		}
 		return row;
 	}
@@ -1324,17 +1326,16 @@
 				if (stats) {
 					text.append(make('div', 'stats', stats));
 				}
+				if (x.lore) {
+					text.append(make('div', 'dim', x.lore));
+				}
 				const holders = state.members
 					.filter((/** @type {any} */ m) => (m.weapons || []).includes(x.id))
 					.map((/** @type {any} */ m) => m.name);
 				text.append(make('div', 'dim', holders.length ? `Held by ${holders.join(', ')}` : 'Nobody has it yet'));
 				const side = make('div');
 				if (mine.includes(x.id)) {
-					side.append(
-						me.carry === x.id
-							? button('Put away', () => act({ t: 'carry', weapon: 0 }))
-							: button('Carry', () => act({ t: 'carry', weapon: x.id }), 'b main'),
-					);
+					side.append(carryButtons(me, x));
 				}
 				box.append(sprite(x, 96), text, side);
 				body.append(box);
@@ -1356,28 +1357,74 @@
 				.catch(() => {});
 			return wrap;
 		}
-		const carried = weaponOf(c.carry);
-		if (carried) {
+		// Only what they carry (at most their limit, Queen's Wrath in a slot of its own), never their whole armory.
+		const carried = carriedOf(c)
+			.map(weaponOf)
+			.filter((/** @type {any} */ x) => x);
+		for (const x of carried) {
 			const big = make('div', 'carried');
-			big.append(sprite(carried, 0), make('div', 'wname', carried.name), weaponTags(carried));
-			const stats = statsLine(carried);
+			big.append(sprite(x, 0), make('div', 'wname', x.name), weaponTags(x));
+			if (x.id === QUEENS_WRATH) {
+				big.append(make('div', 'dim', 'Bound, comes when called'));
+			}
+			const stats = statsLine(x);
 			if (stats) {
 				big.append(make('div', 'stats', stats));
 			}
 			wrap.append(big);
 		}
-		const rest = armsOf(c).filter((x) => x.id !== c.carry);
-		if (rest.length) {
-			const row = make('div', 'arms');
-			for (const x of rest) {
-				const s = sprite(x, 44);
-				s.title = `${x.name} (${x.rarity})${statsLine(x) ? `: ${statsLine(x)}` : ''}`;
-				row.append(s);
-			}
-			wrap.append(row);
-		}
+		const counted = carried.filter((/** @type {any} */ x) => x.id !== QUEENS_WRATH).length;
+		const limit = c.carryLimit || 2;
+		const line = make(
+			'div',
+			'dim',
+			`${counted} of ${limit} carried${limit > 2 && c.n === (state && state.appAdmin) ? ' · slime body' : ''} · ${plural((c.weapons || []).length, 'weapon')} in their armory`,
+		);
+		wrap.append(line);
 		return wrap;
 	}
+	/**
+	 * Carry / Put down for one of your weapons. At your limit, Carry asks which one to put down for it (Queen's Wrath
+	 * never counts).
+	 */
+	function carryButtons(/** @type {any} */ me, /** @type {any} */ x) {
+		const now = carriedOf(me);
+		const box = make('div');
+		if (now.includes(x.id)) {
+			box.append(button('Put down', () => act({ t: 'carry', weapons: now.filter((id) => id !== x.id) })));
+			return box;
+		}
+		const counted = now.filter((id) => id !== QUEENS_WRATH);
+		if (x.id === QUEENS_WRATH || counted.length < (me.carryLimit || 2)) {
+			box.append(button('Carry', () => act({ t: 'carry', weapons: [...now, x.id] }), 'b main'));
+			return box;
+		}
+		if (drafts['w:swap'] !== String(x.id)) {
+			box.append(
+				button(
+					'Carry',
+					() => {
+						drafts['w:swap'] = String(x.id);
+						render(true);
+					},
+					'b main',
+				),
+			);
+			return box;
+		}
+		box.append(make('div', 'dim', 'Put down which?'));
+		for (const id of counted) {
+			box.append(
+				button(weaponOf(id)?.name || `#${id}`, () => {
+					delete drafts['w:swap'];
+					act({ t: 'carry', weapons: [...now.filter((y) => y !== id), x.id] });
+				}),
+			);
+		}
+		return box;
+	}
+	/** The weapons a member carries: `carried`, or the one `carry` of an older server. */
+	const carriedOf = (/** @type {any} */ m) => (Array.isArray(m.carried) ? m.carried : m.carry ? [m.carry] : []);
 	/** Issuing weapons in Manage: the ones a member has (✕ takes one back), and a pick of the others to issue. */
 	function drawIssue(/** @type {any} */ m) {
 		const wrap = make('div', 'row');

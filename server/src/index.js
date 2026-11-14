@@ -130,7 +130,8 @@ const ORIGINS = [
  *   `places`: the first is their main branch. `mon`: a Monsignor. `pub` is null until a member brought in joins.
  *   `roomFor`: who sees the public room they are in (ROOM_FOR; everyone when unset). `medals`: their commendations
  *   (see Medal), oldest first.
- *   `weapons`: the Armory's weapons issued to them; `carry`: the one they carry (0 for none).
+ *   `weapons`: the Armory's weapons issued to them; `carried`: the ones they carry (see carryLimit). Records from
+ *   before kept one in `carry` (0 for none), read as a list of that one.
  * @typedef {{ id: string, icon: string, name: string, reason: string, by: number, byName: string, at: number }} Medal
  */
 
@@ -140,6 +141,8 @@ const chapter = (id, name, tiers = []) => ({ id, name, tiers: Array.from({ lengt
 /** The Order's structure, as its Discord has it. Changing it is a code update. */
 /** The Order's name: fixed, like its structure. A name stored when the Order was founded stays in 'meta' but isn't used. */
 const ORDER_NAME = 'Holy Order of Void';
+/** Queen's Wrath, the app admin's signature scythe: never counted in what someone carries. */
+const QUEENS_WRATH = 100;
 const STRUCTURE = {
 	motto: 'Praise the Void! 𓁹‿𓁹',
 	founder: { name: 'Founder', sym: '𓁹‿𓁹', color: '#ffe3a3' },
@@ -647,7 +650,9 @@ export class Order extends DurableObject {
 			el: m.el,
 			places: m.places,
 			weapons: this.weaponsOf(m.n),
-			carry: m.carry || 0,
+			carried: this.carriedOf(m.n),
+			carry: this.carriedOf(m.n)[0] || 0,
+			carryLimit: this.carryLimit(m.n),
 			...(m.mon ? { mon: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
@@ -1330,7 +1335,9 @@ export class Order extends DurableObject {
 				joined: m.joined,
 				medals: m.medals || [],
 				weapons: this.weaponsOf(m.n),
-				carry: m.carry || 0,
+				carried: this.carriedOf(m.n),
+				carry: this.carriedOf(m.n)[0] || 0,
+				carryLimit: this.carryLimit(m.n),
 				pic,
 				order: this.meta ? ORDER_NAME : '',
 			},
@@ -1574,6 +1581,23 @@ export class Order extends DurableObject {
 		return n === this.appAdmin ? WEAPON_IDS : (m && m.weapons) || [];
 	}
 	/**
+	 * How many weapons member n carries at once, Queen's Wrath not counted (it comes to its Queen when called): 2, and 4
+	 * for the app admin (her slime body). Power armour, when it exists, raises it to 4 here.
+	 */
+	carryLimit(n) {
+		return n === this.appAdmin ? 4 : 2;
+	}
+	/** The weapons member n carries, still theirs (a record from before, with one in `carry`, reads as that one). */
+	carriedOf(n) {
+		const m = this.members[n];
+		if (!m) {
+			return [];
+		}
+		const list = Array.isArray(m.carried) ? m.carried : m.carry ? [m.carry] : [];
+		const theirs = this.weaponsOf(n);
+		return list.filter((id) => theirs.includes(id));
+	}
+	/**
 	 * Issues a weapon to a member, or takes it back: { member, weapon, on }. The Founder and admins to anyone they act
 	 * on (themselves too), a leader to those below them.
 	 */
@@ -1591,8 +1615,9 @@ export class Order extends DurableObject {
 		}
 		const had = (m.weapons || []).filter((id) => id !== w.id);
 		m.weapons = p.on === false ? had : [...had, w.id];
-		if (p.on === false && m.carry === w.id && m.n !== this.appAdmin) {
-			m.carry = 0;
+		if (p.on === false && m.n !== this.appAdmin) {
+			m.carried = this.carriedOf(m.n).filter((id) => id !== w.id);
+			delete m.carry;
 		}
 		await this.putMember(m.n);
 		await this.note(
@@ -1602,13 +1627,22 @@ export class Order extends DurableObject {
 		this.ok(ws, p);
 		this.broadcast();
 	}
-	/** The weapon you carry, one of yours: { weapon } (0 to carry none). */
+	/**
+	 * The weapons you carry, all of them yours: { weapons: [ids] }, at most carryLimit of them besides Queen's Wrath.
+	 * The older { weapon } (one, or 0 for none) still works.
+	 */
 	async carry(ws, me, p) {
-		const id = Number(p.weapon) || 0;
-		if (id && !this.weaponsOf(me).includes(id)) {
+		const asked = Array.isArray(p.weapons) ? p.weapons : Number(p.weapon) ? [p.weapon] : [];
+		const ids = [...new Set(asked.map(Number))];
+		if (ids.length > 8 || ids.some((id) => !this.weaponsOf(me).includes(id))) {
 			return this.no(ws, 'that weapon is not yours', p);
 		}
-		this.members[me].carry = id;
+		const limit = this.carryLimit(me);
+		if (ids.filter((id) => id !== QUEENS_WRATH).length > limit) {
+			return this.no(ws, `you carry at most ${limit}: put one down first`, p);
+		}
+		this.members[me].carried = ids;
+		delete this.members[me].carry;
 		await this.putMember(me);
 		this.ok(ws, p);
 		this.broadcast();
