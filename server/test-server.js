@@ -139,6 +139,51 @@ const listed = (c, n) => (c.state.members || []).find((m) => m.n === n);
 		a.state.ranks,
 	);
 
+	// Members the Order had before the add-on come in with join codes, no application.
+	const zoe = await makePeer(20, 'Zoe');
+	const since = Date.parse('2025-03-01');
+	check(
+		(await a.req({ t: 'add', people: [{ member: 11, name: 'Ann' }], rank: pal })).why === '#11 is already in the Order',
+		'someone already in the Order cannot be brought in again',
+	);
+	const added = await a.req({
+		t: 'add',
+		people: [
+			{ member: 20, name: 'Zoe', title: 'Keeper of Keys' },
+			{ member: 21, name: 'Yan' },
+		],
+		rank: pal,
+		since,
+	});
+	check(
+		added.t === 'ok' && added.codes.length === 2 && added.codes.every((c) => /^[A-Z2-9]{10}$/.test(c.code)) && added.days === 7,
+		'the founder brings in Zoe and Yan: one join code each, valid 7 days',
+		added,
+	);
+	check(
+		listed(a, 20) && listed(a, 20).invited === 1 && listed(a, 20).joined === since,
+		'they are listed as invited, in the Order since the date given',
+	);
+	const zNo = await connect(zoe);
+	check(zNo.state.status === 'invited', 'Zoe, signing in without her code, is told she is invited');
+	check(/join code/.test((await zNo.req({ t: 'apply', answers: [] })).why), 'and is pointed to her join code instead of applying');
+	const zCode = added.codes.find((c) => c.n === 20).code;
+	const z = await connect(zoe, { fields: { code: zCode } });
+	check(
+		z.state.status === 'member' && z.state.me.rank === pal && z.state.me.title === 'Keeper of Keys',
+		'with the code she is in, at her rank and title',
+	);
+	check(!listed(a, 20).invited, 'and no longer listed as invited');
+	const zAgain = await connect(await makePeer(20, 'Zoe'), { fields: { code: zCode } });
+	check(zAgain.state.status === 'mismatch', 'a join code works once');
+	const yanCode = await a.req({ t: 'reset', member: 21 });
+	check(
+		/^[A-Z2-9]{10}$/.test(yanCode.code || '') && yanCode.hours === 168,
+		'a new join code for Yan, who has not joined yet, lasts 7 days',
+		yanCode,
+	);
+	for (const x of [zNo, z, zAgain]) x.close();
+
 	// Applying.
 	check(
 		(await b.req({ t: 'apply', name: 'Bea', answers: ['To serve.', 'Kikuri'] })).t === 'ok' && b.state.status === 'applied',

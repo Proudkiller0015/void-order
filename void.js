@@ -51,6 +51,8 @@
 			w.ChatRoomSendLocal(`⸸ ${escapeHtml(text)}`);
 		}
 	};
+	/** How long a code stays valid, in words: "48 hours", "7 days". */
+	const spellHours = (/** @type {number} */ h) => (h >= 48 && h % 24 === 0 ? plural(h / 24, 'day') : plural(h, 'hour'));
 	/** "1 member", "3 members". */
 	const plural = (/** @type {number} */ n, /** @type {string} */ word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 	const nick = (/** @type {any} */ C) => (typeof w.CharacterNickname === 'function' ? w.CharacterNickname(C) : C.Nickname || C.Name);
@@ -777,7 +779,7 @@
 			const r = rankOf(state.me.rank);
 			return `${state.meta && state.meta.founder === state.me.n ? 'Founder · ' : ''}${rankLabel(r)}`;
 		}
-		return { guest: 'Not a member', applied: 'Application sent', mismatch: 'Key not recognised' }[state.status] || '';
+		return { guest: 'Not a member', applied: 'Application sent', invited: 'Invited', mismatch: 'Key not recognised' }[state.status] || '';
 	}
 	/** An input bound to drafts[k]. */
 	function field(/** @type {string} */ k, /** @type {string} */ value, /** @type {number} */ max, tag = 'input') {
@@ -1060,6 +1062,9 @@
 		if (m.n === state.meta.founder) {
 			row.append(make('span', 'tag', 'Founder'));
 		}
+		if (m.invited) {
+			row.append(make('span', 'tag', 'Invited'));
+		}
 		if (m.on && m.room) {
 			row.append(make('span', 'tag', `📍 ${m.room}`));
 		}
@@ -1201,16 +1206,19 @@
 				body.append(line);
 			}
 		}
-		if (state.status === 'mismatch') {
-			body.append(make('h3', '', 'Your key'));
+		if (state.status === 'mismatch' || state.status === 'invited') {
+			const invited = state.status === 'invited';
+			body.append(make('h3', '', invited ? 'Welcome to the Order' : 'Your key'));
 			body.append(
 				make(
 					'p',
 					'',
-					'This member number is in the Order with a different key (another browser before the account synced, or a wiped account). Ask someone above you for a reset code and enter it here.',
+					invited
+						? "You are already in the Order: someone from the hierarchy added you. Enter the join code they sent you (by whisper or beep) and you're in."
+						: 'This member number is in the Order with a different key (another browser before the account synced, or a wiped account). Ask someone above you for a reset code and enter it here.',
 				),
 			);
-			body.append(label('Reset code'), field('reset:code', '', 10));
+			body.append(label(invited ? 'Join code' : 'Reset code'), field('reset:code', '', 10));
 			body.append(
 				button(
 					'Use the code',
@@ -1303,8 +1311,82 @@
 		}
 	}
 
-	/** @type {Map<number, { code: string, hours: number }>} Reset codes made in this session, by member. */
+	/** @type {Map<number, { code: string, hours: number }>} Reset and join codes made in this session, by member. */
 	const resetCodes = new Map();
+	/** @type {{ codes: { n: number, name: string, code: string }[], days: number } | null} The join codes just made. */
+	let broughtIn = null;
+	/**
+	 * Bringing in members of the Order who were there before the add-on: one per line, "member number, name, title"
+	 * (the title is optional), all at one rank. Each gets a join code to send them.
+	 */
+	function drawBringIn() {
+		const wrap = make('div');
+		wrap.append(
+			make('h3', '', 'Bring in existing members'),
+			make(
+				'p',
+				'dim',
+				'For members the Order had before the add-on: no application needed. One per line: member number, name, title (the title is optional). Each gets a join code; send it to them by whisper or beep, and they enter it under /void.',
+			),
+		);
+		const list = field('in:list', '', 4000, 'textarea');
+		list.placeholder = '123456, Kikuri, Inquisitor of the Third Circle\n234567, Summer';
+		const sel = make('select');
+		for (const r of [...givable()].reverse()) {
+			const o = make('option', '', rankLabel(r));
+			o.value = r.id;
+			o.selected = drafts['in:rank'] === r.id;
+			sel.append(o);
+		}
+		sel.addEventListener('change', () => {
+			drafts['in:rank'] = sel.value;
+		});
+		const since = field('in:since', '', 10);
+		since.type = 'date';
+		wrap.append(label('People'), list, label('Their rank'), sel, label('In the Order since (optional, the same for all of them)'), since);
+		wrap.append(
+			button(
+				'Bring them in',
+				() => {
+					/** @type {{ member: number, name: string, title: string }[]} */
+					const people = [];
+					const lines = String(drafts['in:list'] || '')
+						.split('\n')
+						.map((l) => l.trim())
+						.filter(Boolean);
+					for (const [i, line] of lines.entries()) {
+						const [num, name, ...title] = line.split(/\s*[,\t]\s*/);
+						const member = Number(String(num).replace(/^#/, ''));
+						if (!Number.isInteger(member) || member <= 0 || !name) {
+							panelSay(`⚠ Line ${i + 1} needs a member number and a name: "${line}"`);
+							return;
+						}
+						people.push({ member, name, title: title.join(', ') });
+					}
+					if (!people.length) {
+						panelSay('⚠ Add at least one person.');
+						return;
+					}
+					const day = drafts['in:since'] ? new Date(drafts['in:since']).getTime() : 0;
+					return act({ t: 'add', people, rank: sel.value, ...(day ? { since: day } : {}) }, (r) => {
+						broughtIn = { codes: r.codes, days: r.days };
+						forget('in');
+						render(true);
+					});
+				},
+				'b main',
+			),
+		);
+		if (broughtIn) {
+			wrap.append(make('p', 'dim', `Join codes, valid ${plural(broughtIn.days, 'day')}. Send each person theirs:`));
+			for (const c of broughtIn.codes) {
+				const line = make('div', 'row');
+				line.append(make('span', 'grow', `${c.name} #${c.n}`), make('span', 'code', c.code));
+				wrap.append(line);
+			}
+		}
+		return wrap;
+	}
 	// -- Manage: members below you, the about page, the ranks, the log
 	function drawManage(/** @type {HTMLElement} */ body) {
 		body.append(make('h3', '', 'Members below you'));
@@ -1341,7 +1423,7 @@
 				button('Set title', () =>
 					act({ t: 'title', member: m.n, title: drafts[`title:${m.n}`] ?? m.title }, () => delete drafts[`title:${m.n}`]),
 				),
-				button('Reset code', () =>
+				button(m.invited ? 'New join code' : 'Reset code', () =>
 					act({ t: 'reset', member: m.n }, (r) => {
 						resetCodes.set(m.n, { code: r.code, hours: r.hours });
 						render(true);
@@ -1361,12 +1443,17 @@
 			const reset = resetCodes.get(m.n);
 			if (reset) {
 				box.append(
-					make('div', 'dim', `Reset code for ${m.name}, valid ${reset.hours} hours. They open /void and enter it:`),
+					make(
+						'div',
+						'dim',
+						`${m.invited ? 'Join' : 'Reset'} code for ${m.name}, valid ${spellHours(reset.hours)}. They open /void and enter it:`,
+					),
 					make('div', 'code', reset.code),
 				);
 			}
 			body.append(box);
 		}
+		body.append(drawBringIn());
 
 		// The about page and joining questions.
 		const meta = state.meta;

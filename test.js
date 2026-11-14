@@ -216,7 +216,7 @@ const panelText = (page) => page.evaluate(() => document.getElementById('void-pa
 
 		// Joining questions, then Bea applies.
 		await click(page, 'Manage');
-		await type(page, 'textarea', 'Why the Void?\nWho sent you?', 1);
+		await type(page, 'textarea', 'Why the Void?\nWho sent you?', 2);
 		await click(page, 'Save the about page');
 		await wait(400);
 		bea = await peer(12, 'Bea');

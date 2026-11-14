@@ -9,7 +9,8 @@
  *
  * Clients sign in by signing a one-time nonce with their P-256 key. A member number is bound to the key it
  * applied with. A member who lost their key gets a reset code from someone above them, and the next key that
- * signs in with that code takes the number over. A member number is whatever the client says it is (the game
+ * signs in with that code takes the number over. Members of an Order that existed before the add-on are brought in by
+ * someone who manages: each gets a join code the same way, and the first key that signs in with it becomes theirs. A member number is whatever the client says it is (the game
  * can't vouch for it to an outside server), so founding takes the FOUND_CODE secret as well as env.FOUNDER, and
  * whoever lets applicants in is told to check them in the game first.
  *
@@ -63,8 +64,11 @@ const LIMITS = {
 	signIn: 10000,
 	/** Most new applications from one address per hour. */
 	appsPerIp: 5,
-	/** Hours a reset code stays valid. */
+	/** Hours a reset code stays valid, and days a join code does. */
 	resetHours: 48,
+	joinDays: 7,
+	/** Most members brought in at once. */
+	addAtOnce: 50,
 };
 const PERMS = ['approve', 'order', 'manage'];
 const KINDS = ['order', 'session', 'notice'];
@@ -381,11 +385,14 @@ export class Order extends DurableObject {
 	}
 
 	/**
-	 * What a connection is to the Order: 'member', 'applied' (an application with this key is waiting), 'mismatch'
-	 * (the number is a member or applicant with another key) or 'guest'.
+	 * What a connection is to the Order: 'member', 'applied' (an application with this key is waiting), 'invited' (brought
+	 * in, waiting for their join code), 'mismatch' (the number is a member or applicant with another key) or 'guest'.
 	 */
 	statusOf(a) {
 		const m = this.members[a.member];
+		if (m && !m.pub) {
+			return 'invited';
+		}
 		if (m) {
 			return samePub(m.pub, a.pub) ? 'member' : 'mismatch';
 		}
@@ -416,6 +423,7 @@ export class Order extends DurableObject {
 			rank: m.rank,
 			title: m.title || '',
 			joined: m.joined,
+			...(m.pub ? {} : { invited: 1 }),
 			...(m.n in on ? { on: 1, room: on[m.n] } : {}),
 		};
 	}
@@ -596,6 +604,8 @@ export class Order extends DurableObject {
 					return await this.kick(ws, me, p);
 				case 'reset':
 					return await this.reset(ws, me, p);
+				case 'add':
+					return await this.addMembers(ws, me, p);
 				case 'about':
 					return await this.setAbout(ws, me, p);
 				case 'ranks':
@@ -655,10 +665,14 @@ export class Order extends DurableObject {
 		const m = this.members[member];
 		let changed = false;
 		if (m && !samePub(m.pub, pub) && CODE_RE.test(p.code || '') && m.reset && m.reset.code === p.code && m.reset.exp > Date.now()) {
-			// A reset code moves the number to this key.
+			// A reset or join code moves the number to this key.
+			const joining = !m.pub;
 			m.pub = pub;
 			delete m.reset;
-			await this.note(member, `${this.nameOf(member)} signed in with a new key (reset code)`);
+			await this.note(
+				member,
+				`${this.nameOf(member)} ${joining ? 'joined with their join code' : 'signed in with a new key (reset code)'}`,
+			);
 			changed = true;
 		}
 		const name = clean(p.name, LIMITS.name);
@@ -738,6 +752,9 @@ export class Order extends DurableObject {
 		const status = this.statusOf(a);
 		if (status === 'mismatch') {
 			return this.no(ws, 'signed in with another key', p);
+		}
+		if (status === 'invited') {
+			return this.no(ws, 'you are already in the Order: enter the join code you were sent', p);
 		}
 		if (status === 'guest') {
 			if (Object.keys(this.apps).length >= LIMITS.apps) {
@@ -876,16 +893,78 @@ export class Order extends DurableObject {
 		this.ok(ws, p);
 		this.broadcast();
 	}
-	/** A reset code for a member below you who lost their key: they sign in with it from their new key. */
+	/**
+	 * A reset code for a member below you who lost their key, or a new join code for one brought in who hasn't joined:
+	 * they sign in with it from their key.
+	 */
 	async reset(ws, me, p) {
 		const m = this.managed(ws, me, p);
 		if (!m) {
 			return;
 		}
-		m.reset = { code: newCode(), exp: Date.now() + LIMITS.resetHours * 36e5 };
+		const hours = m.pub ? LIMITS.resetHours : LIMITS.joinDays * 24;
+		m.reset = { code: newCode(), exp: Date.now() + hours * 36e5 };
 		await this.putMember(m.n);
-		await this.note(me, `${this.nameOf(me)} made a reset code for ${this.nameOf(m.n)}`);
-		this.ok(ws, p, { code: m.reset.code, hours: LIMITS.resetHours });
+		await this.note(me, `${this.nameOf(me)} made a ${m.pub ? 'reset' : 'join'} code for ${this.nameOf(m.n)}`);
+		this.ok(ws, p, { code: m.reset.code, hours });
+	}
+	/**
+	 * Brings in members of an Order that existed before the add-on, without applications: their rank (below yours),
+	 * titles and "member since" date now, and each a join code that makes their number theirs when they first sign in
+	 * with it.
+	 */
+	async addMembers(ws, me, p) {
+		if (!this.may(me, 'manage')) {
+			return this.no(ws, 'not allowed', p);
+		}
+		const list = Array.isArray(p.people) ? p.people : [];
+		if (!list.length || list.length > LIMITS.addAtOnce) {
+			return this.no(ws, `between 1 and ${LIMITS.addAtOnce} people at once`, p);
+		}
+		if (!this.mayGive(me, p.rank)) {
+			return this.no(ws, 'you can only give ranks below your own', p);
+		}
+		if (Object.keys(this.members).length + list.length > LIMITS.members) {
+			return this.no(ws, 'the Order would be full', p);
+		}
+		const people = [];
+		for (const x of list) {
+			const n = x && x.member;
+			const name = clean(x && x.name, LIMITS.name);
+			if (!isNum(n) || !name) {
+				return this.no(ws, 'each person needs a member number and a name', p);
+			}
+			if (this.members[n]) {
+				return this.no(ws, `#${n} is already in the Order`, p);
+			}
+			people.push({ n, name, title: clean(x.title, LIMITS.title) });
+		}
+		if (new Set(people.map((x) => x.n)).size !== people.length) {
+			return this.no(ws, 'a member number is listed twice', p);
+		}
+		const since = Number(p.since);
+		const joined = since > 0 && since <= Date.now() ? since : Date.now();
+		const codes = [];
+		for (const x of people) {
+			const code = newCode();
+			this.members[x.n] = {
+				n: x.n,
+				name: x.name,
+				pub: null,
+				rank: p.rank,
+				title: x.title,
+				bio: '',
+				joined,
+				reset: { code, exp: Date.now() + LIMITS.joinDays * 864e5 },
+			};
+			delete this.apps[x.n];
+			await this.putMember(x.n);
+			await this.putApp(x.n);
+			codes.push({ n: x.n, name: x.name, code });
+		}
+		await this.note(me, `${this.nameOf(me)} brought in ${people.map((x) => this.nameOf(x.n)).join(', ')}`);
+		this.ok(ws, p, { codes, days: LIMITS.joinDays });
+		this.broadcast();
 	}
 	async leave(ws, me, p) {
 		if (this.meta.founder === me) {
@@ -905,6 +984,9 @@ export class Order extends DurableObject {
 		const m = this.members[p.member];
 		if (!m || m.n === me) {
 			return this.no(ws, 'no such member', p);
+		}
+		if (!m.pub) {
+			return this.no(ws, "they haven't joined with their join code yet", p);
 		}
 		this.meta.founder = m.n;
 		m.rank = this.ranks[0].id;
