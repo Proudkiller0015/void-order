@@ -17,6 +17,8 @@
 		const ITEMS = `${ctx.assets}items/`;
 		const GROUP = 'ItemHandheld';
 		const FEATURE = 'Weapon items';
+		/** The key of the "Hands" module every item with a Hand layer gets: 0 hands over the weapon (as before), 1 off. */
+		const HANDS = 'h';
 		/** A transparent pixel: the picture for a pose the items have no drawing for. */
 		const EMPTY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 		/** @type {Map<string, any>} The registered items (assets/items/items.json entries) by asset name. */
@@ -91,6 +93,9 @@
 		/** The item C wears of this asset. */
 		const wornIn = (/** @type {any} */ C, /** @type {any} */ asset) =>
 			Array.isArray(C.Appearance) ? C.Appearance.find((/** @type {any} */ i) => i && i.Asset === asset) : null;
+		/** Whether the player switched the item's Hand layer off (its "Hands" option, saved with the outfit). */
+		const handsOff = (/** @type {any} */ item) =>
+			!!item && !!item.Property && !!item.Property.TypeRecord && item.Property.TypeRecord[HANDS] === 1;
 		/**
 		 * Whether the Layering screen moved, resized or rotated an item (or one of its layers). The game's texture masks
 		 * don't follow those (in WebGL even a move shifts them), so such a weapon is drawn whole: its Hand layer is left
@@ -211,7 +216,7 @@
 					w.AssetAdd(
 						group,
 						gameDefinition(item.def),
-						item.extended ? { [data.group]: { [item.name]: withoutGameMessages(item.extended) } } : undefined,
+						item.extended ? { [data.group]: { [item.name]: withoutGameMessages(withHands(item, data.group)) } } : undefined,
 						groupDef,
 					);
 				} catch (e) {
@@ -240,13 +245,44 @@
 					if (!Array.isArray(masks) || !C) {
 						return masks;
 					}
-					return masks.filter((/** @type {any} */ l) => !(l && l.Name === 'Hand' && isArmory(l.Asset) && transformed(wornIn(C, l.Asset))));
+					return masks.filter((/** @type {any} */ l) => {
+						if (!l || l.Name !== 'Hand' || !isArmory(l.Asset)) {
+							return true;
+						}
+						const worn = wornIn(C, l.Asset);
+						return !handsOff(worn) && !transformed(worn);
+					});
 				});
 			}
 			ready = true;
 			for (const f of whenReady.splice(0)) {
 				runReady(f);
 			}
+		}
+		/**
+		 * The extended item config with a "Hands" module added when the item has a Hand layer (the hands drawn over the
+		 * weapon): the player can switch it off for that item, and the choice is saved with the outfit like the carry.
+		 * Outfits saved before have no such choice and keep the hands over the weapon. Its texts go with the item's.
+		 * @param {any} item an assets/items/items.json entry
+		 * @param {string} group
+		 */
+		function withHands(item, group) {
+			const ext = item.extended;
+			const hasHand = Array.isArray(item.def && item.def.Layer) && item.def.Layer.some((/** @type {any} */ l) => l && l.Name === 'Hand');
+			if (!hasHand || !Array.isArray(ext.Modules) || ext.Modules.some((/** @type {any} */ m) => m && m.Key === HANDS)) {
+				return ext;
+			}
+			const p = `${group}${item.name}`;
+			item.texts = {
+				...item.texts,
+				[`${p}ModuleHands`]: 'Hands',
+				[`${p}SelectHands`]: 'Hands on the weapon:',
+				[`${p}Option${HANDS}0`]: 'Hands over the weapon',
+				[`${p}Set${HANDS}0`]: 'SourceCharacter puts DestinationCharacter hands over the weapon.',
+				[`${p}Option${HANDS}1`]: 'Weapon over the hands',
+				[`${p}Set${HANDS}1`]: 'SourceCharacter puts the weapon over DestinationCharacter hands.',
+			};
+			return { ...ext, Modules: [...ext.Modules, { Name: 'Hands', Key: HANDS, DrawImages: false, Options: [{}, {}] }] };
 		}
 		/**
 		 * The extended item config, sending no message of the game's own when the weapon or the carry changes: the game
