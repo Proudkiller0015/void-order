@@ -681,6 +681,17 @@
 		#void-card .ln.motto { font: italic 600 14px Georgia, serif; color: #e9dcff; letter-spacing: 1px; text-shadow: 0 0 12px #b48cff99; }
 		#void-card .ln.hybrid { font: 600 18px Georgia, serif; color: #fff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 14px #b48cffaa; }
 		#void-card .ln.chapter { font: italic 14px Georgia, serif; color: #d9c8ff; }
+		#void-panel a, #void-card a { color: var(--v-accent); text-decoration: underline; word-break: break-all; }
+		#void-card .pic.zoomable { cursor: zoom-in; }
+		#void-zoom { position: absolute; inset: 0; z-index: 2; border-radius: 18px; cursor: zoom-out; background: #05020af2 center/contain no-repeat; }
+		#void-panel main, #void-panel nav, #void-panel .picker, #void-card { scrollbar-width: thin; scrollbar-color: var(--v-line) transparent; }
+		@media (max-width: 520px) {
+			#void-panel h2 { font-size: 15px; letter-spacing: 2px; }
+			#void-panel header { padding: 10px 10px 0; gap: 6px; }
+			#void-panel nav { padding: 8px 6px 0; }
+			#void-panel nav button { padding: 6px 7px; }
+			#void-panel main { padding: 12px 10px 14px; }
+		}
 		#void-card .bio { margin-top: 10px; white-space: pre-wrap; font-size: 13px; color: #d6cdee; }
 		#void-card .medals { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
 		#void-card .medals svg { cursor: help; filter: drop-shadow(0 0 4px #e05cff66); }
@@ -878,6 +889,36 @@
 		sel.addEventListener('change', () => guard(() => change(sel.value), panelSay));
 		return sel;
 	}
+	/**
+	 * An element with `text`, its web addresses (http and https only) as links that open in a new tab; the rest stays
+	 * plain text, never markup.
+	 */
+	function linked(/** @type {string} */ tag, /** @type {string} */ cls, /** @type {string} */ text) {
+		const el = make(tag, cls);
+		const str = String(text || '');
+		let at = 0;
+		for (const m of str.matchAll(/https?:\/\/[^\s<>"']+/g)) {
+			const url = m[0].replace(/[.,;:!?)\]]+$/, '');
+			let ok = false;
+			try {
+				ok = /^https?:$/.test(new URL(url).protocol);
+			} catch (e) {
+				ok = false;
+			}
+			if (!ok || m.index === undefined) {
+				continue;
+			}
+			el.append(document.createTextNode(str.slice(at, m.index)));
+			const a = make('a', '', url);
+			a.href = url;
+			a.target = '_blank';
+			a.rel = 'noopener noreferrer';
+			el.append(a);
+			at = m.index + url.length;
+		}
+		el.append(document.createTextNode(str.slice(at)));
+		return el;
+	}
 	/** A checkbox with its label. */
 	function check(/** @type {string} */ text, /** @type {boolean} */ on, /** @type {(on: boolean) => any} */ change) {
 		const l = make('label', 'check');
@@ -925,12 +966,40 @@
 		}
 		e.stopImmediatePropagation();
 	}
-	/** Esc: closes an open ID card, else the panel. */
+	/** Esc: closes the topmost of ours: a picture shown big, then an ID card, then the dice tray, then the panel. */
 	function escape() {
-		if (document.getElementById('void-card')) {
-			document.getElementById('void-card')?.remove();
+		const top = ['void-zoom', 'void-card', 'void-dice'].map((id) => document.getElementById(id)).find(Boolean);
+		if (top) {
+			top.remove();
 		} else {
 			closePanel();
+		}
+	}
+	/**
+	 * Whether the player is with our windows: their last click was on one of them (or the bubble or side tab), or one
+	 * just opened. Then Esc closes it even when nothing of ours has the focus (after a click on a part that takes none,
+	 * or right after the bubble opened the panel); an Esc meant for the game, in its chat or elsewhere, is left alone.
+	 */
+	let withUs = false;
+	const OURS = '#void-panel, #void-card, #void-dice, #void-bubble, #void-tab';
+	/** A click: on ours, the player is with us; anywhere but on an open ID card, the card closes. */
+	function pointerDown(/** @type {PointerEvent} */ e) {
+		const t = e.target instanceof Element ? e.target : null;
+		withUs = !!t && !!t.closest(OURS);
+		if (!t || !t.closest('#void-card')) {
+			document.getElementById('void-card')?.remove();
+		}
+	}
+	/** Esc on the page itself, or on the bubble or side tab, while the player is with us (listened before the game). */
+	function escapeFromPage(/** @type {KeyboardEvent} */ e) {
+		const t = e.target;
+		const onPage =
+			t === document.body || t === document.documentElement || (t instanceof Element && !!t.closest('#void-bubble, #void-tab'));
+		if (e.key === 'Escape' && withUs && onPage && (document.getElementById('void-panel') || document.getElementById('void-card'))) {
+			// Caught before the game, which would otherwise take this Esc as leaving its screen.
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			escape();
 		}
 	}
 	for (const type of ['keydown', 'keypress', 'keyup']) {
@@ -1082,6 +1151,16 @@
 		const pic = make('div', 'pic', c.pic ? '' : '⸸');
 		if (c.pic && /^data:image\/(webp|jpeg|png);base64,/.test(c.pic)) {
 			pic.style.backgroundImage = `url("${c.pic}")`;
+			pic.classList.add('zoomable');
+			pic.title = 'See it big';
+			pic.addEventListener('click', () => {
+				const z = make('div');
+				z.id = 'void-zoom';
+				z.title = 'Close';
+				z.style.backgroundImage = `url("${c.pic}")`;
+				z.addEventListener('click', () => z.remove());
+				card.append(z);
+			});
 		}
 		const lines = idLines(c, c.founder);
 		const id = idBlock(lines);
@@ -1106,7 +1185,7 @@
 			card.append(row);
 		}
 		if (c.bio) {
-			card.append(make('div', 'bio', c.bio));
+			card.append(linked('div', 'bio', c.bio));
 		}
 		if (medals.length) {
 			card.append(make('h4', '', 'Commendations'));
@@ -1116,7 +1195,7 @@
 				const text = make('div');
 				text.append(
 					make('b', '', md.name),
-					document.createTextNode(md.reason ? ` · ${md.reason}` : ''),
+					linked('span', '', md.reason ? ` · ${md.reason}` : ''),
 					make('div', 'dim', `from ${md.byName}, ${date(md.at)}`),
 				);
 				line.append(medalSvg(md.icon, 26), text);
@@ -1151,6 +1230,8 @@
 		foot.append(copy);
 		card.append(foot);
 		document.body.append(card);
+		withUs = true;
+		placeCard(card);
 	}
 	/** The ID lines of a card, as drawn on it (also the live preview in a member's sheet). */
 	function idBlock(/** @type {{ text: string, sym?: string, color?: string, cls?: string }[]} */ lines, cls = 'id') {
@@ -1168,6 +1249,17 @@
 			id.append(ln);
 		}
 		return id;
+	}
+	/** Puts an ID card over the middle of the panel while the panel is open (it may have been moved), inside the screen. */
+	function placeCard(/** @type {HTMLElement} */ card) {
+		const p = document.getElementById('void-panel');
+		if (!p) {
+			return;
+		}
+		const r = p.getBoundingClientRect();
+		const c = card.getBoundingClientRect();
+		card.style.left = `${between(r.left + r.width / 2, c.width / 2, innerWidth - c.width / 2)}px`;
+		card.style.top = `${between(r.top + r.height / 2, c.height / 2, innerHeight - c.height / 2)}px`;
 	}
 	/** Looks up a member's card on the server and opens it; `say` gets why it couldn't. */
 	async function openCard(/** @type {number} */ n, say = panelSay) {
@@ -2585,6 +2677,7 @@
 
 	function openPanel(/** @type {string | undefined} */ which) {
 		style();
+		withUs = true;
 		if (which) {
 			tab = which;
 		}
@@ -3038,6 +3131,9 @@
 		}
 		const main = p.querySelector('main');
 		const scroll = main ? main.scrollTop : 0;
+		const kept = new Map(
+			[...p.querySelectorAll('[data-keep]')].map((el) => [/** @type {HTMLElement} */ (el).dataset.keep, [el.scrollTop, el.scrollLeft]]),
+		);
 		const open = [...p.querySelectorAll('details[data-k]')]
 			.filter((d) => /** @type {any} */ (d).open)
 			.map((d) => /** @type {any} */ (d).dataset.k);
@@ -3072,6 +3168,7 @@
 			tab = list[0][0];
 		}
 		const nav = make('nav');
+		nav.dataset.keep = 'nav';
 		for (const [id, label] of list) {
 			const b = make('button', id === tab ? 'on' : '', label);
 			const count = id === 'orders' ? openOrders() : id === 'admin' ? unplacedFor().length : 0;
@@ -3112,6 +3209,12 @@
 			}
 		}
 		body.scrollTop = scroll;
+		for (const el of p.querySelectorAll('[data-keep]')) {
+			const k = kept.get(/** @type {HTMLElement} */ (el).dataset.keep);
+			if (k) {
+				[el.scrollTop, el.scrollLeft] = k;
+			}
+		}
 		addHandles(p);
 		drawTab();
 	}
@@ -3237,7 +3340,7 @@
 			box.append(make('div', 'when', `🕰 ${dateTime(o.when)} (${fromNow(o.when)})`));
 		}
 		if (o.body) {
-			box.append(make('div', 'body', o.body));
+			box.append(linked('div', 'body', o.body));
 		}
 		const row = make('div', 'row');
 		if (isForMe(o)) {
@@ -3509,7 +3612,7 @@
 	// -- The Order: about, the branches and their ranks, the hybrid titles, and leaving
 	function drawOrder(/** @type {HTMLElement} */ body) {
 		const meta = state.meta;
-		body.append(make('h3', '', 'About'), make('p', '', meta.about || 'No about text yet.'));
+		body.append(make('h3', '', 'About'), linked('p', '', meta.about || 'No about text yet.'));
 		body.append(make('p', 'dim', `Founded ${date(meta.founded)}. Joining is ${meta.open ? 'open' : 'closed'}.`));
 		drawStructure(body);
 		if (meta.founder === state.me.n) {
@@ -3632,7 +3735,7 @@
 			return;
 		}
 		const meta = state.meta;
-		body.append(make('h3', '', 'About'), make('p', '', meta.about || ''));
+		body.append(make('h3', '', 'About'), linked('p', '', meta.about || ''));
 		body.append(make('p', 'dim', `${plural(state.count, 'member')} · founded ${date(meta.founded)}`));
 		if (state.members.length) {
 			body.append(make('h3', '', 'Who leads'));
@@ -4226,6 +4329,7 @@
 			return;
 		}
 		const pick = make('div', 'picker');
+		pick.dataset.keep = 'picker';
 		const row = make('div', 'row');
 		const q = field('iss:q', '', 40);
 		q.placeholder = 'Find a weapon';
@@ -4284,7 +4388,7 @@
 			const text = make('div', 'grow');
 			text.append(
 				make('b', '', md.name),
-				document.createTextNode(md.reason ? ` · ${md.reason}` : ''),
+				linked('span', '', md.reason ? ` · ${md.reason}` : ''),
 				make('div', 'dim', `from ${md.byName}, ${date(md.at)}`),
 			);
 			line.append(medalSvg(md.icon, 26), text);
@@ -5131,11 +5235,8 @@
 					'Room messages',
 				);
 			}
-			document.addEventListener('keydown', (e) => {
-				if (e.key === 'Escape') {
-					escape();
-				}
-			});
+			addEventListener('keydown', escapeFromPage, true);
+			addEventListener('pointerdown', pointerDown, true);
 			document.addEventListener('keydown', hotkeyDown, true);
 			applyLook();
 			guard(hookRoom, undefined, 'Room hooks');

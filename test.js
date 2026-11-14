@@ -637,7 +637,11 @@ const openCardOf = async (page, name) => {
 		await wait(300);
 		await openSheet(page, 'Cat');
 		await click(page, '＋ Issue a weapon');
+		await page.evaluate(() => (document.querySelector('#void-panel .picker').scrollTop = 200));
 		await tap(page, '.picker .wtile[data-id="7"]');
+		await wait(500);
+		const pickerTop = await page.evaluate(() => document.querySelector('#void-panel .picker')?.scrollTop);
+		check('the weapon picker keeps its scroll place when the panel redraws', pickerTop === 200, pickerTop);
 		await wait(500);
 		check(
 			'the issued weapon shows as a tile in her sheet',
@@ -1354,6 +1358,94 @@ const openCardOf = async (page, name) => {
 		await toggleSetting(page, 'Show the Void bubble');
 		check('the setting hides it', await page.evaluate(() => !document.getElementById('void-bubble')));
 		await toggleSetting(page, 'Show the Void bubble');
+
+		// Esc closes ours when the player is with them, even with nothing of ours focused; an Esc for the game is left alone.
+		const open = () => page.evaluate(() => !!document.getElementById('void-panel'));
+		const downOn = (sel) =>
+			page.evaluate((sel) => {
+				const el = document.querySelector(sel);
+				el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 3 }));
+				return !!el;
+			}, sel);
+		await downOn('#void-panel main');
+		await page.evaluate(() => document.activeElement?.blur());
+		await page.keyboard.press('Escape');
+		check('after a click on a part of the panel that takes no focus, Esc closes it', !(await open()));
+		await slash(page, '');
+		await page.evaluate(() => {
+			const chat = document.createElement('input');
+			chat.id = 'vo-test-chat';
+			document.body.append(chat);
+		});
+		await downOn('#vo-test-chat');
+		await page.focus('#vo-test-chat');
+		await page.keyboard.press('Escape');
+		check('an Esc typed in the game’s chat box leaves the panel open', await open());
+		await page.evaluate(() => document.getElementById('vo-test-chat').remove());
+		await page.evaluate(() => document.querySelector('#void-panel .x').click());
+		await press(0, 0);
+		await page.evaluate(() => document.getElementById('void-bubble').focus());
+		await page.keyboard.press('Escape');
+		check('right after the bubble opens the panel, Esc closes it', !(await open()));
+
+		// An ID card opens over the panel, wherever it was moved; Esc closes the card first; a click beside it closes it.
+		await slash(page, '');
+		await dragOn('header', -300, -120);
+		await slash(page, 'card 13');
+		await page.waitForSelector('#void-card', { timeout: 5000 }).catch(() => {});
+		const centres = await page.evaluate(() => {
+			const mid = (el) => {
+				const r = el.getBoundingClientRect();
+				return [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)];
+			};
+			const card = document.getElementById('void-card');
+			const r = card.getBoundingClientRect();
+			return { panel: mid(document.getElementById('void-panel')), card: mid(card), inside: r.top >= 0 && r.bottom <= innerHeight };
+		});
+		check(
+			'an ID card opens over the moved panel, inside the screen',
+			Math.abs(centres.panel[0] - centres.card[0]) <= 2 && centres.inside,
+			centres,
+		);
+		await page.evaluate(() => document.querySelector('#void-card .x').focus());
+		await page.keyboard.press('Escape');
+		check('Esc closes the card first', !(await page.evaluate(() => !!document.getElementById('void-card'))) && (await open()));
+		await slash(page, 'card 13');
+		await page.waitForSelector('#void-card', { timeout: 5000 }).catch(() => {});
+		await downOn('#void-panel main');
+		check('a click beside the card closes it', await page.evaluate(() => !document.getElementById('void-card')));
+
+		// Web addresses in written text are links (http and https only); a picture on a card shows big when clicked.
+		const PIC = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+		await cat.req({ t: 'profile', bio: 'Blade and spell. https://example.com/ward?x=1. javascript:alert(1)', pic: PIC });
+		await slash(page, 'card 13');
+		await page.waitForSelector('#void-card .bio', { timeout: 5000 }).catch(() => {});
+		const bio = await page.evaluate(() => {
+			const b = document.querySelector('#void-card .bio');
+			return { links: [...b.querySelectorAll('a')].map((a) => [a.href, a.target, a.rel]), text: b.textContent };
+		});
+		check(
+			'a web address in a bio is a link that opens in a new tab; nothing else is',
+			bio.links.length === 1 &&
+				bio.links[0][0] === 'https://example.com/ward?x=1' &&
+				bio.links[0][1] === '_blank' &&
+				/noopener/.test(bio.links[0][2]) &&
+				bio.text === 'Blade and spell. https://example.com/ward?x=1. javascript:alert(1)',
+			bio,
+		);
+		await page.evaluate(() => document.querySelector('#void-card .pic').click());
+		check('clicking the card’s picture shows it big', await page.evaluate(() => !!document.querySelector('#void-card #void-zoom')));
+		await shot(page, '22-picture-big');
+		await page.evaluate(() => document.querySelector('#void-card .x').focus());
+		await page.keyboard.press('Escape');
+		check(
+			'Esc closes the big picture, and keeps the card',
+			await page.evaluate(() => !document.getElementById('void-zoom') && !!document.getElementById('void-card')),
+		);
+		await page.evaluate(() => document.getElementById('void-card')?.remove());
+		await cat.req({ t: 'profile', bio: 'Blade and spell.', pic: '' });
+		await click(page, '⚙');
+		await click(page, 'Reset window position');
 
 		// My room shows in the list; a private one doesn't.
 		await wait(2500);
