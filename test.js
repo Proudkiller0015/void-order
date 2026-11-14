@@ -1239,6 +1239,84 @@ const openCardOf = async (page, name) => {
 		await wait(2500);
 		const b2 = await bubble();
 		check('drawn again, it is where it was left', !!b2 && b2.x === b1.x && b2.y === b1.y, { b1, b2 });
+		// The panel's window: dragged by its header, resized from its edges and corners, kept on screen, remembered.
+		await slash(page, '');
+		const win = () =>
+			page.evaluate(() => {
+				const r = document.getElementById('void-panel').getBoundingClientRect();
+				return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+			});
+		/** A drag on the panel, from the header or a resize handle, by pointer events (`touch` for a finger). */
+		const dragOn = (target, dx, dy, touch = false) =>
+			page.evaluate(
+				(target, dx, dy, touch) => {
+					const p = document.getElementById('void-panel');
+					const el = target === 'header' ? p.querySelector('header h2') : p.querySelector(`.v-rs[data-rs="${target}"]`);
+					const r = el.getBoundingClientRect();
+					const x = r.left + Math.min(20, r.width / 2);
+					const y = r.top + r.height / 2;
+					const at = (type, cx, cy, buttons) =>
+						el.dispatchEvent(
+							new PointerEvent(type, {
+								clientX: cx,
+								clientY: cy,
+								button: 0,
+								buttons,
+								pointerId: 9,
+								pointerType: touch ? 'touch' : 'mouse',
+								bubbles: true,
+							}),
+						);
+					at('pointerdown', x, y, 1);
+					at('pointermove', x + dx / 2, y + dy / 2, 1);
+					at('pointermove', x + dx, y + dy, 1);
+					at('pointerup', x + dx, y + dy, 0);
+				},
+				target,
+				dx,
+				dy,
+				touch,
+			);
+		const w0 = await win();
+		await dragOn('header', -150, 60);
+		const w1 = await win();
+		check('the panel moves when its header is dragged', w1.x === w0.x - 150 && w1.y === w0.y + 60, { w0, w1 });
+		await dragOn('se', -120, -90);
+		const w2 = await win();
+		check('its corner resizes it', w2.w === w1.w - 120 && w2.h === w1.h - 90 && w2.x === w1.x, { w1, w2 });
+		await dragOn('w', 900, 0);
+		const w3 = await win();
+		check('it never gets narrower than its minimum', w3.w === 360, w3);
+		await page.evaluate(() => document.querySelector('#void-panel .x').click());
+		await slash(page, '');
+		const w4 = await win();
+		check('closed and opened again, it is where it was left', w4.w === 360 && w4.y === w3.y && w4.x === w3.x, { w3, w4 });
+		await page.evaluate(() =>
+			document.querySelector('#void-panel .v-rs[data-rs="e"]').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })),
+		);
+		check('double-clicking an edge brings back the usual size', (await win()).w === 820, await win());
+		await dragOn('header', 5000, 5000);
+		const w5 = await win();
+		check('dragged far away, it stays on screen', w5.x + w5.w <= 1600 && w5.y + w5.h <= 900 && w5.x >= 0 && w5.y >= 0, w5);
+		await page.setViewport({ width: 900, height: 600 });
+		await wait(150);
+		const w6 = await win();
+		check('a smaller window keeps it fully on screen', w6.x >= 0 && w6.y >= 0 && w6.x + w6.w <= 900 && w6.y + w6.h <= 600, w6);
+		await page.setViewport({ width: 1600, height: 900 });
+		await wait(150);
+		const t0 = await win();
+		await dragOn('header', -80, -60, true);
+		const t1 = await win();
+		check('a touch drag moves it too', t1.x === t0.x - 80 && t1.y === t0.y - 60, { t0, t1 });
+		await click(page, '⚙ Settings');
+		await click(page, 'Reset window position');
+		check(
+			'Reset window position puts it back in the middle at its usual size',
+			await page.evaluate(
+				() => !document.getElementById('void-panel').classList.contains('placed') && localStorage.getItem('voidorder.win') === 'null',
+			),
+		);
+		await page.evaluate(() => document.querySelector('#void-panel .x').click());
 		await slash(page, '');
 		await toggleSetting(page, 'Show the Void bubble');
 		check('the setting hides it', await page.evaluate(() => !document.getElementById('void-bubble')));

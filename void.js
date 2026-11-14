@@ -805,6 +805,20 @@
 			font: bold 11px/14px system-ui, sans-serif; text-align: center; border: 2px solid #12091f; text-shadow: none; }
 		#void-tab { position: fixed; z-index: 2147483000; left: 0; top: 50%; transform: translateY(-50%); width: 26px; height: 54px; border: 1px solid #5b3d8f; border-left: 0;
 			border-radius: 0 10px 10px 0; background: #12091fdd; color: #c9a8ff; font: 600 16px Georgia, serif; cursor: pointer; padding: 0; text-shadow: 0 0 8px #9b59ff; }
+		#void-panel.placed { transform: none; }
+		#void-panel header { cursor: move; touch-action: none; user-select: none; }
+		#void-panel .v-rs { position: absolute; z-index: 3; touch-action: none; }
+		#void-panel .v-rs[data-rs="n"], #void-panel .v-rs[data-rs="s"] { left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+		#void-panel .v-rs[data-rs="e"], #void-panel .v-rs[data-rs="w"] { top: 14px; bottom: 14px; width: 6px; cursor: ew-resize; }
+		#void-panel .v-rs[data-rs="nw"], #void-panel .v-rs[data-rs="ne"], #void-panel .v-rs[data-rs="sw"], #void-panel .v-rs[data-rs="se"] { width: 14px; height: 14px; }
+		#void-panel .v-rs[data-rs="n"], #void-panel .v-rs[data-rs="nw"], #void-panel .v-rs[data-rs="ne"] { top: 0; }
+		#void-panel .v-rs[data-rs="s"], #void-panel .v-rs[data-rs="sw"], #void-panel .v-rs[data-rs="se"] { bottom: 0; }
+		#void-panel .v-rs[data-rs="w"], #void-panel .v-rs[data-rs="nw"], #void-panel .v-rs[data-rs="sw"] { left: 0; }
+		#void-panel .v-rs[data-rs="e"], #void-panel .v-rs[data-rs="ne"], #void-panel .v-rs[data-rs="se"] { right: 0; }
+		#void-panel .v-rs[data-rs="nw"], #void-panel .v-rs[data-rs="se"] { cursor: nwse-resize; }
+		#void-panel .v-rs[data-rs="ne"], #void-panel .v-rs[data-rs="sw"] { cursor: nesw-resize; }
+		#void-tab { touch-action: none; }
+		#void-tab.dragging { cursor: grabbing; opacity: .8; }
 		#void-tab.right { left: auto; right: 0; border-left: 1px solid #5b3d8f; border-right: 0; border-radius: 10px 0 0 10px; }
 		#void-panel .setting { display: flex; align-items: center; gap: 10px; margin: 6px 0; flex-wrap: wrap; }
 		#void-panel .setting .hint { flex-basis: 100%; margin: -2px 0 0 26px; }
@@ -2366,6 +2380,165 @@
 		document.getElementById('void-panel')?.remove();
 		drawTab();
 	};
+	// ---- The panel's window: moved by its header, resized from its edges and corners, kept on screen. Where it is and how
+	// big are kept per browser once moved or resized; until then it sits in the middle at its usual size.
+	const WIN = { minW: 360, minH: 300, margin: 8 };
+	/** The usual size: what the panel has before it is ever resized. */
+	const usualSize = () => ({ w: Math.min(820, Math.round(innerWidth * 0.96)), h: Math.min(680, Math.round(innerHeight * 0.92)) });
+	/** @type {{ x: number, y: number, w: number, h: number } | null} */
+	let win = pref('win', null);
+	const fit = (/** @type {number} */ v, /** @type {number} */ lo, /** @type {number} */ hi) => Math.max(lo, Math.min(hi, v));
+	/** Puts the panel where it was left, inside the window whatever its size or zoom now. */
+	function placePanel() {
+		const p = document.getElementById('void-panel');
+		if (!p) {
+			return;
+		}
+		if (!win) {
+			p.classList.remove('placed');
+			p.style.left = p.style.top = p.style.width = p.style.height = '';
+			return;
+		}
+		const m = WIN.margin;
+		const width = fit(win.w, Math.min(WIN.minW, innerWidth - 2 * m), innerWidth - 2 * m);
+		const height = fit(win.h, Math.min(WIN.minH, innerHeight - 2 * m), innerHeight - 2 * m);
+		p.classList.add('placed');
+		p.style.left = `${fit(win.x, m, innerWidth - width - m)}px`;
+		p.style.top = `${fit(win.y, m, innerHeight - height - m)}px`;
+		p.style.width = `${width}px`;
+		p.style.height = `${height}px`;
+	}
+	/** Keeps where the panel is (or null: back to the middle at its usual size) for next time. */
+	function setWin(/** @type {{ x: number, y: number, w: number, h: number } | null} */ v) {
+		win = v;
+		setPref('win', v);
+		placePanel();
+	}
+	/** The panel's resize edges and corners, added again after each redraw. */
+	function addHandles(/** @type {HTMLElement} */ p) {
+		for (const d of ['n', 's', 'e', 'w', 'nw', 'ne', 'sw', 'se']) {
+			const h = make('div', 'v-rs');
+			h.dataset.rs = d;
+			h.title = 'Drag to resize (double-click: usual size)';
+			p.append(h);
+		}
+	}
+	/** Moving and resizing by pointer (mouse, pen or touch), wired once on the panel. */
+	function wirePanel(/** @type {HTMLElement} */ p) {
+		/** @type {{ mode: string, x0: number, y0: number, r: DOMRect } | null} */
+		let op = null;
+		p.addEventListener('pointerdown', (e) => {
+			const t = /** @type {HTMLElement} */ (e.target);
+			const handle = /** @type {HTMLElement | null} */ (t.closest('.v-rs'));
+			const head = t.closest('header');
+			if (e.button !== 0 || (!handle && (!head || t.closest('button, input, select, a')))) {
+				return;
+			}
+			e.preventDefault();
+			op = { mode: handle ? handle.dataset.rs || 'se' : 'move', x0: e.clientX, y0: e.clientY, r: p.getBoundingClientRect() };
+			try {
+				p.setPointerCapture(e.pointerId);
+			} catch (err) {
+				/* works without capture */
+			}
+		});
+		p.addEventListener('pointermove', (e) => {
+			if (!op) {
+				return;
+			}
+			const m = WIN.margin;
+			const dx = fit(e.clientX, 0, innerWidth) - op.x0;
+			const dy = fit(e.clientY, 0, innerHeight) - op.y0;
+			const r = op.r;
+			let { left, top, right, bottom } = r;
+			if (op.mode === 'move') {
+				left = fit(r.left + dx, m, innerWidth - r.width - m);
+				top = fit(r.top + dy, m, innerHeight - r.height - m);
+				right = left + r.width;
+				bottom = top + r.height;
+			} else {
+				if (op.mode.includes('w')) {
+					left = fit(r.left + dx, m, right - WIN.minW);
+				}
+				if (op.mode.includes('e')) {
+					right = fit(r.right + dx, left + WIN.minW, innerWidth - m);
+				}
+				if (op.mode.includes('n')) {
+					top = fit(r.top + dy, m, bottom - WIN.minH);
+				}
+				if (op.mode.includes('s')) {
+					bottom = fit(r.bottom + dy, top + WIN.minH, innerHeight - m);
+				}
+			}
+			win = { x: Math.round(left), y: Math.round(top), w: Math.round(right - left), h: Math.round(bottom - top) };
+			placePanel();
+		});
+		const end = () => {
+			if (op) {
+				op = null;
+				setWin(win);
+			}
+		};
+		p.addEventListener('pointerup', end);
+		p.addEventListener('pointercancel', end);
+		p.addEventListener('lostpointercapture', end);
+		p.addEventListener('dblclick', (e) => {
+			if (/** @type {HTMLElement} */ (e.target).closest('.v-rs')) {
+				const r = p.getBoundingClientRect();
+				setWin({ x: Math.round(r.left), y: Math.round(r.top), ...usualSize() });
+			}
+		});
+	}
+	/** Puts the side tab where it was dragged along its edge. */
+	function placeTab() {
+		const t = document.getElementById('void-tab');
+		if (t) {
+			t.style.top = `${fit(pref('tabY', 0.5), 0.06, 0.94) * 100}%`;
+		}
+	}
+	/** The side tab: a click opens the panel, a drag moves it up or down its edge. */
+	function wireTab(/** @type {HTMLElement} */ t) {
+		/** @type {{ y0: number, moved: boolean } | null} */
+		let drag = null;
+		t.addEventListener('pointerdown', (e) => {
+			if (e.button !== 0) {
+				return;
+			}
+			drag = { y0: e.clientY, moved: false };
+			try {
+				t.setPointerCapture(e.pointerId);
+			} catch (err) {
+				/* works without capture */
+			}
+		});
+		t.addEventListener('pointermove', (e) => {
+			if (!drag || (!drag.moved && Math.abs(e.clientY - drag.y0) < 8)) {
+				return;
+			}
+			drag.moved = true;
+			t.classList.add('dragging');
+			setPref('tabY', fit(e.clientY / innerHeight, 0.06, 0.94));
+			placeTab();
+		});
+		const end = (/** @type {boolean} */ open) => {
+			if (!drag) {
+				return;
+			}
+			const moved = drag.moved;
+			drag = null;
+			t.classList.remove('dragging');
+			if (open && !moved) {
+				guard(() => openPanel());
+			}
+		};
+		t.addEventListener('pointerup', () => end(true));
+		t.addEventListener('pointercancel', () => end(false));
+	}
+	addEventListener('resize', () => {
+		placePanel();
+		placeTab();
+	});
+
 	function openPanel(/** @type {string | undefined} */ which) {
 		style();
 		if (which) {
@@ -2375,10 +2548,12 @@
 			const p = make('div');
 			p.id = 'void-panel';
 			keepKeys(p);
+			wirePanel(p);
 			document.body.append(p);
 			lastMsg = '';
 		}
 		render(true);
+		placePanel();
 	}
 	// ---- Settings: one list for the panel's ⚙ tab and the game's Settings > Extensions page
 	/** Accent colours to pick from. */
@@ -2667,6 +2842,13 @@
 			guard(() => f(body), panelSay);
 		}
 		body.append(
+			button('Reset window position', () => {
+				setWin(null);
+				setPref('tabY', null);
+				placeTab();
+			}),
+		);
+		body.append(
 			make(
 				'p',
 				'dim',
@@ -2945,6 +3127,7 @@
 			}
 		}
 		body.scrollTop = scroll;
+		addHandles(p);
 		drawTab();
 	}
 	const openOrders = () => [...orders.values()].filter(waitsForMe).length;
@@ -4703,10 +4886,11 @@
 			style();
 			t = make('button', '', '⸸');
 			t.id = 'void-tab';
-			t.title = 'Oculus Nihili (/void)';
-			t.addEventListener('click', () => guard(() => openPanel()));
+			t.title = 'Oculus Nihili (/void; drag to move it)';
+			wireTab(t);
 			document.body.append(t);
 		}
+		placeTab();
 		t.classList.toggle('right', opts.tabSide === 'right');
 		const n = openOrders();
 		t.textContent = n ? `⸸${n}` : '⸸';
