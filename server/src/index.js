@@ -30,6 +30,9 @@
 
 import { DurableObject } from 'cloudflare:workers';
 import { HUNT_BOARD_URL, huntBoardPages, parseHuntBoard } from './hunt-board.js';
+import { addReport, clearReports, listReports } from './reports.js';
+import { badgeOf, setBadge } from './badges.js';
+import { lend, lentTo, loadLend, recall } from './lend.js';
 import WEAPONS from '../../assets/weapons/index.json';
 
 const LIMITS = {
@@ -385,6 +388,7 @@ export class Order extends DurableObject {
 			this.log = (await ctx.storage.get('log')) || [];
 			/** @type {{ pages: Record<number, any>, of: number, tried: number, next: string[] }} */
 			this.hunt = (await ctx.storage.get('hunt')) || { pages: {}, of: 0, tried: 0, next: [] };
+			await loadLend(this);
 		});
 	}
 
@@ -653,6 +657,7 @@ export class Order extends DurableObject {
 			carried: this.carriedOf(m.n),
 			carry: this.carriedOf(m.n)[0] || 0,
 			carryLimit: this.carryLimit(m.n),
+			badge: badgeOf(m),
 			...(m.mon ? { mon: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
@@ -674,6 +679,7 @@ export class Order extends DurableObject {
 			meta,
 			structure: STRUCTURE,
 			appAdmin: this.appAdmin,
+			lent: lentTo(this),
 			canFound: !this.meta && a.member === this.appAdmin,
 		};
 		const all = Object.values(this.members);
@@ -782,7 +788,8 @@ export class Order extends DurableObject {
 
 	/**
 	 * A client message (JSON with `t`). Before sign-in only 'auth'. Anyone signed in: 'card', 'room', 'roll',
-	 * 'getroll', 'hunt'. Guests: 'join', and 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave',
+	 * 'getroll', 'hunt', 'report' (and the app admin 'reports', 'clearreports': see reports.js). Guests: 'join', and
+	 * 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave',
 	 * 'chat', 'carry', and with the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add',
 	 * 'about', 'award', 'unaward', 'issue', 'order', 'unorder', 'founder'. A request may carry a number `rid`, sent back with its 'ok' or 'error'.
 	 */
@@ -825,6 +832,12 @@ export class Order extends DurableObject {
 					return this.send(ws, { t: 'hunt', ...ridOf(p), board: this.huntBoard() });
 				case 'getroll':
 					return this.getRoll(ws, p);
+				case 'report':
+					return await addReport(this, ws, a, p);
+				case 'reports':
+					return await listReports(this, ws, a, p);
+				case 'clearreports':
+					return await clearReports(this, ws, a, p);
 			}
 			if (status !== 'member') {
 				switch (p.t) {
@@ -877,6 +890,12 @@ export class Order extends DurableObject {
 					return await this.issue(ws, me, p);
 				case 'carry':
 					return await this.carry(ws, me, p);
+				case 'badge':
+					return await setBadge(this, ws, me, p);
+				case 'lend':
+					return await lend(this, ws, me, p);
+				case 'recall':
+					return await recall(this, ws, me, p);
 				default:
 					return this.no(ws, 'unknown', p);
 			}
@@ -1339,6 +1358,7 @@ export class Order extends DurableObject {
 				carried: this.carriedOf(m.n),
 				carry: this.carriedOf(m.n)[0] || 0,
 				carryLimit: this.carryLimit(m.n),
+				badge: badgeOf(m),
 				pic,
 				order: this.meta ? ORDER_NAME : '',
 			},

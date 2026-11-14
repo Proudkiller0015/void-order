@@ -11,7 +11,7 @@
 	if (w.VoidOrder) {
 		return;
 	}
-	const VERSION = '2.0.0-beta.1.1';
+	const VERSION = '2.0.0-beta.2';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
 	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
 	/** Where the add-on's pictures are (a test page sets VoidOrderAssets). */
@@ -115,25 +115,31 @@
 	 * Runs fn; if it throws, the error goes to `say` (or the console) and the game carries on.
 	 * @param {() => any} fn
 	 * @param {(text: string) => void} [say]
+	 * @param {string} [feature] the feature named in a problem report
 	 */
-	function guard(fn, say) {
+	function guard(fn, say, feature = 'Oculus Nihili') {
 		try {
 			const r = fn();
 			if (r && typeof r.catch === 'function') {
-				r.catch((/** @type {any} */ e) => report(e, say));
+				r.catch((/** @type {any} */ e) => report(e, say, feature));
 			}
 		} catch (e) {
-			report(e, say);
+			report(e, say, feature);
 		}
 	}
-	function report(/** @type {any} */ e, /** @type {((text: string) => void) | undefined} */ say) {
+	function report(/** @type {any} */ e, /** @type {((text: string) => void) | undefined} */ say, feature = 'Oculus Nihili') {
 		const text = `⚠ Oculus Nihili hit a problem: ${(e && e.message) || e}`;
 		if (say) {
 			say(text);
 		} else {
 			console.warn(text);
 		}
+		if (problem) {
+			problem(feature, e);
+		}
 	}
+	/** Hands a failure to the problem reporter (set once the modules' context exists). */
+	let problem = /** @type {((feature: string, e: any) => void) | null} */ (null);
 
 	// ---- The key: P-256, kept in the account's add-on settings so every device signs in as the same member.
 	/** @type {{ owner: number, priv: CryptoKey, pub: { x: string, y: string } } | null} */
@@ -327,8 +333,17 @@
 			waiting.delete(x.rid);
 			done(x);
 		}
+		for (const f of serverListeners) {
+			guard(() => f(x));
+		}
 		if (x.t === 'state') {
 			state = x;
+			if (!signedIn) {
+				signedIn = true;
+				for (const f of signInListeners.splice(0)) {
+					guard(f);
+				}
+			}
 			if (resetCode && x.status === 'member') {
 				resetCode = '';
 				note('Your key is in. Welcome to the Order.');
@@ -650,6 +665,7 @@
 		#void-card { position: fixed; z-index: 2147483002; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(400px, 94vw); max-height: 94vh; overflow: auto; padding: 18px 18px 16px; border-radius: 18px;
 			border: 1px solid #7a52c4; background: radial-gradient(140% 90% at 50% 0%, #3a1d66 0%, #12091f 60%, #08040f 100%); box-shadow: 0 20px 60px #000e, 0 0 60px #8a4dff44; text-align: center; }
 		#void-card .x { position: absolute; top: 8px; right: 10px; border: 0; background: none; color: var(--v-dim); font-size: 18px; cursor: pointer; }
+		#void-card .badge { position: absolute; top: 10px; left: 10px; width: 64px; height: 64px; }
 		#void-card .org { font: 600 12px Georgia, serif; letter-spacing: 4px; text-transform: uppercase; color: var(--v-dim); }
 		#void-card .pic { width: 120px; height: 120px; margin: 12px auto 10px; border-radius: 50%; border: 2px solid #9b6bff; background: #05020a center/cover no-repeat;
 			display: flex; align-items: center; justify-content: center; font-size: 48px; color: #6a4aa0; box-shadow: 0 0 30px #8a4dff55; }
@@ -976,6 +992,13 @@
 			}
 			id.append(ln);
 		}
+		if (c.badge && /^[a-z0-9-]{1,40}$/.test(c.badge)) {
+			const b = make('img', 'badge');
+			b.src = `${ASSETS}badges/${c.badge}-160.png`;
+			b.alt = '';
+			b.addEventListener('error', () => b.remove());
+			card.append(b);
+		}
 		card.append(x, make('div', 'org', ORDER_NAME), pic, make('div', 'nm', c.name), make('div', 'num', `Member #${c.n}`), id);
 		const medals = [...(c.medals || [])].reverse();
 		if (medals.length) {
@@ -1136,6 +1159,41 @@
 		const m = memberOf(n);
 		return m && !m.invited && (n === w.Player.MemberNumber || roomVoid.has(n)) ? m : null;
 	}
+	// ---- Personal badges (assets/badges/): a member's own picture instead of the plain mark.
+	/** @type {{ id: string, name: string }[] | null} The badges there are (assets/badges/index.json). */
+	let badges = null;
+	let badgesLoading = false;
+	function loadBadges() {
+		if (badges || badgesLoading) {
+			return;
+		}
+		badgesLoading = true;
+		fetch(`${ASSETS}badges/index.json?v=${encodeURIComponent(VERSION)}`)
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+			.then((list) => {
+				badges = Array.isArray(list) ? list : [];
+				render();
+			})
+			.catch((e) => report(e, undefined, 'Badges'))
+			.finally(() => (badgesLoading = false));
+	}
+	/** @type {Map<string, HTMLImageElement>} */
+	const badgeImages = new Map();
+	/** A badge's picture (48 or 160 px), once loaded; null while loading or if it can't be reached. */
+	function badgeImage(/** @type {string} */ id, /** @type {number} */ size) {
+		if (!/^[a-z0-9-]{1,40}$/.test(id || '')) {
+			return null;
+		}
+		const k = `${id}-${size}`;
+		let img = badgeImages.get(k);
+		if (!img) {
+			img = new Image();
+			img.onerror = () => report(new Error(`badge picture ${k}.png could not be loaded`), undefined, 'Badges');
+			img.src = `${ASSETS}badges/${k}.png`;
+			badgeImages.set(k, img);
+		}
+		return img.complete && img.naturalWidth ? img : null;
+	}
 	/** @type {Map<string, HTMLCanvasElement>} Drawn marks, by symbol and colour. */
 	const markImages = new Map();
 	/** A mark: the symbol in a dark violet disc with a glowing ring in the branch's colour. */
@@ -1191,7 +1249,15 @@
 			return;
 		}
 		const { sym, color } = markOf(m);
-		g.drawImage(markImage(sym, color), x + MARK.x * zoom, y + MARK.y * zoom, MARK.size * zoom, MARK.size * zoom);
+		const badge = m.badge ? badgeImage(m.badge, 48) : null;
+		if (badge) {
+			// A little larger than the mark: the badge's scythe reaches past its disc.
+			const s = MARK.size * 1.3;
+			const d = (s - MARK.size) / 2;
+			g.drawImage(badge, x + (MARK.x - d) * zoom, y + (MARK.y - d) * zoom, s * zoom, s * zoom);
+		} else {
+			g.drawImage(markImage(sym, color), x + MARK.x * zoom, y + MARK.y * zoom, MARK.size * zoom, MARK.size * zoom);
+		}
 		if (onMark(x, y, zoom) && typeof w.DrawTextFit === 'function') {
 			w.DrawTextFit(placeSummary(m), x + 250 * zoom, y + (MARK.y + MARK.size / 2) * zoom, 150 * zoom, color, 'black');
 		}
@@ -1643,12 +1709,18 @@
 		if (!sdk || typeof sdk.registerMod !== 'function') {
 			return;
 		}
-		const mod = sdk.registerMod({
-			name: 'VoidOrder',
-			fullName: 'Oculus Nihili',
-			version: VERSION,
-			repository: 'https://github.com/Proudkiller0015/void-order',
-		});
+		let mod;
+		try {
+			mod = sdk.registerMod({
+				name: 'VoidOrder',
+				fullName: 'Oculus Nihili',
+				version: VERSION,
+				repository: 'https://github.com/Proudkiller0015/void-order',
+			});
+		} catch (e) {
+			report(e, undefined, 'Mod registration');
+			return;
+		}
 		let broken = false;
 		mod.hookFunction('ChatRoomCharacterViewDrawOverlay', 0, (/** @type {any[]} */ args, /** @type {(a: any[]) => any} */ next) => {
 			const r = next(args);
@@ -1658,7 +1730,7 @@
 					drawTarget(args[0], args[1], args[2], args[3]);
 				} catch (e) {
 					broken = true;
-					report(e);
+					report(e, undefined, 'Room marks');
 				}
 			}
 			return r;
@@ -2392,6 +2464,9 @@
 				}
 			}
 		}
+		for (const f of moduleSettings) {
+			guard(() => f(body), panelSay);
+		}
 		body.append(
 			make(
 				'p',
@@ -2455,6 +2530,7 @@
 		const buttonAt = (/** @type {number} */ i) => [1240, TOP + i * ROW, 560, 64];
 		const mouse = (/** @type {Rect} */ r) => typeof w.MouseIn === 'function' && w.MouseIn(...r);
 		const canvas = () => /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
+		let drawFailed = false;
 		w.PreferenceRegisterExtensionSetting({
 			Identifier: 'OculusNihili',
 			ButtonText: 'Oculus Nihili',
@@ -2478,7 +2554,11 @@
 					w.DrawButton(...buttonAt(others().length), 'Open the Oculus Nihili panel', 'White');
 					w.DrawButton(...EXIT, '', 'White', 'Icons/Exit.png');
 				} catch (e) {
-					// Never throw inside the game's draw loop.
+					// Never throw inside the game's draw loop; say so once.
+					if (!drawFailed) {
+						drawFailed = true;
+						report(e, undefined, 'Extensions page');
+					}
 				} finally {
 					if (g) {
 						g.textAlign = 'center';
@@ -2521,11 +2601,14 @@
 	const manages = () => isMember() && (isTop(state.me) || leadsAny(state.me));
 	/** The tabs you have, in order. */
 	function tabs() {
+		/** @type {[string, string][]} */
+		const extra = moduleTabs.filter((x) => guarded(x.show, false)).map((x) => [x.id, x.label]);
 		if (!isMember()) {
 			return [
 				['join', state && state.meta ? 'The Order' : 'Found'],
 				['dice', 'Dice'],
 				['hunt', '🎯 Hunt board'],
+				...extra,
 				['settings', '⚙ Settings'],
 			];
 		}
@@ -2541,7 +2624,7 @@
 		if (manages()) {
 			t.push(['manage', 'Manage']);
 		}
-		t.push(['me', 'My card'], ['settings', '⚙ Settings']);
+		t.push(['me', 'My card'], ...extra, ['settings', '⚙ Settings']);
 		return t;
 	}
 	/** Whether a redraw waits for the field being typed in to lose focus. */
@@ -2620,7 +2703,8 @@
 					hunt: drawHunt,
 					armory: drawArmory,
 				};
-				draw[tab](body);
+				const fromModule = moduleTabs.find((x) => x.id === tab);
+				(fromModule ? fromModule.draw : draw[tab])(body);
 			}
 		}, panelSay);
 		const msg = make('div', 'msg', lastMsg);
@@ -3323,6 +3407,11 @@
 		}
 		if (topOver(me, m)) {
 			head.append(check(` ${structure().monsignor.name}`, !!m.mon, (on) => act({ t: 'monsignor', member: m.n, on })));
+			loadBadges();
+			if (badges && badges.length) {
+				const opts = /** @type {[string, string][]} */ ([['', 'No badge'], ...badges.map((b) => [b.id, `Badge: ${b.name}`])]);
+				head.append(select(opts, m.badge || '', (v) => act({ t: 'badge', member: m.n, badge: v })));
+			}
 		}
 		if ((me.n === founderN() || me.n === state.appAdmin) && m.n !== state.appAdmin && m.n !== founderN() && !m.invited) {
 			head.append(check(' Admin', !!m.admin, (on) => act({ t: 'admin', member: m.n, on })));
@@ -3877,7 +3966,115 @@
 		openPanel();
 	}
 
-	w.VoidOrder = Object.freeze({ version: VERSION });
+	// ---- Modules: the add-on's other parts (src/<name>.js next to assets/), loaded in order as the page starts.
+	/** The modules' folder (a test page sets VoidOrderSrc). */
+	const SRC = w.VoidOrderSrc || ASSETS.replace(/assets\/?$/, 'src/');
+	const MODULES = ['guard', 'reports', 'items', 'overflow', 'actions'];
+	/** Problems hit before the reporter is in: [feature, error, when], sent on to it once it loads. */
+	const early = /** @type {[string, any, number][]} */ ([]);
+	/** @type {((t: any) => void)[]} */
+	const serverListeners = [];
+	/** @type {{ id: string, label: string, show: () => boolean, draw: (body: HTMLElement) => void }[]} */
+	const moduleTabs = [];
+	/** @type {((body: HTMLElement) => void)[]} */
+	const moduleSettings = [];
+	/** f(), or `dflt` if it throws. */
+	const guarded = (/** @type {() => any} */ f, /** @type {any} */ dflt) => {
+		try {
+			return f();
+		} catch (e) {
+			return dflt;
+		}
+	};
+	/** @type {(() => void)[]} */
+	const signInListeners = [];
+	let signedIn = false;
+	/**
+	 * What every module is given. `report(feature, error)` notes a feature that failed: until src/reports.js loads it
+	 * queues them (reports.js takes over the queue), then it is reports.js's own.
+	 */
+	const ctx = {
+		w,
+		VERSION,
+		base: ASSETS.replace(/assets\/?$/, ''),
+		src: SRC,
+		assets: ASSETS,
+		guard,
+		toast,
+		note,
+		escapeHtml,
+		req,
+		pref,
+		setPref,
+		openPanel: (/** @type {string | undefined} */ which) => openPanel(which),
+		render: (force = false) => render(force),
+		state: () => state,
+		me: () => (w.Player && w.Player.MemberNumber) || null,
+		isMember,
+		appAdmin: () => !!state && !!w.Player && state.appAdmin === w.Player.MemberNumber,
+		/** Calls f once signed in to the Order's server (at once if already). */
+		onSignIn: (/** @type {() => void} */ f) => (signedIn ? guard(f) : signInListeners.push(f)),
+		/** Calls f with every message from the server. */
+		onServer: (/** @type {(x: any) => void} */ f) => serverListeners.push(f),
+		/** A panel tab from a module: { id, label, show() (whether you have it), draw(body) }. */
+		addTab: (/** @type {(typeof moduleTabs)[number]} */ t) => moduleTabs.push(t),
+		/** A section a module adds at the end of ⚙ Settings: f(body). */
+		addSettings: (/** @type {(body: HTMLElement) => void} */ f) => moduleSettings.push(f),
+		make,
+		style,
+		/** Rolls Void dice everyone in the room sees: (dice sides, modifier) → '' or why it didn't. */
+		roll: (/** @type {number[]} */ dice, /** @type {number} */ mod) => roll(dice, mod),
+		early,
+		report: (/** @type {string} */ feature, /** @type {any} */ error) => {
+			console.warn(`[Oculus Nihili] ${feature}:`, error);
+			if (early.length < 30) {
+				early.push([String(feature), error, Date.now()]);
+			}
+		},
+		/** @type {Record<string, any>} */
+		modules: {},
+	};
+	/** Loads one module by a script tag (so its errors name its file) and resolves with its factory, or null. */
+	function loadModule(/** @type {string} */ name) {
+		return new Promise((resolve) => {
+			const slots = (w.VoidOrderModules = w.VoidOrderModules || {});
+			if (typeof slots[name] === 'function') {
+				resolve(slots[name]);
+				return;
+			}
+			const s = document.createElement('script');
+			s.src = `${SRC}${name}.js?v=${encodeURIComponent(VERSION)}`;
+			s.onload = () => resolve(typeof slots[name] === 'function' ? slots[name] : null);
+			s.onerror = () => resolve(null);
+			document.head.append(s);
+		});
+	}
+	/** Loads the modules in order; one that fails to load or throws is null in ctx.modules and is reported. */
+	async function loadModules() {
+		for (const name of MODULES) {
+			let api = null;
+			try {
+				const make = await loadModule(name);
+				if (!make) {
+					throw new Error(`src/${name}.js did not load`);
+				}
+				api = (await make(ctx)) || null;
+			} catch (e) {
+				ctx.report(`Module ${name}`, e);
+			}
+			ctx.modules[name] = api;
+		}
+		if (!ctx.modules.reports && early.length) {
+			toast('Oculus Nihili: some features are switched off after a game change. Reload to try again.');
+		}
+	}
+	problem = (feature, e) => ctx.report(feature, e);
+	/** For other add-ons and tests: the version, and report(feature, error) to note a feature that failed. */
+	w.VoidOrder = Object.freeze({
+		version: VERSION,
+		report: (/** @type {string} */ feature, /** @type {any} */ e) => ctx.report(feature, e),
+	});
+	loadModules();
 
 	// ---- Start: once the game is ready.
 	const start = setInterval(() => {
@@ -3895,11 +4092,16 @@
 				},
 			]);
 			if (typeof w.ChatRoomRegisterMessageHandler === 'function') {
-				w.ChatRoomRegisterMessageHandler({
-					Description: 'Oculus Nihili: ID cards, dice and marks',
-					Priority: -150,
-					Callback: onRoomMessage,
-				});
+				guard(
+					() =>
+						w.ChatRoomRegisterMessageHandler({
+							Description: 'Oculus Nihili: ID cards, dice and marks',
+							Priority: -150,
+							Callback: onRoomMessage,
+						}),
+					undefined,
+					'Room messages',
+				);
 			}
 			document.addEventListener('keydown', (e) => {
 				if (e.key === 'Escape') {
@@ -3908,8 +4110,8 @@
 			});
 			document.addEventListener('keydown', hotkeyDown, true);
 			applyLook();
-			hookRoom();
-			registerExtension();
+			guard(hookRoom, undefined, 'Room hooks');
+			guard(registerExtension, undefined, 'Extensions page');
 			connect();
 			setInterval(tick, 2000);
 		});
