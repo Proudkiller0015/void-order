@@ -83,13 +83,22 @@ shows their place; clicking it opens their ID card. Each add-on tells the room i
 comes in, and the mark only shows for someone the Order knows as a member. Only members see the marks. _⚙ Settings_
 turns them off.
 
+## The hunt board
+
+The **🎯 Hunt board** tab is a copy of the Void Order Prison's public [hunt board](https://vo-p.com/hunt-board): the
+contracts (everyone on it volunteered), each with its member number, reward, terms, and always their own notes, their
+wants and limits, and a link to their entry; and the most wanted, with their threat level and where they were last
+seen. The Order's server reads the board at most every 10 minutes and keeps the last good copy if the site is down or
+changes. In a chat room, a small 🎯 target sits over anyone with an open contract, under the Void mark's spot; clicking
+it opens their contract. _⚙ Settings_ turns the targets off.
+
 ## Settings
 
 The panel's **⚙ Settings** tab, and the game's own _Settings › Extensions › Oculus Nihili_ page, hold the same settings:
 
 - **Notifications**: pop-ups for new orders and reminders, the session reminder (off, or 5 to 60 minutes before), a
   reminder when a session starts, a soft sound, and do not disturb (no pop-ups or sounds; everything is still listed).
-- **Rooms**: the Void mark, ID cards and dice shown in your room.
+- **Rooms**: the Void mark, the bounty targets, and ID cards and dice shown in your room.
 - **Panel**: the ⸸ side tab and its position, an open/close key, the look (Void dark or lighter) and the accent colour.
 - **SlimeBeep**: joining the Order chat there.
 - **Privacy**: who sees the public room you are in: everyone in the Order, only those over you, or nobody.
@@ -115,14 +124,16 @@ gets a join code, valid 7 days.
 ## The server
 
 `server/` is a Cloudflare Worker with one Durable Object that holds the Order: members and their places, the structure,
-the newest 300 orders, dice rolls for 10 minutes, and a log of changes. Rooms and who's online are never stored. Private
+the newest 300 orders, dice rolls for 10 minutes, the last copy of the hunt board, and a log of changes. Rooms and who's online are never stored. Private
 rooms are never sent, and a member's public room goes only to those they let see it.
 
 ```sh
 cd server
 npm install
-npm run dev:test     # a local server (app admin 11, founding code test-founding-code, any origin, a stand-in relay)
-node test-server.js  # joining, placing, branch leaders, hybrids, orders, cards, dice, the chat, codes, limits
+npm run dev:test     # a local server (app admin 11, founding code test-founding-code, any origin, stand-ins for
+                     # the SlimeBeep relay and the hunt board on port 8799, served by the tests)
+node test-server.js  # joining, placing, branch leaders, hybrids, orders, cards, dice, the chat, the hunt board…
+node test-hunt-board.js  # the hunt board reader, on saved pages
 npm run deploy
 ```
 

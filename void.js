@@ -345,6 +345,9 @@
 		} else if (x.t === 'unorder') {
 			orders.delete(x.id);
 			render();
+		} else if (x.t === 'hunt' && x.board) {
+			huntBoard = x.board;
+			render();
 		} else if (x.t === 'medal' && x.medal) {
 			const text = `🎖 ${x.medal.byName} commended you: ${x.medal.name}`;
 			note(`${text}${x.medal.reason ? ` (${x.medal.reason})` : ''}`);
@@ -649,6 +652,12 @@
 		#void-panel .medal-pick { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
 		#void-panel .medal-pick button { border: 1px solid var(--v-line); border-radius: 8px; background: #ffffff08; padding: 2px 4px; cursor: pointer; }
 		#void-panel .medal-pick button.on { border-color: var(--v-accent); background: #9b59ff33; }
+		#void-panel .contract.focus { border-color: #ff8a5c; box-shadow: 0 0 0 1px #ff8a5c, 0 0 18px #ff8a5c55; }
+		#void-panel .contract .reward { color: #ffd38a; font-weight: 600; }
+		#void-panel .contract .quote { font-style: italic; color: #e9dcff; margin: 4px 0; }
+		#void-panel .contract .notes { white-space: pre-wrap; margin: 4px 0; padding: 6px 8px; border-left: 2px solid #ff8a5c; background: #ff8a5c10; border-radius: 4px; }
+		#void-panel .contract a, #void-panel .hunt-head a { color: var(--v-accent); }
+		#void-panel .threat { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
 		#void-card .foot { margin-top: 12px; font-size: 11px; color: var(--v-dim); border-top: 1px solid #ffffff14; padding-top: 8px; display: flex; gap: 8px; align-items: center; justify-content: center; }
 		#void-card .copy { border: 1px solid #5b3d8f; border-radius: 999px; background: none; color: var(--v-dim); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
 		.void-toast { position: fixed; z-index: 2147483003; right: 16px; width: 300px; padding: 10px 14px; border-radius: 12px; cursor: pointer;
@@ -1121,14 +1130,185 @@
 			w.DrawTextFit(placeSummary(m), x + 250 * zoom, y + (MARK.y + MARK.size / 2) * zoom, 150 * zoom, color, 'black');
 		}
 	}
-	/** A click on someone's mark opens their ID card; returns whether it was one. */
+	/** A click on someone's mark opens their ID card, and on their target their contract; returns whether it was one. */
 	function clickMark(/** @type {any} */ C, /** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) {
+		const bounty = targetOf(C);
+		if (bounty && onTarget(x, y, zoom)) {
+			guard(() => showContract(bounty.code));
+			return true;
+		}
 		const m = markedMember(C);
 		if (!m || !onMark(x, y, zoom)) {
 			return false;
 		}
 		guard(() => openCard(m.n, note));
 		return true;
+	}
+
+	// ---- The hunt board: the Void Order Prison's public board, as the Order's server last read it
+	/** @type {any} The board: { contracts, wanted, debtors, totals, at, url }, or null before the first copy. */
+	let huntBoard = null;
+	/** The contract shown highlighted on the board (by its code). */
+	let huntFocus = '';
+	/** The open contract on character C, if the targets are on. */
+	function targetOf(/** @type {any} */ C) {
+		if (!opts.huntTargets || !huntBoard || !C || !C.MemberNumber) {
+			return null;
+		}
+		if (typeof w.ChatRoomHideIconState === 'number' && w.ChatRoomHideIconState > 0) {
+			return null;
+		}
+		return huntBoard.contracts.find((/** @type {any} */ x) => x.member === C.MemberNumber && x.status === 'open') || null;
+	}
+	/** Where the target sits: under the Void mark's spot, so the two never overlap. */
+	const TARGET = { x: MARK.x, y: MARK.y + MARK.size + 6, size: MARK.size };
+	const onTarget = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) =>
+		typeof w.MouseIn === 'function' && w.MouseIn(x + TARGET.x * zoom, y + TARGET.y * zoom, TARGET.size * zoom, TARGET.size * zoom);
+	/** @type {HTMLCanvasElement | null} The target, drawn once: red and white rings and a cross. */
+	let targetImage = null;
+	function drawTarget(/** @type {any} */ C, /** @type {number} */ x, /** @type {number} */ y, /** @type {number} */ zoom) {
+		const bounty = targetOf(C);
+		const g = /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
+		if (!bounty || !g) {
+			return;
+		}
+		if (!targetImage) {
+			targetImage = document.createElement('canvas');
+			targetImage.width = targetImage.height = 72;
+			const t = /** @type {CanvasRenderingContext2D} */ (targetImage.getContext('2d'));
+			for (const [r, color] of /** @type {[number, string][]} */ ([
+				[32, '#ff4d4d'],
+				[24, '#ffffff'],
+				[16, '#ff4d4d'],
+				[8, '#ffffff'],
+				[4, '#ff4d4d'],
+			])) {
+				t.fillStyle = color;
+				t.beginPath();
+				t.arc(36, 36, r, 0, Math.PI * 2);
+				t.fill();
+			}
+			t.strokeStyle = '#3a0a0a';
+			t.lineWidth = 3;
+			t.beginPath();
+			t.moveTo(36, 0);
+			t.lineTo(36, 72);
+			t.moveTo(0, 36);
+			t.lineTo(72, 36);
+			t.stroke();
+		}
+		g.drawImage(targetImage, x + TARGET.x * zoom, y + TARGET.y * zoom, TARGET.size * zoom, TARGET.size * zoom);
+		if (onTarget(x, y, zoom) && typeof w.DrawTextFit === 'function') {
+			w.DrawTextFit(`Bounty: ${credits(bounty)}`, x + 250 * zoom, y + (TARGET.y + TARGET.size / 2) * zoom, 150 * zoom, '#ffb38a', 'black');
+		}
+	}
+	/** A contract's reward in words: "1,500 credits", "1,500 credits + 100". */
+	const credits = (/** @type {any} */ c) =>
+		`${(c.reward || 0).toLocaleString('en-US')} credits${c.bonus ? ` + ${c.bonus.toLocaleString('en-US')}` : ''}`;
+	/** Opens the board on one contract. */
+	function showContract(/** @type {string} */ code) {
+		huntFocus = code;
+		delete drafts['h:filter'];
+		openPanel('hunt');
+		document.getElementById(`hunt-${code}`)?.scrollIntoView({ block: 'center' });
+	}
+	/** A link to the board's own page: only to the board's site. */
+	function boardLink(/** @type {string} */ text, /** @type {string | null} */ href) {
+		const base = new URL(huntBoard.url);
+		let url = null;
+		try {
+			url = href ? new URL(href, base) : null;
+		} catch (e) {
+			url = null;
+		}
+		const a = make('a', '', text);
+		a.href = url && url.origin === base.origin ? url.href : base.href;
+		a.target = '_blank';
+		a.rel = 'noopener noreferrer';
+		return a;
+	}
+	function drawHunt(/** @type {HTMLElement} */ body) {
+		if (!huntBoard) {
+			body.append(make('p', 'dim', 'The Order’s server is reading the hunt board; it comes in a moment.'));
+			req({ t: 'hunt' });
+			return;
+		}
+		const head = make('p', 'dim hunt-head');
+		head.append(
+			document.createTextNode(
+				`A copy of the Void Order Prison’s public hunt board: every name on it volunteered. Updated ${fromNow(huntBoard.at)}. `,
+			),
+			boardLink('Open the board', huntBoard.url),
+		);
+		body.append(head);
+		const filter = field('h:filter', '', 40);
+		filter.placeholder = 'Find a name or member number';
+		filter.addEventListener('input', () => render(true));
+		body.append(filter);
+		const q = String(drafts['h:filter'] || '').toLowerCase();
+		const list = huntBoard.contracts
+			.filter((/** @type {any} */ c) => !q || c.name.toLowerCase().includes(q) || String(c.member || '').includes(q))
+			.sort(
+				(/** @type {any} */ a, /** @type {any} */ b) =>
+					Number(b.code === huntFocus) - Number(a.code === huntFocus) || Number(b.status === 'open') - Number(a.status === 'open'),
+			);
+		body.append(make('h3', '', `Contracts · ${list.length}`));
+		for (const c of list) {
+			const box = make('div', `box contract${c.code === huntFocus ? ' focus' : ''}`);
+			box.id = `hunt-${c.code}`;
+			const row = make('div', 'row');
+			const who = make('span', 'grow');
+			who.append(make('b', '', c.name), make('span', 'dim', c.member ? ` BC #${c.member}` : ''));
+			row.append(
+				who,
+				make('span', 'tag', c.code),
+				make('span', 'tag', c.status === 'open' ? 'Open' : c.hunter ? `Hunted by ${c.hunter}` : 'Being hunted'),
+			);
+			if (c.tracking === 'live') {
+				row.append(make('span', 'tag', 'Online now'));
+			}
+			box.append(row);
+			const reward = make('div', 'reward', `💰 ${credits(c)}`);
+			if (c.terms) {
+				reward.append(make('span', 'dim', ` (${c.terms})`));
+			}
+			box.append(reward);
+			if (c.quote) {
+				box.append(make('div', 'quote', `“${c.quote}”`));
+			}
+			box.append(make('div', 'dim', 'Their wants and limits'), make('div', 'notes', c.notes || 'None written: ask them first.'));
+			const foot = make('div', 'dim');
+			foot.append(document.createTextNode(`Posted by ${c.postedBy || 'the prison'} · `), boardLink('On vo-p.com', c.url || `#${c.code}`));
+			box.append(foot);
+			body.append(box);
+		}
+		if (huntBoard.wanted.length) {
+			body.append(
+				make('h3', '', 'Most wanted'),
+				make('p', 'dim', 'Escaped inmates of the prison. They have no member number on the board.'),
+			);
+			const THREAT = { CRITICAL: '#ff5c7a', HIGH: '#ff9a5c', MEDIUM: '#ffd38a', LOW: '#9be3a0' };
+			for (const x of huntBoard.wanted) {
+				const row = make('div', 'member');
+				const who = make('span', 'grow');
+				who.append(make('b', '', x.name), make('span', 'dim', ` ${x.code}`));
+				const bits = [
+					x.lastSeen ? `last seen in ${x.lastSeen}` : 'not seen since',
+					x.escaped !== null ? `escaped ${plural(x.escaped, 'day')} ago` : '',
+				];
+				who.append(make('div', 'dim', bits.filter(Boolean).join(' · ')));
+				row.append(who);
+				if (x.threat) {
+					const t = make('span', 'threat', x.threat);
+					t.style.color = THREAT[x.threat] || 'var(--v-dim)';
+					row.append(t);
+				}
+				if (x.bounty !== null) {
+					row.append(make('span', 'tag', `L$ ${x.bounty.toLocaleString('en-US')}`));
+				}
+				body.append(row);
+			}
+		}
 	}
 	/**
 	 * Hooks the room's character overlay through the game's mod SDK (so other add-ons' marks keep working): draws the
@@ -1151,6 +1331,7 @@
 			if (!broken) {
 				try {
 					drawMark(args[0], args[1], args[2], args[3]);
+					drawTarget(args[0], args[1], args[2], args[3]);
 				} catch (e) {
 					broken = true;
 					report(e);
@@ -1660,6 +1841,14 @@
 		{ k: 'roomBadges', group: 'Rooms', label: 'Void mark over members in my room', kind: 'bool', dflt: true },
 		{ k: 'roomCards', group: 'Rooms', label: 'Open ID cards shown in my room', kind: 'bool', dflt: true },
 		{ k: 'roomDice', group: 'Rooms', label: 'Play dice others roll in my room', kind: 'bool', dflt: true },
+		{
+			k: 'huntTargets',
+			group: 'Rooms',
+			label: 'A target over people with a bounty',
+			kind: 'bool',
+			dflt: true,
+			hint: 'An open contract on the Void Order Prison’s hunt board; click the target to read it.',
+		},
 		{ k: 'sideTab', group: 'Panel', label: 'Show the side tab', kind: 'bool', dflt: true },
 		{
 			k: 'tabSide',
@@ -2012,6 +2201,7 @@
 			return [
 				['join', state && state.meta ? 'The Order' : 'Found'],
 				['dice', 'Dice'],
+				['hunt', '🎯 Hunt board'],
 				['settings', '⚙ Settings'],
 			];
 		}
@@ -2021,6 +2211,7 @@
 			['members', 'Members'],
 			['order', 'The Order'],
 			['dice', 'Dice'],
+			['hunt', '🎯 Hunt board'],
 		];
 		if (manages()) {
 			t.push(['manage', 'Manage']);
@@ -2101,6 +2292,7 @@
 					me: drawMe,
 					join: drawJoin,
 					settings: drawSettings,
+					hunt: drawHunt,
 				};
 				draw[tab](body);
 			}

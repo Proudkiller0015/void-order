@@ -30,8 +30,20 @@ const TYPES = {
 	'.webp': 'image/webp',
 	'.mp3': 'audio/mpeg',
 };
-/** A stand-in for the SlimeBeep relay's link API (dev:test points the server here): invites are 'CODE<member>'. */
+/** The hunt board's pages, from the server's fixtures; Bea (12) has the first page's first contract. */
+const BOARD = ['hunt-board.html', 'hunt-board-2.html'].map((f) =>
+	fs.readFileSync(path.join(__dirname, 'server', 'test', 'fixtures', f), 'utf8'),
+);
+BOARD[0] = BOARD[0].replace('BC #100037', 'BC #12');
+/**
+ * A stand-in for the SlimeBeep relay's link API (dev:test points the server here): invites are 'CODE<member>'. It
+ * serves the hunt board too (dev:test's HUNT_BOARD_URL).
+ */
 const relay = http.createServer((req, res) => {
+	if (req.url.startsWith('/hunt-board')) {
+		res.writeHead(200, { 'content-type': 'text/html' });
+		return res.end(BOARD[/[?&]p=2\b/.test(req.url) ? 1 : 0]);
+	}
 	let body = '';
 	req.on('data', (d) => (body += d));
 	req.on('end', () => {
@@ -321,7 +333,7 @@ const openCardOf = async (page, name) => {
 		await click(page, 'Found the Order');
 		await page.waitForFunction(() => /Orders/.test(document.querySelector('#void-panel nav')?.innerText || ''), { timeout: 10000 });
 		const tabs = await page.evaluate(() => [...document.querySelectorAll('#void-panel nav button')].map((b) => b.textContent).join('|'));
-		check('founding gives the Founder every tab', tabs === 'Orders|Members|The Order|Dice|Manage|My card|⚙ Settings', tabs);
+		check('founding gives the Founder every tab', tabs === 'Orders|Members|The Order|Dice|🎯 Hunt board|Manage|My card|⚙ Settings', tabs);
 
 		// Bea joins at once and waits for a place; Ann places her from Manage as a Paladin rank 5.
 		const bea = await peer(12, 'Bea');
@@ -800,6 +812,62 @@ const openCardOf = async (page, name) => {
 		await toggleSetting(fp, 'Void mark over members');
 		check('and on again', await marked(1));
 
+		// The hunt board: a copy of the prison's public board, with everyone's notes; a target over Bea, who has a bounty.
+		await page.bringToFront();
+		await click(page, '🎯 Hunt board');
+		await page
+			.waitForFunction(() => /Contracts · 102/.test(document.getElementById('void-panel')?.innerText || ''), { timeout: 15000 })
+			.catch(() => {});
+		const board = await panelText(page);
+		check(
+			'the hunt board lists the contracts, with their notes, and the most wanted',
+			/Updated[\s\S]*CONTRACTS · 102[\s\S]*Ivy & “Moth” BC #12[\s\S]*BH-003170[\s\S]*1,500 credits \+ 100 \(taunted — alive only\)[\s\S]*“Run & hide!”[\s\S]*Their wants and limits\s+Catch me off guard[\s\S]*MOST WANTED[\s\S]*Escapee 1 VOP-000408[\s\S]*CRITICAL/.test(
+				board,
+			),
+			board.slice(0, 900),
+		);
+		await shot(page, '18-hunt-board');
+		const targeted = () =>
+			page.evaluate(() => {
+				for (const c of ChatRoomCharacter) c.OnlineSharedSettings = { GameVersion, ...c.OnlineSharedSettings };
+				document.getElementById('MainCanvas').getContext('2d').clearRect(0, 0, 2000, 1000);
+				ChatRoomCharacterViewDrawOverlay(ChatRoomCharacter[1], 0, 0, 1);
+				// A point on the red ring, off the cross.
+				const px = document.getElementById('MainCanvas').getContext('2d').getImageData(343, 133, 1, 1).data;
+				return px[3] > 0 && px[0] > 150;
+			});
+		check('Bea, with an open contract, has a target in the room', await targeted());
+		await page.evaluate(() => {
+			document.getElementById('void-panel')?.remove();
+			MouseX = 347;
+			MouseY = 137;
+			ChatRoomCharacterViewClickCharacter(ChatRoomCharacter[1], 0, 0, 1, 347, 137);
+		});
+		await page.waitForSelector('#void-panel .contract.focus', { timeout: 5000 }).catch(() => {});
+		check(
+			'clicking the target opens her contract on the board',
+			await page.evaluate(() => document.querySelector('#void-panel .contract.focus')?.id === 'hunt-BH-003170'),
+		);
+		await page.evaluate(() => document.querySelectorAll('body > :not(canvas)').forEach((el) => el.classList.add('vo-test-hidden')));
+		await page.addStyleTag({ content: '.vo-test-hidden { visibility: hidden !important; }' });
+		await page.evaluate(() => {
+			const g = document.getElementById('MainCanvas').getContext('2d');
+			g.fillStyle = '#1a1024';
+			g.fillRect(0, 0, 2000, 1000);
+			CharacterAppearanceSetDefault(ChatRoomCharacter[1]);
+			DrawCharacter(ChatRoomCharacter[0], 250, 0, 1);
+			DrawCharacter(ChatRoomCharacter[1], 750, 0, 1);
+			MouseX = 750 + 347;
+			MouseY = 137;
+			ChatRoomCharacterViewDrawOverlay(ChatRoomCharacter[0], 250, 0, 1);
+			ChatRoomCharacterViewDrawOverlay(ChatRoomCharacter[1], 750, 0, 1);
+		});
+		await shot(page, '19-room-target');
+		await page.evaluate(() => document.querySelectorAll('.vo-test-hidden').forEach((el) => el.classList.remove('vo-test-hidden')));
+		await toggleSetting(page, 'A target over people with a bounty');
+		check('the setting turns the targets off', !(await targeted()));
+		await toggleSetting(page, 'A target over people with a bounty');
+
 		// Someone showing their ID in the room: the card comes from the server.
 		await page.evaluate(() => {
 			const h = ChatRoomMessageHandlers.find((x) => x.Description === 'Oculus Nihili: ID cards, dice and marks');
@@ -960,7 +1028,7 @@ const openCardOf = async (page, name) => {
 		);
 		check(
 			'another device with the same account signs in as the same member',
-			tabs2 === 'Orders|Members|The Order|Dice|Manage|My card|⚙ Settings',
+			tabs2 === 'Orders|Members|The Order|Dice|🎯 Hunt board|Manage|My card|⚙ Settings',
 			tabs2,
 		);
 		const noteOnLogin = await second.page.evaluate(() => window.local.join('\n'));

@@ -14,10 +14,17 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * A stand-in for the SlimeBeep relay's link API (dev:test points SLIMEBEEP_RELAY here, with the key test-link-key):
- * invites are 'CODE<member>' in group 'g1', members in `inGroup` are in already, and `down` answers 500.
+ * invites are 'CODE<member>' in group 'g1', members in `inGroup` are in already, and `down` answers 500. It also
+ * serves the hunt board's two pages from the fixtures (dev:test's HUNT_BOARD_URL), or junk while `board` is 'junk'.
  */
-const relay = { calls: [], inGroup: new Set(), down: false };
+const relay = { calls: [], inGroup: new Set(), down: false, board: 'fixtures', boardHits: [] };
+const FIXTURES = ['hunt-board.html', 'hunt-board-2.html'].map((f) => require('fs').readFileSync(`${__dirname}/test/fixtures/${f}`, 'utf8'));
 const relayServer = require('http').createServer((req, res) => {
+	if (req.url.startsWith('/hunt-board')) {
+		relay.boardHits.push({ url: req.url, agent: req.headers['user-agent'] });
+		res.writeHead(200, { 'content-type': 'text/html' });
+		return res.end(relay.board === 'junk' ? '<html><body>Under maintenance</body></html>' : FIXTURES[/[?&]p=2\b/.test(req.url) ? 1 : 0]);
+	}
 	let body = '';
 	req.on('data', (d) => (body += d));
 	req.on('end', () => {
@@ -508,6 +515,50 @@ async function joined(member, name) {
 		'someone who leaves is taken out of the chat',
 	);
 	kim.close();
+
+	// The hunt board: fetched one page at a time, joined, sent to everyone signed in, and kept when the site fails.
+	const boardOf = (c) => [...c.got].reverse().find((x) => x.t === 'hunt' && x.board)?.board;
+	check(
+		relay.boardHits.filter((h) => h.url === '/hunt-board').length >= 1 && relay.boardHits.some((h) => h.url === '/hunt-board?p=2'),
+		'the server fetched both pages of the board, the second from its own address',
+		relay.boardHits.map((h) => h.url),
+	);
+	check(
+		relay.boardHits.every((h) => /^OculusNihili\//.test(h.agent || '')),
+		'naming the add-on, nothing else',
+		relay.boardHits[0],
+	);
+	const hb = (await c2.req({ t: 'hunt' })).board;
+	check(
+		hb && hb.contracts.length === 102 && hb.wanted.length === 8 && hb.debtors.length === 8 && hb.totals.open === 101,
+		'the board: 102 contracts from both pages, the wanted and debtors once each',
+		hb && [hb.contracts.length, hb.wanted.length, hb.debtors.length, hb.totals],
+	);
+	const ivyBounty = hb.contracts.find((x) => x.code === 'BH-003170');
+	check(
+		ivyBounty.member === 100037 &&
+			ivyBounty.reward === 1500 &&
+			ivyBounty.bonus === 100 &&
+			/gags/.test(ivyBounty.notes) &&
+			ivyBounty.photo === null,
+		'a contract keeps the member number, reward, bonus and notes; no photo is passed on',
+		ivyBounty,
+	);
+	check(boardOf(late) && boardOf(late).contracts.length === 102, 'guests get the board too');
+	// Whatever that request set going has finished; then the site turns to junk, and the next refresh reads that.
+	await wait(2500);
+	const good = (await c2.req({ t: 'hunt' })).board;
+	relay.board = 'junk';
+	await wait(2000);
+	await c2.req({ t: 'hunt' });
+	await wait(2500);
+	const stale = (await c2.req({ t: 'hunt' })).board;
+	check(
+		relay.boardHits.length >= 3 && stale && stale.contracts.length === 102 && stale.at === good.at,
+		'a page that no longer reads keeps the last good copy, and its time',
+		stale && [stale.contracts.length, stale.at, good.at],
+	);
+	relay.board = 'fixtures';
 
 	// Everything is kept.
 	b.close();

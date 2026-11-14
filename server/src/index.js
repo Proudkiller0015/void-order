@@ -21,10 +21,15 @@
  * Members who also run SlimeBeep are put in the Order's group chat there: the SlimeBeep relay makes an invite for
  * them (SLIMEBEEP_RELAY, with the SLIMEBEEP_LINK_KEY secret), and takes them out when they leave the Order.
  *
+ * The hunt board: a copy of the Void Order Prison's public hunt board (vo-p.com), fetched at most every
+ * HUNT_EVERY ms, one page per alarm (parsing a page takes most of an invocation's CPU on the free plan), kept in
+ * 'hunt' and sent to everyone signed in. A page that fails to load or read keeps the last good copy of it.
+ *
  * Free-plan limits: sockets hibernate and keep-alive pings get an auto-response without waking the object.
  */
 
 import { DurableObject } from 'cloudflare:workers';
+import { HUNT_BOARD_URL, huntBoardPages, parseHuntBoard } from './hunt-board.js';
 
 const LIMITS = {
 	/** Longest Order or member name, and the longest element. */
@@ -67,6 +72,9 @@ const LIMITS = {
 	rollsPerMinute: 8,
 	rollMinutes: 10,
 	rolls: 1000,
+	/** How often the hunt board is fetched again (ms), and the most pages fetched. */
+	huntEvery: 600000,
+	huntPages: 10,
 	/** A commendation's longest name and reason, and the most a member keeps (the newest). */
 	medalName: 40,
 	medalReason: 140,
@@ -366,6 +374,8 @@ export class Order extends DurableObject {
 			}
 			this.seq = (await ctx.storage.get('seq')) || 0;
 			this.log = (await ctx.storage.get('log')) || [];
+			/** @type {{ pages: Record<number, any>, of: number, tried: number, next: string[] }} */
+			this.hunt = (await ctx.storage.get('hunt')) || { pages: {}, of: 0, tried: 0, next: [] };
 		});
 	}
 
@@ -797,6 +807,9 @@ export class Order extends DurableObject {
 					return this.setRoom(ws, a, p);
 				case 'roll':
 					return await this.roll(ws, a, p);
+				case 'hunt':
+					this.huntCheck();
+					return this.send(ws, { t: 'hunt', ...ridOf(p), board: this.huntBoard() });
 				case 'getroll':
 					return this.getRoll(ws, p);
 			}
@@ -923,6 +936,11 @@ export class Order extends DurableObject {
 		if (this.statusOf(a) === 'member') {
 			this.send(ws, { t: 'orders', orders: this.ordersOf(member) });
 		}
+		const board = this.huntBoard();
+		if (board) {
+			this.send(ws, { t: 'hunt', board });
+		}
+		this.huntCheck();
 	}
 
 	/**
@@ -1435,6 +1453,106 @@ export class Order extends DurableObject {
 		this.ok(ws, p);
 		for (const { ws: w } of seen) {
 			this.send(w, { t: 'unorder', id: o.id });
+		}
+	}
+
+	// ---- The hunt board
+	/** The board's address (a test server points HUNT_BOARD_URL elsewhere). */
+	get huntUrl() {
+		return typeof this.env.HUNT_BOARD_URL === 'string' && this.env.HUNT_BOARD_URL ? this.env.HUNT_BOARD_URL : HUNT_BOARD_URL;
+	}
+	/** Starts fetching the board again (in an alarm) if the last try is older than HUNT_EVERY. */
+	huntCheck() {
+		const every = Number(this.env.HUNT_EVERY) || LIMITS.huntEvery;
+		if (Date.now() - this.hunt.tried < every) {
+			return;
+		}
+		this.hunt.tried = Date.now();
+		this.hunt.next = [this.huntUrl];
+		this.ctx.waitUntil(this.ctx.storage.put('hunt', this.hunt).then(() => this.ctx.storage.setAlarm(Date.now())));
+	}
+	/**
+	 * The board as clients get it: every page's contracts, and the most wanted and the casino's debtors once each
+	 * (every page repeats them); `at` is when the oldest page in it was read. Null before the first good read.
+	 */
+	huntBoard() {
+		const pages = Object.keys(this.hunt.pages)
+			.map(Number)
+			.sort((a, b) => a - b)
+			.map((n) => this.hunt.pages[n]);
+		if (!pages.length) {
+			return null;
+		}
+		const once = (list) => [...new Map(list.map((x) => [x.code, x])).values()];
+		return {
+			contracts: once(pages.flatMap((p) => p.contracts)),
+			wanted: once(pages.flatMap((p) => p.wanted)),
+			debtors: once(pages.flatMap((p) => p.debtors)),
+			totals: pages[0].totals,
+			at: Math.min(...pages.map((p) => p.at)),
+			url: this.huntUrl,
+		};
+	}
+	/**
+	 * Fetches and reads one page of the board: the first one queues the others. A page that fails keeps its last good
+	 * copy; one that reads cleanly replaces it, and everyone signed in gets the new board.
+	 */
+	async alarm() {
+		const url = this.hunt.next.shift();
+		if (!url) {
+			return;
+		}
+		await this.ctx.storage.put('hunt', this.hunt);
+		let html = '';
+		try {
+			const res = await fetch(url, {
+				headers: { 'User-Agent': 'OculusNihili/2 (the Void Order add-on)' },
+				signal: AbortSignal.timeout(15000),
+			});
+			html = res.ok ? await res.text() : '';
+			if (!res.ok) {
+				console.warn('hunt board: HTTP', res.status, url);
+			}
+		} catch (e) {
+			console.warn('hunt board: fetch failed', url, String(e));
+		}
+		const board = html ? parseHuntBoard(html, this.huntUrl) : null;
+		const n = board && board.page ? board.page.n : 0;
+		if (board && n && (board.contracts.length || board.wanted.length)) {
+			if (!board.ok) {
+				console.warn('hunt board: read with problems', board.problems.slice(0, 5));
+			}
+			const strip = (c) => ({ ...c, photo: null });
+			this.hunt.pages[n] = {
+				contracts: board.contracts.map(strip),
+				wanted: board.wanted,
+				debtors: board.debtors,
+				totals: board.totals,
+				at: Date.now(),
+			};
+			if (n === 1) {
+				this.hunt.of = Math.min(board.page.of, LIMITS.huntPages);
+				for (const k of Object.keys(this.hunt.pages)) {
+					if (Number(k) > this.hunt.of) {
+						delete this.hunt.pages[k];
+					}
+				}
+				// The other pages, at this board's address (whatever the page's own links say).
+				const others = huntBoardPages(html, this.huntUrl)
+					.map((u) => Number(new URL(u).searchParams.get('p')))
+					.filter((p) => Number.isInteger(p) && p > 1 && p <= this.hunt.of);
+				this.hunt.next = [...new Set(others)].sort((a, b) => a - b).map((p) => `${this.huntUrl}?p=${p}`);
+			}
+			const out = this.huntBoard();
+			for (const { ws } of this.sockets()) {
+				this.send(ws, { t: 'hunt', board: out });
+			}
+		} else if (html) {
+			console.warn('hunt board: the page did not read', url, board ? board.problems.slice(0, 5) : []);
+		}
+		await this.ctx.storage.put('hunt', this.hunt);
+		if (this.hunt.next.length) {
+			await this.ctx.storage.setAlarm(Date.now() + 1000);
 		}
 	}
 
