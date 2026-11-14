@@ -27,7 +27,7 @@ export default [
 		rules: { 'no-unused-vars': ['error', { caughtErrors: 'none' }] },
 	},
 	{
-		files: ['test.js', 'server/test-server.js', 'server/test-reports.js'],
+		files: ['test.js', 'server/test-server.js', 'server/test-reports.js', 'tools/*.js'],
 		languageOptions: { ecmaVersion: 2023, sourceType: 'commonjs', globals: { ...globals.node, ...globals.browser } },
 		// The game's globals, used inside page.evaluate.
 		rules: { 'no-unused-vars': ['error', { caughtErrors: 'none' }], 'no-undef': 'off' },
