@@ -128,7 +128,7 @@ async function peer(member, name, code = '') {
  * `slimebeep` puts a stand-in for SlimeBeep's add-on API on the page, recording the groups it joins in `sbJoined`.
  * @param {{ me: [number, string], other: [number, string], settings?: object, slimebeep?: boolean }} who
  */
-async function gamePage(browser, { me, other, settings = {}, slimebeep = false, grabber = false }) {
+async function gamePage(browser, { me, other, settings = {}, slimebeep = false, grabber = false, addon = true }) {
 	const page = await browser.newPage();
 	await page.setViewport({ width: 1600, height: 900 });
 	const errors = [];
@@ -239,6 +239,9 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false, 
 				true,
 			);
 		});
+	}
+	if (!addon) {
+		return { page, errors };
 	}
 	await page.addScriptTag({ path: path.join(__dirname, 'void.js') });
 	await page.waitForFunction(() => Commands.some((c) => c.Tag === 'void'), { timeout: 10000 });
@@ -1578,13 +1581,36 @@ const openCardOf = async (page, name) => {
 					.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action' && d.Content === 'Beep')
 					.map(([, d]) => d.Dictionary[0].Text),
 			);
+		// Vic plays without the add-on: what the server relays of Ann's item updates goes through the game's own sync.
+		const vic = await gamePage(browser, { me: [30, 'Vic'], other: [12, 'Bea'], addon: false });
+		// Every item update Ann's page sent and Vic hasn't had yet (the test clears window.sent now and then).
+		const relay = async () => {
+			const updates = await ap.evaluate(() =>
+				window.sent
+					.filter(([t, d]) => t === 'ChatRoomCharacterItemUpdate' && !d.relayed && (d.relayed = true))
+					.map(([, d]) => ({ ...d, relayed: undefined })),
+			);
+			for (const item of updates) {
+				await vic.page.evaluate((item) => ChatRoomSyncItem({ Source: 11, Item: item }), item);
+			}
+		};
+		const vicSees = (group) =>
+			vic.page.evaluate((g) => {
+				const it = InventoryGet(ChatRoomCharacter[1], g);
+				return { item: it?.Asset.Name || '', lock: it?.Property?.LockedBy || '' };
+			}, group);
+		await ap.evaluate(() => (ServerPlayerIsInChatRoom = () => true));
+		await relay();
 		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
-		await ap.evaluate(() => {
-			const bea = ChatRoomCharacter[1];
-			bea.AllowedInteractions = 0;
-			InventoryWear(bea, 'HempRope', 'ItemArms');
-			CharacterRefresh(bea, false);
-		});
+		const dress = (page) =>
+			page.evaluate(() => {
+				const bea = ChatRoomCharacter[1];
+				bea.AllowedInteractions = 0;
+				InventoryWear(bea, 'HempRope', 'ItemArms');
+				CharacterRefresh(bea, false);
+			});
+		await dress(ap);
+		await dress(vic.page);
 		check('a blade can cut a rope on the arms', (await offeredOn('ItemArms')).includes('VoidCutFree'));
 		await ap.evaluate(() => (ChatRoomCharacter[1].AllowedInteractions = 4));
 		check('but not on someone who doesn’t allow your items', !(await offeredOn('ItemArms')).includes('VoidCutFree'));
@@ -1594,17 +1620,23 @@ const openCardOf = async (page, name) => {
 		const cut = await ap.evaluate(() => ({ arms: InventoryGet(ChatRoomCharacter[1], 'ItemArms')?.Asset.Name || '' }));
 		const cutLines = await lineText();
 		check('cutting removes the rope', cut.arms === '', cut);
+		await relay();
+		const vicCut = await vicSees('ItemArms');
+		check('and a player without the add-on sees it gone', vicCut.item === '', vicCut);
 		check(
 			'and says so in a line everyone reads',
 			cutLines.some((t) => /^Ann slices through the .+ binding Bea's arms\.$/.test(t)),
 			cutLines,
 		);
-		await ap.evaluate(() => {
-			const bea = ChatRoomCharacter[1];
-			InventoryWear(bea, 'SturdyLeatherBelts', 'ItemLegs');
-			InventoryLock(bea, 'ItemLegs', 'MetalPadlock', Player);
-			CharacterRefresh(bea, false);
-		});
+		const strap = (page, lock) =>
+			page.evaluate((lock) => {
+				const bea = ChatRoomCharacter[1];
+				InventoryWear(bea, 'SturdyLeatherBelts', 'ItemLegs');
+				InventoryLock(bea, 'ItemLegs', lock, Player);
+				CharacterRefresh(bea, false);
+			}, lock);
+		await strap(ap, 'MetalPadlock');
+		await strap(vic.page, 'MetalPadlock');
 		check(
 			'a locked strap is not cut',
 			!(await offeredOn('ItemLegs')).includes('VoidCutFree'),
@@ -1627,6 +1659,31 @@ const openCardOf = async (page, name) => {
 			'with its line',
 			shotLines.some((t) => /^Ann shoots the .+ off Bea's .+\.$/.test(t)),
 			shotLines,
+		);
+		await relay();
+		const vicShot = await vicSees('ItemLegs');
+		check(
+			'a player without the add-on sees the lock gone and the strap still on',
+			vicShot.item === 'SturdyLeatherBelts' && vicShot.lock === '',
+			vicShot,
+		);
+		// The five-minute timer padlock: always, like the metal one.
+		await strap(ap, 'TimerPadlock');
+		check('a timer padlock can be shot off too', (await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		await runOn(ap, 'ItemLegs', 'VoidShootLock');
+		await wait(800);
+		const timerOff = await ap.evaluate(() => {
+			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
+			return {
+				item: it?.Asset.Name || '',
+				lock: it?.Property?.LockedBy || '',
+				hidden: window.sent.some(([, d]) => d && d.Type === 'Hidden'),
+			};
+		});
+		check(
+			'and it always comes off, with no roll',
+			timerOff.item === 'SturdyLeatherBelts' && timerOff.lock === '' && !timerOff.hidden,
+			timerOff,
 		);
 		await ap.evaluate(() => {
 			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
@@ -1653,6 +1710,8 @@ const openCardOf = async (page, name) => {
 			{ lockRoll, rolledLines },
 		);
 		await ap.evaluate(() => ['ItemArms', 'ItemLegs'].forEach((g) => InventoryRemove(ChatRoomCharacter[1], g)));
+		check('no page errors for the player without the add-on', vic.errors.length === 0, vic.errors);
+		await vic.page.close();
 		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
 		await ap.evaluate(() => (window.local = []));
 		await ap.evaluate(() => Commands.find((c) => c.Tag === 'void').Action('diag', '/void diag', []));
