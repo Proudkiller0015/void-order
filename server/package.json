@@ -6,7 +6,8 @@
 		"dev": "wrangler dev --port 8788",
 		"dev:test": "wrangler dev --port 8788 --var ALLOW_ANY_ORIGIN:1 --var ADMIN:11 --var FOUND_CODE:test-founding-code",
 		"deploy": "wrangler deploy",
-		"test": "node test-server.js"
+		"test": "node test-server.js",
+		"test:hunt-board": "node test-hunt-board.js"
 	},
 	"devDependencies": {
 		"wrangler": "4.151.0"
