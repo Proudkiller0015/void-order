@@ -42,14 +42,14 @@ branch leader then gives you your place.
 - **ID cards** follow the Order's format: _Praise the Void! 𓁹‿𓁹_, then _(Branch) - (Rank)_ and the chapter; a hybrid's
   card has their title, then each branch with its rank and chapter. _Copy ID_ copies it as text.
 
-Branch, rank, chapter and hybrid names, the symbols, colours and descriptions are the Order's defaults, and the Founder
-and admins edit them under **Manage › Branches, ranks and titles**.
+The branches, ranks, chapters, hybrid titles and symbols are the Order's own, written into the add-on; changing them is
+an update.
 
 ## Who can do what
 
 - **The Founder** (one member) and **the app admins** can do everything, everywhere: place anyone in any branch at any
-  rank and chapter, make Monsignors, send orders to anyone, bring people in, remove members, and edit the about page,
-  joining and the structure. Nobody acts on the Founder or an admin except the Founder. The Founder (and the member who
+  rank and chapter, make Monsignors, send orders to anyone, bring people in, remove members, and edit the about page and
+  joining. Nobody acts on the Founder or an admin except the Founder. The Founder (and the member who
   runs the app) names the admins.
 - **Branch leaders**, at rank 4 or 5 of a branch, place, promote, demote, set the chapter of, give orders to and take
   out the members of their branch whose rank there is below their own, and place members still awaiting a place. They

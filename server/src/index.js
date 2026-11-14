@@ -1,10 +1,8 @@
 /**
  * The Void Order server: a Cloudflare Worker with one Durable Object holding the whole Order.
  *
- * Storage: 'meta' { name, about, open, founded, founder, admins }, 'structure' (branches, their ranks and chapters,
- * hybrid titles, Monsignor; see DEFAULT_STRUCTURE) with 'structureV' (bumped on every change, so an editor working
- * from an older copy is refused), 'm:<member number>' members (see Member), 'pic:<member number>' pictures,
- * 'o:<id>' orders (the newest LIMITS.orders kept), 'seq', 'log' (the newest LIMITS.log changes), 'joins' (when each
+ * Storage: 'meta' { name, about, open, founded, founder, admins }, 'm:<member number>' members (see Member),
+ * 'pic:<member number>' pictures, 'o:<id>' orders (the newest LIMITS.orders kept), 'seq', 'log' (the newest LIMITS.log changes), 'joins' (when each
  * address joined in the last hour) and 'r:<id>' dice rolls (kept LIMITS.rollMinutes).
  *
  * Clients sign in by signing a one-time nonce with their P-256 key. A member number is bound to the key it joined
@@ -13,7 +11,7 @@
  * is whatever the client says it is (the game can't vouch for it to an outside server), so founding takes the
  * FOUND_CODE secret as well as env.ADMIN.
  *
- * The hierarchy: five branches, each with five ranks (1 at the bottom, 5 at the top) and chapters open from rank 2.
+ * The hierarchy (STRUCTURE, fixed in the code: changing it is an update): five branches, each with five ranks (1 at the bottom, 5 at the top) and chapters open from rank 2.
  * A member holds up to two branches (two make them a hybrid, with the title for that pair), and may be a Monsignor,
  * an honorary rank with no powers. Powers: the Founder (one member) and the app admins (env.ADMIN always, and whoever
  * the Founder or env.ADMIN names) do everything; nobody acts on them but the Founder. A member at rank 4 or 5 of a
@@ -29,16 +27,8 @@
 import { DurableObject } from 'cloudflare:workers';
 
 const LIMITS = {
-	/** Longest Order, member, branch, rank or chapter name. */
+	/** Longest Order or member name, and the longest element. */
 	name: 40,
-	/** Longest symbol, like ≈][≈. */
-	sym: 12,
-	/** Longest motto and branch description. */
-	motto: 60,
-	desc: 200,
-	/** Most chapters in a branch, most elements to pick from, and the longest element. */
-	chapters: 8,
-	elements: 12,
 	element: 12,
 	/** Longest bio. */
 	bio: 300,
@@ -93,7 +83,6 @@ const ACKS = { order: ['read', 'done'], session: ['yes', 'maybe', 'no'], notice:
 const PIC_RE = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+=*$/;
 /** A base64url key coordinate or signature. */
 const B64URL = /^[A-Za-z0-9_-]{16,128}$/;
-const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const CODE_RE = /^[A-Z2-9]{10}$/;
 const ROLL_RE = /^[a-z0-9]{12}$/;
 /**
@@ -125,8 +114,8 @@ const ORIGINS = [
 /** A rank name with the same word in every form. */
 const forms = (f, m = f, n = m) => ({ f, m, n });
 const chapter = (id, name, tiers = []) => ({ id, name, tiers: Array.from({ length: TIERS }, (_, i) => tiers[i] || null) });
-/** The Order's structure as its Discord has it; the Founder and admins edit it in the app. */
-const DEFAULT_STRUCTURE = {
+/** The Order's structure, as its Discord has it. Changing it is a code update. */
+const STRUCTURE = {
 	motto: 'Praise the Void! 𓁹‿𓁹',
 	founder: { name: 'Founder', sym: '𓁹‿𓁹', color: '#ffe3a3' },
 	monsignor: {
@@ -271,8 +260,6 @@ const samePub = (a, b) => !!a && !!b && a.x === b.x && a.y === b.y;
 const ridOf = (p) => (p && typeof p.rid === 'number' ? { rid: p.rid } : {});
 /** The storage key of an order: padded so they list in order. */
 const orderKey = (id) => `o:${String(id).padStart(10, '0')}`;
-/** The key of a hybrid title: the two branch ids in alphabetical order. */
-const pairKey = (a, b) => [a, b].sort().join('+');
 
 /** Verifies an ECDSA P-256 / SHA-256 signature (base64url r||s) of `text`. */
 async function verify(pub, sig, text) {
@@ -302,89 +289,6 @@ async function isOperator(req, env) {
 	}
 	const hash = async (x) => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(x)));
 	return crypto.subtle.timingSafeEqual(await hash(key), await hash(got));
-}
-
-/** A rank name's forms from an editor, or null if it has no name at all. */
-function cleanForms(x) {
-	if (!x || typeof x !== 'object') {
-		return null;
-	}
-	const f = clean(x.f, LIMITS.name);
-	const m = clean(x.m, LIMITS.name);
-	const n = clean(x.n, LIMITS.name);
-	const any = f || m || n;
-	return any ? { f: f || any, m: m || any, n: n || any } : null;
-}
-
-/**
- * The structure from an editor, checked against the current one: the same branches (by id), every rank and hybrid
- * title named, chapters kept by id or made new. Returns the clean structure or why it can't be used.
- * @returns {{ s?: any, why?: string }}
- */
-function cleanStructure(x, old) {
-	if (!x || typeof x !== 'object' || !Array.isArray(x.branches)) {
-		return { why: 'bad structure' };
-	}
-	const ids = old.branches.map((b) => b.id);
-	const given = x.branches.map((b) => b && b.id);
-	if (given.length !== ids.length || !ids.every((id) => given.includes(id))) {
-		return { why: 'the branches can be renamed, not added or removed' };
-	}
-	const titled = (y, dflt) => ({
-		name: clean(y && y.name, LIMITS.name) || dflt.name,
-		sym: clean(y && y.sym, LIMITS.sym),
-		color: y && COLOR_RE.test(y.color || '') ? y.color : dflt.color,
-	});
-	const s = {
-		motto: clean(x.motto, LIMITS.motto),
-		founder: titled(x.founder, old.founder),
-		monsignor: { ...titled(x.monsignor, old.monsignor), about: clean(x.monsignor && x.monsignor.about, LIMITS.desc) },
-		branches: [],
-		hybrids: {},
-	};
-	for (const y of x.branches) {
-		const was = old.branches.find((b) => b.id === y.id);
-		const tiers = Array.isArray(y.tiers) ? y.tiers.slice(0, TIERS).map(cleanForms) : [];
-		if (tiers.length !== TIERS || tiers.some((t) => !t)) {
-			return { why: `every rank of ${was.name} needs a name` };
-		}
-		if (!Array.isArray(y.chapters) || y.chapters.length > LIMITS.chapters) {
-			return { why: `at most ${LIMITS.chapters} chapters in a branch` };
-		}
-		const chapters = [];
-		for (const c of y.chapters) {
-			const name = clean(c && c.name, LIMITS.name);
-			if (!name) {
-				return { why: 'every chapter needs a name' };
-			}
-			const id = c && typeof c.id === 'string' && was.chapters.some((k) => k.id === c.id) ? c.id : newId(6);
-			const own = Array.isArray(c.tiers) ? c.tiers : [];
-			chapters.push({ id, name, tiers: Array.from({ length: TIERS }, (_, i) => cleanForms(own[i])) });
-		}
-		if (new Set(chapters.map((c) => c.id)).size !== chapters.length) {
-			return { why: 'a chapter is listed twice' };
-		}
-		const elements = Array.isArray(y.elements) ? y.elements.map((e) => clean(e, LIMITS.element)).filter(Boolean) : [];
-		s.branches.push({
-			id: was.id,
-			...titled(y, was),
-			about: clean(y.about, LIMITS.desc),
-			tiers,
-			chapters,
-			elements: [...new Set(elements)].slice(0, LIMITS.elements),
-		});
-	}
-	for (const [i, a] of ids.entries()) {
-		for (const b of ids.slice(i + 1)) {
-			const key = pairKey(a, b);
-			const t = cleanForms(x.hybrids && x.hybrids[key]);
-			if (!t) {
-				return { why: 'every pair of branches needs a hybrid title' };
-			}
-			s.hybrids[key] = t;
-		}
-	}
-	return { s };
 }
 
 export default {
@@ -435,8 +339,6 @@ export class Order extends DurableObject {
 		ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('{"t":"ping"}', '{"t":"pong"}'));
 		ctx.blockConcurrencyWhile(async () => {
 			this.meta = (await ctx.storage.get('meta')) || null;
-			this.structure = (await ctx.storage.get('structure')) || DEFAULT_STRUCTURE;
-			this.structureV = (await ctx.storage.get('structureV')) || 0;
 			/** @type {Record<number, Member>} */
 			this.members = {};
 			for (const m of (await ctx.storage.list({ prefix: 'm:' })).values()) {
@@ -550,11 +452,11 @@ export class Order extends DurableObject {
 			admin: this.isAdmin(n),
 			appAdmin: n === this.appAdmin,
 			top: this.isTop(n),
-			leads: this.structure.branches.filter((b) => this.leads(n, b.id)).map((b) => b.id),
+			leads: STRUCTURE.branches.filter((b) => this.leads(n, b.id)).map((b) => b.id),
 		};
 	}
 	branch(id) {
-		return this.structure.branches.find((b) => b.id === id) || null;
+		return STRUCTURE.branches.find((b) => b.id === id) || null;
 	}
 	/** A member's rank name in a place, in their form ("Pyromancer", "High Priestess"). */
 	rankName(p, m) {
@@ -731,8 +633,7 @@ export class Order extends DurableObject {
 			status,
 			member: a.member,
 			meta,
-			structure: this.structure,
-			structureV: this.structureV,
+			structure: STRUCTURE,
 			appAdmin: this.appAdmin,
 			canFound: !this.meta && a.member === this.appAdmin,
 		};
@@ -843,7 +744,7 @@ export class Order extends DurableObject {
 	/**
 	 * A client message (JSON with `t`). Before sign-in only 'auth'. Anyone signed in: 'card', 'room', 'roll',
 	 * 'getroll'. Guests: 'join', and 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave', and with
-	 * the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add', 'about', 'structure',
+	 * the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add', 'about',
 	 * 'order', 'unorder', 'founder'. A request may carry a number `rid`, sent back with its 'ok' or 'error'.
 	 */
 	async webSocketMessage(ws, raw) {
@@ -918,8 +819,6 @@ export class Order extends DurableObject {
 					return await this.addMembers(ws, me, p);
 				case 'about':
 					return await this.setAbout(ws, me, p);
-				case 'structure':
-					return await this.setStructure(ws, me, p);
 				case 'order':
 					return await this.addOrder(ws, me, p);
 				case 'unorder':
@@ -1031,7 +930,7 @@ export class Order extends DurableObject {
 			admins: [],
 		};
 		this.members[a.member] = this.newMember(a.member, clean(p.myName, LIMITS.name) || a.name, a.pub);
-		await this.ctx.storage.put({ meta: this.meta, structure: this.structure, structureV: this.structureV });
+		await this.ctx.storage.put('meta', this.meta);
 		await this.putMember(a.member);
 		await this.note(a.member, `${this.nameOf(a.member)} founded ${this.meta.name}`);
 		this.ok(ws, p);
@@ -1159,8 +1058,8 @@ export class Order extends DurableObject {
 		m.mon = p.on === true;
 		await this.putMember(m.n);
 		const what = m.mon
-			? `made ${this.nameOf(m.n)} a ${this.structure.monsignor.name}`
-			: `took ${this.nameOf(m.n)}'s ${this.structure.monsignor.name} rank away`;
+			? `made ${this.nameOf(m.n)} a ${STRUCTURE.monsignor.name}`
+			: `took ${this.nameOf(m.n)}'s ${STRUCTURE.monsignor.name} rank away`;
 		await this.note(me, `${this.nameOf(me)} ${what}`);
 		this.ok(ws, p);
 		this.broadcast();
@@ -1330,7 +1229,7 @@ export class Order extends DurableObject {
 		}
 		if (typeof p.el === 'string') {
 			const el = clean(p.el, LIMITS.element);
-			if (el && !this.structure.branches.some((b) => b.elements.includes(el))) {
+			if (el && !STRUCTURE.branches.some((b) => b.elements.includes(el))) {
 				return this.no(ws, 'no such element', p);
 			}
 			m.el = el;
@@ -1410,35 +1309,6 @@ export class Order extends DurableObject {
 		this.ok(ws, p);
 		this.broadcast();
 	}
-	/**
-	 * The branches' names, symbols, ranks, chapters and elements, the hybrid titles, Monsignor and the motto: { s, v }.
-	 * The Founder and admins. A chapter someone is in can't go.
-	 */
-	async setStructure(ws, me, p) {
-		if (!this.isTop(me)) {
-			return this.no(ws, 'not allowed', p);
-		}
-		if (p.v !== this.structureV) {
-			return this.no(ws, 'someone changed the ranks meanwhile: look at them again and redo your changes', p);
-		}
-		const { s, why } = cleanStructure(p.s, this.structure);
-		if (!s) {
-			return this.no(ws, why, p);
-		}
-		for (const m of Object.values(this.members)) {
-			const lost = m.places.find((x) => x.c && !s.branches.find((b) => b.id === x.b).chapters.some((c) => c.id === x.c));
-			if (lost) {
-				return this.no(ws, `${m.name} is still in a chapter you removed`, p);
-			}
-		}
-		this.structure = s;
-		this.structureV++;
-		await this.ctx.storage.put({ structure: s, structureV: this.structureV });
-		await this.note(me, `${this.nameOf(me)} changed the ranks`);
-		this.ok(ws, p);
-		this.broadcast();
-	}
-
 	/**
 	 * A new order, photo session or notice: { kind, title, body, to, when }. `to` is { all: true } (everyone under
 	 * you) or { groups, members }; a session has a time (`when`) for the reminders.

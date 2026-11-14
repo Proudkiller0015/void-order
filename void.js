@@ -28,9 +28,6 @@
 		orderText: 1500,
 		pic: 12000,
 		room: 40,
-		sym: 12,
-		motto: 60,
-		desc: 200,
 		dice: 10,
 		mod: 99,
 	};
@@ -2360,8 +2357,8 @@
 				'p',
 				'dim',
 				top
-					? 'You have every power: place anyone, in any branch, at any rank.'
-					: `You lead ${led.map((/** @type {any} */ b) => b.name).join(' and ')}: you place members below your own rank there, and place those still waiting.`,
+					? 'You have every power: place anyone, in any branch, at any rank. Members still waiting come first; every pick saves at once.'
+					: `You lead ${led.map((/** @type {any} */ b) => b.name).join(' and ')}: you place members below your own rank there, and place those still waiting. Every pick saves at once.`,
 			),
 		);
 		const filter = field('m:filter', '', 40);
@@ -2427,7 +2424,6 @@
 				'b main',
 			),
 		);
-		body.append(drawStructureEditor());
 		if (state.log && state.log.length) {
 			body.append(make('h3', '', 'Recent changes'));
 			for (const l of [...state.log].reverse()) {
@@ -2554,182 +2550,6 @@
 		}
 		return wrap;
 	}
-	/**
-	 * The structure editor, for the Founder and admins: the motto, the Founder's and Monsignor's names and symbols,
-	 * each branch's name, symbol, colour, description, ranks (feminine, masculine and neutral), chapters with their own
-	 * rank names, and elements, and the hybrid titles.
-	 */
-	function drawStructureEditor() {
-		const wrap = make('div');
-		wrap.append(
-			make('h3', '', 'Branches, ranks and titles'),
-			make(
-				'p',
-				'dim',
-				'Each rank has a feminine, a masculine and a neutral form; members pick theirs. A * in a rank name is the member’s element (*mancer: Pyromancer). A chapter’s own rank names replace the branch’s for its members.',
-			),
-		);
-		/** @type {any} */
-		const s = drafts.structure ? JSON.parse(drafts.structure) : JSON.parse(JSON.stringify(structure()));
-		const save = () => {
-			drafts.structure = JSON.stringify(s);
-		};
-		/** A text input bound to obj[k]. */
-		const text = (/** @type {any} */ obj, /** @type {string} */ k, /** @type {number} */ max, placeholder = '') => {
-			const el = make('input');
-			el.value = obj[k] || '';
-			el.maxLength = max;
-			el.placeholder = placeholder;
-			el.addEventListener('input', () => {
-				obj[k] = el.value;
-				save();
-			});
-			return el;
-		};
-		const color = (/** @type {any} */ obj) => {
-			const el = make('input', 'auto');
-			el.type = 'color';
-			el.value = isColor(obj.color) ? obj.color : '#b48cff';
-			el.addEventListener('input', () => {
-				obj.color = el.value;
-				save();
-			});
-			return el;
-		};
-		/** Three inputs for a rank name's forms; blank ones (where `optional`) mean "the branch's". */
-		const formsRow = (/** @type {string} */ name, /** @type {any} */ holder, /** @type {string | number} */ k, optional = false) => {
-			const row = make('div', 'forms');
-			row.append(make('span', 'dim', name));
-			for (const f of ['f', 'm', 'n']) {
-				const el = make('input');
-				el.maxLength = LIMITS.name;
-				el.value = holder[k] ? holder[k][f] : '';
-				el.placeholder = optional ? 'branch’s' : FORM_NAME[f];
-				el.addEventListener('input', () => {
-					holder[k] = holder[k] || { f: '', m: '', n: '' };
-					holder[k][f] = el.value;
-					if (optional && !holder[k].f && !holder[k].m && !holder[k].n) {
-						holder[k] = null;
-					}
-					save();
-				});
-				row.append(el);
-			}
-			return row;
-		};
-		const head = make('div', 'forms');
-		head.append(make('span'), make('span', 'dim', 'Feminine'), make('span', 'dim', 'Masculine'), make('span', 'dim', 'Neutral'));
-		const titles = make('details');
-		titles.dataset.k = 'titles';
-		titles.append(make('summary', '', 'Motto, Founder and Monsignor'));
-		titles.append(label('Motto (first line of every ID)'), text(s, 'motto', LIMITS.motto));
-		for (const [k, name] of [
-			['founder', 'Founder'],
-			['monsignor', 'Monsignor'],
-		]) {
-			const row = make('div', 'row');
-			const n = text(s[k], 'name', LIMITS.name, name);
-			n.classList.add('grow');
-			const sym = text(s[k], 'sym', LIMITS.sym, 'symbol');
-			sym.style.width = '90px';
-			row.append(n, sym, color(s[k]));
-			titles.append(label(name), row);
-		}
-		titles.append(label('Monsignor: description'), text(s.monsignor, 'about', LIMITS.desc));
-		wrap.append(titles);
-		for (const b of s.branches) {
-			const d = make('details');
-			d.dataset.k = `b:${b.id}`;
-			d.append(make('summary', '', withSym(b)));
-			const row = make('div', 'row');
-			const n = text(b, 'name', LIMITS.name, 'name');
-			n.classList.add('grow');
-			const sym = text(b, 'sym', LIMITS.sym, 'symbol');
-			sym.style.width = '90px';
-			row.append(n, sym, color(b));
-			d.append(row, label('Description'), text(b, 'about', LIMITS.desc), label('Ranks, 1 at the bottom'), head.cloneNode(true));
-			for (let t = 1; t <= TIERS; t++) {
-				d.append(formsRow(`Rank ${t}`, b.tiers, t - 1));
-			}
-			d.append(label('Chapters'));
-			for (const [i, c] of b.chapters.entries()) {
-				const cd = make('details');
-				cd.dataset.k = `c:${b.id}:${c.id || i}`;
-				const sum = make('summary');
-				sum.textContent = c.name || 'New chapter';
-				cd.append(sum);
-				const crow = make('div', 'row');
-				const cn = text(c, 'name', LIMITS.name, 'chapter name');
-				cn.classList.add('grow');
-				crow.append(
-					cn,
-					button(
-						'Remove',
-						() => {
-							b.chapters.splice(i, 1);
-							save();
-							render(true);
-						},
-						'b bad',
-					),
-				);
-				cd.append(crow, make('div', 'dim', 'Its own rank names (blank: the branch’s)'), head.cloneNode(true));
-				for (let t = CHAPTER_FROM; t <= TIERS; t++) {
-					cd.append(formsRow(`Rank ${t}`, c.tiers, t - 1, true));
-				}
-				d.append(cd);
-			}
-			d.append(
-				button('＋ Add a chapter', () => {
-					b.chapters.push({ id: '', name: 'New chapter', tiers: [null, null, null, null, null] });
-					save();
-					render(true);
-				}),
-			);
-			const els = make('input');
-			els.value = b.elements.join(', ');
-			els.placeholder = 'e.g. Geo, Pyro, Hydro, Aero';
-			els.addEventListener('input', () => {
-				b.elements = els.value
-					.split(',')
-					.map((/** @type {string} */ x) => x.trim())
-					.filter(Boolean);
-				save();
-			});
-			d.append(label('Elements members pick from, for a * in a rank name (comma between)'), els);
-			wrap.append(d);
-		}
-		const hy = make('details');
-		hy.dataset.k = 'hybrids';
-		hy.append(make('summary', '', 'Hybrid titles'), head.cloneNode(true));
-		for (const [i, a] of s.branches.entries()) {
-			for (const b of s.branches.slice(i + 1)) {
-				hy.append(formsRow(`${a.name} + ${b.name}`, s.hybrids, [a.id, b.id].sort().join('+')));
-			}
-		}
-		hy.querySelectorAll('.forms').forEach((/** @type {any} */ r) => (r.style.gridTemplateColumns = '150px 1fr 1fr 1fr'));
-		wrap.append(hy);
-		const row = make('div', 'row');
-		row.style.marginTop = '8px';
-		row.append(
-			button(
-				'Save the ranks',
-				() =>
-					act({ t: 'structure', s, v: state.structureV }, () => {
-						delete drafts.structure;
-						panelSay('Saved.');
-					}),
-				'b main',
-			),
-			button('Undo changes', () => {
-				delete drafts.structure;
-				render(true);
-			}),
-		);
-		wrap.append(row);
-		return wrap;
-	}
-
 	// -- My card
 	function drawMe(/** @type {HTMLElement} */ body) {
 		const me = state.me;

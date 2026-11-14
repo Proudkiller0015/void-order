@@ -766,23 +766,6 @@ const openCardOf = async (page, name) => {
 		await wait(2500);
 		check('a private room is not shown', bea.state.members.find((m) => m.n === 11)?.room === '', bea.state.members);
 
-		// The structure editor: Ann renames the Paladin symbol.
-		await click(page, 'Manage');
-		await page.evaluate(() => {
-			const d = document.querySelector('#void-panel details[data-k="b:paladin"]');
-			d.open = true;
-			const sym = d.querySelector('.row input:nth-child(2)');
-			sym.value = '✦';
-			sym.dispatchEvent(new Event('input'));
-		});
-		await click(page, 'Save the ranks');
-		await wait(500);
-		check(
-			'the structure editor saves a new symbol',
-			bea.state.structure.branches.find((b) => b.id === 'paladin').sym === '✦',
-			bea.state.structure.branches[2],
-		);
-
 		// Another device: the same account settings sign in as the same member.
 		const fayKey = await fay.page.evaluate(() => Player.ExtensionSettings.VoidOrder);
 		const second = await gamePage(browser, { me: [15, 'Fay'], other: [11, 'Ann'], settings: { VoidOrder: fayKey }, slimebeep: true });

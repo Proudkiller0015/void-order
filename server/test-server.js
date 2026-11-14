@@ -352,43 +352,6 @@ async function joined(member, name) {
 	const yanCode = await a.req({ t: 'reset', member: 32 });
 	check(yanCode.hours === 168, 'a new join code lasts 7 days');
 
-	// The structure: names, symbols, chapters, hybrid titles, by the Founder and admins.
-	const edit = JSON.parse(JSON.stringify(a.state.structure));
-	edit.branches.find((x) => x.id === 'paladin').sym = '✦';
-	edit.branches.find((x) => x.id === 'paladin').chapters.push({ id: '', name: 'Order of Dawn', tiers: [] });
-	edit.hybrids['inquisitor+paladin'] = { f: 'Commissar', m: 'Commissar', n: 'Commissar' };
-	check((await b.req({ t: 'structure', s: edit, v: a.state.structureV })).why === 'not allowed', 'a leader cannot edit the structure');
-	const v0 = a.state.structureV;
-	check((await a.req({ t: 'structure', s: edit, v: v0 })).t === 'ok', 'Ann edits the structure');
-	const pal = a.state.structure.branches.find((x) => x.id === 'paladin');
-	check(
-		pal.sym === '✦' &&
-			pal.chapters.length === 4 &&
-			/^[a-z0-9]{6}$/.test(pal.chapters[3].id) &&
-			a.state.structure.hybrids['inquisitor+paladin'].n === 'Commissar',
-		'the new symbol, chapter and title are kept',
-		pal,
-	);
-	check(/changed the ranks meanwhile/.test((await a.req({ t: 'structure', s: edit, v: v0 })).why), 'a save from an older copy is refused');
-	const noSalv = JSON.parse(JSON.stringify(a.state.structure));
-	noSalv.branches.find((x) => x.id === 'paladin').chapters.splice(1, 1);
-	check(
-		(await a.req({ t: 'structure', s: noSalv, v: a.state.structureV })).why === 'Cat is still in a chapter you removed',
-		'a chapter someone is in cannot go',
-	);
-	const extra = JSON.parse(JSON.stringify(a.state.structure));
-	extra.branches.push({ id: 'bard', name: 'Bard', tiers: [] });
-	check(
-		(await a.req({ t: 'structure', s: extra, v: a.state.structureV })).why === 'the branches can be renamed, not added or removed',
-		'branches stay five',
-	);
-	const noTitle = JSON.parse(JSON.stringify(a.state.structure));
-	delete noTitle.hybrids['mage+maid'];
-	check(
-		(await a.req({ t: 'structure', s: noTitle, v: a.state.structureV })).why === 'every pair of branches needs a hybrid title',
-		'every pair keeps a title',
-	);
-
 	// The Founder's place goes to the Order's real founder; the app admin keeps every power.
 	const magIn = await a.req({ t: 'add', people: [{ member: 18, name: 'Mag' }] });
 	const m = await connect(await makePeer(18, 'Mag'), { fields: { code: magIn.codes[0].code } });
