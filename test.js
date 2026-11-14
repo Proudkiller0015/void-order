@@ -1866,6 +1866,11 @@ const openCardOf = async (page, name) => {
 			const rolled = await ap.evaluate(() => window.sent.some(([, d]) => d && d.Type === 'Hidden'));
 			return { menu, line: line && line.text, rolled };
 		};
+		await hold(ap, 'VoidStaffs', { w: 0, Position: 0 });
+		await runOn(ap, 'ItemTorso', 'VoidStrike');
+		await wait(800);
+		const rootLine = (await lineOf(ap))?.text || '';
+		check('a weapon named "The Root" reads "the Root", not "the The Root"', /swings the Root into/.test(rootLine), rootLine);
 		const rifleAir = await air('VoidRifles', 'VoidAir');
 		check(
 			'a gun fires into the air, with no roll',
@@ -2063,6 +2068,41 @@ const openCardOf = async (page, name) => {
 			}),
 		);
 		await hold(ap, 'VoidRifles', { w: 0, Position: 0 });
+		// The game's lock rules come first: a lock someone else put on, with no key and no lockpicks, can't be shot;
+		// with lockpicks it can (unless the wearer forbids picking); never on yourself.
+		const otherLock = await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			const it = InventoryGet(bea, 'ItemLegs');
+			const saved = { ...it.Property };
+			it.Property.LockMemberNumber = 99;
+			it.Property.LockMemberName = 'Zoe';
+			const names = () => ActivityAllowedForGroup(bea, 'ItemLegs').map((a) => a.Activity.Name);
+			const out = { noKey: names().includes('VoidShootLock') };
+			// Only some locks can be picked (an intricate one can, a metal padlock can't).
+			it.Property.LockedBy = 'IntricatePadlock';
+			out.noPicks = names().includes('VoidShootLock');
+			InventoryAdd(Player, 'Lockpicks', 'ItemMisc', false);
+			out.picks = names().includes('VoidShootLock');
+			bea.OnlineSharedSettings = { ...(bea.OnlineSharedSettings || {}), DisablePickingLocksOnSelf: true };
+			out.noPicking = names().includes('VoidShootLock');
+			bea.OnlineSharedSettings.DisablePickingLocksOnSelf = false;
+			InventoryDelete(Player, 'Lockpicks', 'ItemMisc', false);
+			it.Property = saved;
+			// Ann carries the metal padlock key from here on: she may open the metal padlocks below.
+			InventoryAdd(Player, 'MetalPadlockKey', 'ItemMisc', false);
+			// On yourself: never.
+			InventoryWear(Player, 'SturdyLeatherBelts', 'ItemLegs');
+			InventoryLock(Player, 'ItemLegs', 'MetalPadlock', Player);
+			out.self = ActivityAllowedForGroup(Player, 'ItemLegs')
+				.map((a) => a.Activity.Name)
+				.includes('VoidShootLock');
+			InventoryRemove(Player, 'ItemLegs');
+			return out;
+		});
+		check("a lock you couldn't open or pick can't be shot", !otherLock.noKey && !otherLock.noPicks, otherLock);
+		check('with lockpicks a pickable one can', otherLock.picks, otherLock);
+		check('but not if the wearer forbids picking her locks', !otherLock.noPicking, otherLock);
+		check('and never your own lock', !otherLock.self, otherLock);
 		check('a gun can shoot a metal padlock', (await offeredOn('ItemLegs')).includes('VoidShootLock'));
 		await runOn(ap, 'ItemLegs', 'VoidShootLock');
 		await wait(800);
@@ -2084,24 +2124,43 @@ const openCardOf = async (page, name) => {
 			vicShot.item === 'SturdyLeatherBelts' && vicShot.lock === '',
 			vicShot,
 		);
-		// The five-minute timer padlock: always, like the metal one.
+		// The game's rules decide first: a five-minute timer padlock can't be opened or picked before its time, so it
+		// can't be shot either (whatever the lock table says).
 		await strap(ap, 'TimerPadlock');
-		check('a timer padlock can be shot off too', (await offeredOn('ItemLegs')).includes('VoidShootLock'));
-		await runOn(ap, 'ItemLegs', 'VoidShootLock');
-		await wait(800);
-		const timerOff = await ap.evaluate(() => {
-			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
-			return {
-				item: it?.Asset.Name || '',
-				lock: it?.Property?.LockedBy || '',
-				hidden: window.sent.some(([, d]) => d && d.Type === 'Hidden'),
-			};
+		check("a timer padlock the game won't open isn't offered", !(await offeredOn('ItemLegs')).includes('VoidShootLock'));
+		// Which of the table's locks the game lets a stranger with the metal key and lockpicks open or pick at all.
+		const reach = await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			const out = {};
+			for (const lock of [
+				'MetalPadlock',
+				'TimerPadlock',
+				'ExclusivePadlock',
+				'IntricatePadlock',
+				'CombinationPadlock',
+				'PasswordPadlock',
+				'TimerPasswordPadlock',
+				'HighSecurityPadlock',
+				'MistressPadlock',
+				'MistressTimerPadlock',
+			]) {
+				InventoryWear(bea, 'SturdyLeatherBelts', 'ItemLegs');
+				InventoryLock(bea, 'ItemLegs', lock, Player);
+				const it = InventoryGet(bea, 'ItemLegs');
+				if (!it.Property.LockedBy) {
+					out[lock] = 'not lockable here';
+					continue;
+				}
+				it.Property.LockMemberNumber = 99;
+				InventoryAdd(Player, 'Lockpicks', 'ItemMisc', false);
+				out[lock] = `${DialogCanUnlock(bea, it) ? 'open' : ''}${DialogCanPickLock(bea, it) ? ' pick' : ''}` || 'no';
+				InventoryDelete(Player, 'Lockpicks', 'ItemMisc', false);
+			}
+			InventoryRemove(bea, 'ItemLegs');
+			return out;
 		});
-		check(
-			'and it always comes off, with no roll',
-			timerOff.item === 'SturdyLeatherBelts' && timerOff.lock === '' && !timerOff.hidden,
-			timerOff,
-		);
+		console.log('locks a stranger may open or pick:', JSON.stringify(reach));
+		await strap(ap, 'MetalPadlock');
 		await ap.evaluate(() => {
 			const it = InventoryGet(ChatRoomCharacter[1], 'ItemLegs');
 			it.Property = { ...(it.Property || {}), LockedBy: 'OwnerPadlock', Effect: [...((it.Property && it.Property.Effect) || []), 'Lock'] };
@@ -2126,6 +2185,36 @@ const openCardOf = async (page, name) => {
 			missed ? lockRoll.lock === 'HighSecurityPadlock' && !(await offeredOn('ItemLegs')).includes('VoidShootLock') : lockRoll.lock === '',
 			{ lockRoll, rolledLines },
 		);
+		// A miss's cooldown only from the shooter's own line: a made-up one from someone without a gun is ignored.
+		const spoof = await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			InventoryWear(bea, 'SturdyLeatherBelts', 'ItemFeet');
+			InventoryLock(bea, 'ItemFeet', 'MetalPadlock', Player);
+			const line = () =>
+				ChatRoomMessage({
+					Sender: bea.MemberNumber,
+					Content: 'Beep',
+					Type: 'Action',
+					Dictionary: [
+						{ Tag: 'Beep', Text: 'Bea’s shot ricochets off the metal padlock.' },
+						{ Tag: 'VoidOrderAction', Text: 'VoidShootLock' },
+						{ Tag: 'VoidOrderTarget', Text: String(bea.MemberNumber) },
+						{ Tag: 'VoidOrderCooldown', Text: `${bea.MemberNumber}|ItemFeet|SturdyLeatherBelts|${bea.MemberNumber}` },
+					],
+				});
+			const offered = () => ActivityAllowedForGroup(bea, 'ItemFeet').some((a) => a.Activity.Name === 'VoidShootLock');
+			const out = { before: offered() };
+			line();
+			out.afterFake = offered();
+			InventoryWear(bea, 'VoidRifles', 'ItemHandheld');
+			line();
+			out.afterReal = offered();
+			InventoryRemove(bea, 'ItemHandheld');
+			InventoryRemove(bea, 'ItemFeet');
+			return out;
+		});
+		check("a made-up miss doesn't block a lock", spoof.before && spoof.afterFake, spoof);
+		check("the shooter's own miss does", !spoof.afterReal, spoof);
 		await ap.evaluate(() => ['ItemArms', 'ItemLegs'].forEach((g) => InventoryRemove(ChatRoomCharacter[1], g)));
 		check('no page errors for the player without the add-on', vic.errors.length === 0, vic.errors);
 		await vic.page.close();

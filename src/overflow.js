@@ -29,6 +29,32 @@
 				guard.problem(FEATURE, 'the game draws characters differently now');
 				return;
 			}
+			// WebGL draws a character's picture and its blinking one side by side (0-500, 500-1000) on one canvas, so what
+			// crosses the edge of one lands in the other (a scythe's tip in the blink picture's left). Our pictures are
+			// clipped to their own half; the parts past the edge are drawn by this module beside the character instead.
+			if (guard.gameFunction('GLDrawImage')) {
+				guard.hookGame('GLDrawImage', 0, 'Long weapons in WebGL', (args, next) => {
+					const gl = args[1];
+					if (!gl || typeof gl.scissor !== 'function' || !ours(args[0])) {
+						return next(args);
+					}
+					const k = (gl.drawingBufferWidth || 1000) / 1000;
+					const was = gl.isEnabled(gl.SCISSOR_TEST);
+					const box = gl.getParameter(gl.SCISSOR_BOX);
+					gl.enable(gl.SCISSOR_TEST);
+					gl.scissor(Math.round((Number(args[5]) || 0) * k), 0, Math.round(500 * k), gl.drawingBufferHeight);
+					try {
+						return next(args);
+					} finally {
+						if (!was) {
+							gl.disable(gl.SCISSOR_TEST);
+						}
+						if (box && box.length === 4) {
+							gl.scissor(box[0], box[1], box[2], box[3]);
+						}
+					}
+				});
+			}
 			guard.hookGame('CharacterAppearanceBuildCanvas', 0, FEATURE, (args, next) => {
 				const r = next(args);
 				build(args[0]);
@@ -55,6 +81,25 @@
 			});
 		}
 
+		/** Whether a picture the game draws is one of the Armory's (Assets/Female3DCG/ItemHandheld/[pose/]<item>_<layer>.png). */
+		function ours(/** @type {any} */ src) {
+			const m = typeof src === 'string' && /ItemHandheld\/(?:[A-Za-z]+\/)?([A-Za-z0-9]+?)_[^/]*\.png$/.exec(src);
+			return !!m && typeof w.AssetGet === 'function' && items.isArmory(w.AssetGet('Female3DCG', 'ItemHandheld', m[1]));
+		}
+		/** Drawing options moved SIDE px right, with the masks the game gives (the Hand layer's among them). */
+		function shifted(/** @type {any} */ opts) {
+			if (!opts || typeof opts !== 'object') {
+				return opts;
+			}
+			const out = { ...opts };
+			if (Array.isArray(opts.TextureAlphaMask)) {
+				out.TextureAlphaMask = opts.TextureAlphaMask.map((/** @type {any} */ m) => ({ ...m, X: m.X + SIDE }));
+			}
+			if (Array.isArray(opts.AlphaMasks)) {
+				out.AlphaMasks = opts.AlphaMasks.map((/** @type {any} */ r) => (Array.isArray(r) ? [r[0] + SIDE, ...r.slice(1)] : r));
+			}
+			return out;
+		}
 		/** Draws a character's Armory layers into their wide picture, or forgets it when they hold no Armory item. */
 		function build(/** @type {any} */ c) {
 			const layers =
@@ -83,7 +128,7 @@
 				if (typeof src === 'string' && typeof w.CommonDrawMarkDrawnAsset === 'function') {
 					w.CommonDrawMarkDrawnAsset(c, src);
 				}
-				w.DrawImageCanvas(src, ctx, x + SIDE, y, opts);
+				w.DrawImageCanvas(src, ctx, x + SIDE, y, shifted(opts));
 			};
 			const none = () => {};
 			w.CommonDrawAppearanceBuild(view, {
@@ -102,7 +147,15 @@
 					/** @type {any} */ transforms,
 				) => {
 					if (typeof w.DrawCanvas === 'function') {
-						w.DrawCanvas(img, ctx, x + SIDE, y, masks ?? [], maskLayers ?? [], transforms);
+						w.DrawCanvas(
+							img,
+							ctx,
+							x + SIDE,
+							y,
+							shifted({ AlphaMasks: masks ?? [] }).AlphaMasks,
+							shifted({ TextureAlphaMask: maskLayers ?? [] }).TextureAlphaMask,
+							transforms,
+						);
 					}
 				},
 				drawCanvasBlink: none,

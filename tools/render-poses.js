@@ -73,7 +73,7 @@ const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,Back
 	const [outName, ...specs] = process.argv.slice(2);
 	const rows = specs.map((spec) => {
 		const m = /^([A-Za-z]+)(?::(\d+))?(?:@(\d+))?$/.exec(spec);
-		return { spec, item: m[1], carry: Number(m[2] || 0), weapon: Number(m[3] || 0), layers: !!process.env.LAYERS, probe: process.env.PROBE || '', wear: (process.env.WEAR || '').split(',').filter(Boolean) };
+		return { spec, item: m[1], carry: Number(m[2] || 0), weapon: Number(m[3] || 0), layers: !!process.env.LAYERS, probe: process.env.PROBE || '', wear: (process.env.WEAR || '').split(',').filter(Boolean), nogl: !!process.env.NOGL, prop: process.env.PROP ? JSON.parse(process.env.PROP) : null };
 	});
 	const full = [];
 	for (const row of rows) {
@@ -81,6 +81,7 @@ const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,Back
 			const shot = await page.evaluate(
 				async (row, pose) => {
 					window.LAYERS = row.layers;
+					if (row.nogl) GLVersion = 'No WebGL';
 					CharacterAppearanceSetDefault(Player);
 					// WEAR: extra clothes, "Group:Asset,…" (a cloth asset replaces the default clothes).
 					for (const spec of row.wear) {
@@ -96,6 +97,7 @@ const POSES = (process.env.POSES || 'BaseUpper,TapedHands,Yoked,OverTheHead,Back
 						if (data.modules.some((m) => m.Key === 'Position')) rec.Position = row.carry;
 						if (data.modules.some((m) => m.Key === 'w')) rec.w = row.weapon;
 						ExtendedItemSetOptionByRecord(Player, item, rec, { push: false, refresh: true });
+						if (row.prop) Object.assign(item.Property, row.prop);
 					}
 					PoseSetActive(Player, pose === 'BaseUpper' ? null : pose, true);
 					CharacterRefresh(Player, false);

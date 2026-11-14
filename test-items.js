@@ -13,7 +13,7 @@ if (!ROOT || !CHROME) {
 	console.error('Set BC_ROOT (a Bondage Club checkout: its BondageClub folder) and CHROME (the Chrome executable).');
 	process.exit(2);
 }
-const PORT = 8179;
+const PORT = Number(process.env.WEB_PORT) || 8179;
 const SHOTS = !!process.env.SHOTS;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
 /** @type {Set<string>} Paths the test server answers 404 to, for a part of the add-on that didn't load. */
@@ -84,11 +84,12 @@ async function gamePage(browser, { hostile = '', after = '', vanilla = false, as
 	await page.setViewport({ width: 2000, height: 1000 });
 	const errors = [];
 	const warnings = [];
-	// Only errors that pass through the add-on's own files count: in a game missing a function, the game's own code
-	// calling it throws too, and that isn't ours to prevent.
+	// Only errors thrown in the add-on's own files count (their top frame): in a game missing a function, the game's own
+	// code calling it throws too, also when that call passes up through one of our hooks, and that isn't ours to prevent.
 	page.on('pageerror', (e) => {
 		const stack = String(e.stack || '');
-		if (!stack.includes('\n') || /void\.js|\/void-src\//.test(stack)) {
+		const top = stack.split('\n').find((l) => /^\s+at /.test(l)) || '';
+		if (!stack.includes('\n') || /void\.js|\/void-src\//.test(top)) {
 			errors.push(process.env.STACKS ? stack || String(e.message) : String(e.message).split('\n')[0]);
 		}
 	});

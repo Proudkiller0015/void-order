@@ -129,6 +129,8 @@
 	const cooldowns = new Map();
 	const lockKey = (/** @type {any} */ C, /** @type {string} */ group, /** @type {any} */ item) =>
 		`${C.MemberNumber}|${group}|${item.Asset.Name}`;
+	/** @type {Map<number, number>} When each shooter's last miss (from the room) was honoured. */
+	const missedBy = new Map();
 	/** Whether this player may act on C's item in `group` at all, as the game's own item menu would let them. */
 	function mayHandle(/** @type {any} */ C, /** @type {string} */ group) {
 		if (typeof w.Player.CanInteract === 'function' && !w.Player.CanInteract()) {
@@ -151,13 +153,29 @@
 			return null;
 		}
 		const has = (/** @type {string} */ e) => typeof w.InventoryItemHasEffect === 'function' && w.InventoryItemHasEffect(item, e, true);
-		return has('Lock') || has('Mounted') || has('Enclose') ? null : item;
+		if (has('Lock') || has('Mounted') || has('Enclose')) {
+			return null;
+		}
+		// The game's own rule for removing it (the one every player's game applies to the change), when it has one.
+		if (typeof w.ValidationCanRemoveItem === 'function' && typeof w.ValidationCreateDiffParams === 'function') {
+			if (!w.ValidationCanRemoveItem(item, w.ValidationCreateDiffParams(C, w.Player.MemberNumber), false)) {
+				return null;
+			}
+		}
+		return item;
 	}
 	/** The locked item in C's `group` whose lock a shot could take off, with what it needs; or null. */
 	function shootable(/** @type {any} */ C, /** @type {string} */ group) {
 		const item = typeof w.InventoryGet === 'function' ? w.InventoryGet(C, group) : null;
 		const lock = item && item.Property && item.Property.LockedBy;
-		if (!lock || !(lock in LOCKS) || !mayHandle(C, group)) {
+		if (!lock || !(lock in LOCKS) || C.MemberNumber === w.Player.MemberNumber || !mayHandle(C, group)) {
+			return null;
+		}
+		// The game's lock rules come first (keys, the key deposit, exclusive and high-security lists, lock-picking
+		// permissions): a lock you couldn't open or pick can't be shot. The table only makes some of those harder.
+		const canOpen = typeof w.DialogCanUnlock === 'function' && !!w.DialogCanUnlock(C, item);
+		const canPick = typeof w.DialogCanPickLock === 'function' && !!w.DialogCanPickLock(C, item);
+		if (!canOpen && !canPick) {
 			return null;
 		}
 		if ((cooldowns.get(lockKey(C, group, item)) || 0) > Date.now()) {
@@ -356,7 +374,6 @@
 			label: 'Shoot the lock',
 			kinds: GUNS,
 			target: ZONES_FOR.VoidShootLock,
-			self: ZONES_FOR.VoidShootLock,
 			special: 'lock',
 			uses: 'shot',
 			when: (C, group) => !!shootable(C, group),
@@ -462,7 +479,8 @@
 	const isQw = (/** @type {any} */ h) =>
 		!!h && (h.item === QW || (!!h.item && !!h.item.Asset && h.item.Asset.Name === QW) || (!!h.weapon && h.weapon.key === QW));
 	const kindOf = (/** @type {any} */ h) => (isQw(h) ? 'QW' : h.weapon && h.weapon.cat);
-	const nameOf = (/** @type {any} */ h) => (isQw(h) ? QW_NAME : (h.weapon && h.weapon.name) || 'weapon');
+	// Always said after "the": a name that starts with its own "The" drops it ("swings the Void Crosier").
+	const nameOf = (/** @type {any} */ h) => (isQw(h) ? QW_NAME : ((h.weapon && h.weapon.name) || 'weapon').replace(/^the\s+/i, ''));
 	const nick = (/** @type {any} */ C) => (typeof w.CharacterNickname === 'function' ? w.CharacterNickname(C) : C.Nickname || C.Name);
 	/** Whether you may move Queen's Wrath: its owner, or whoever she lent it to. */
 	const mayWieldQw = () => !!w.Player && (w.Player.MemberNumber === owner() || w.Player.MemberNumber === lentTo());
@@ -647,7 +665,9 @@
 			} else {
 				const key = lockKey(acted, group, found.item);
 				cooldowns.set(key, Date.now() + LOCK_COOLDOWN);
-				sendActivity(w.Player, acted, group, name, `${a}'s shot ricochets off the ${lockName}.`, [{ Tag: 'VoidOrderCooldown', Text: key }]);
+				sendActivity(w.Player, acted, group, name, `${a}'s shot ricochets off the ${lockName}.`, [
+					{ Tag: 'VoidOrderCooldown', Text: `${key}|${w.Player.MemberNumber}` },
+				]);
 			}
 			return;
 		}
@@ -866,10 +886,24 @@
 							return;
 						}
 						const tag = (/** @type {string} */ t) => data.Dictionary.find((/** @type {any} */ e) => e && e.Tag === t);
-						// A shot that missed a lock: nobody here shoots that lock again for a minute either.
+						// A shot that missed a lock: nobody here shoots that lock again for a minute either. Only from the
+						// shooter's own line (its sender, holding a gun, about the lock on the target the line names), and
+						// one at a time per shooter, so nobody can block locks with made-up lines.
 						const missed = tag('VoidOrderCooldown');
-						if (missed && /^\d+\|Item[A-Za-z0-9]+\|[A-Za-z0-9]+$/.test(String(missed.Text))) {
-							cooldowns.set(String(missed.Text), Date.now() + LOCK_COOLDOWN);
+						const m = missed && /^(\d+)\|(Item[A-Za-z0-9]+)\|([A-Za-z0-9]+)\|(\d+)$/.exec(String(missed.Text));
+						const from = Number(data.Sender);
+						if (
+							m &&
+							Number(m[4]) === from &&
+							Number(m[1]) === Number((tag('VoidOrderTarget') || {}).Text) &&
+							String((tag('VoidOrderAction') || {}).Text) === 'VoidShootLock' &&
+							sender &&
+							sender.MemberNumber === from &&
+							GUNS.includes(String(((items.held(sender) || {}).weapon || {}).cat)) &&
+							(missedBy.get(from) || 0) <= Date.now()
+						) {
+							cooldowns.set(`${m[1]}|${m[2]}|${m[3]}`, Date.now() + LOCK_COOLDOWN);
+							missedBy.set(from, Date.now() + LOCK_COOLDOWN);
 						}
 						const d = byName.get(String((tag('VoidOrderAction') || {}).Text || ''));
 						const at = Number((tag('VoidOrderTarget') || {}).Text);
