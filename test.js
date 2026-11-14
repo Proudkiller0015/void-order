@@ -1503,8 +1503,82 @@ const openCardOf = async (page, name) => {
 		);
 		check(
 			'carrying a gun at port arms gets its line (from held().position)',
-			carryLine.some((t) => /holds across the chest/.test(t)),
+			carryLine.some((t) => /holds the .+ across the chest, at port arms\./.test(t)),
 			carryLine,
+		);
+		// Swords: held or slung on the back; Queen's Wrath: held, held in front or on the back; each with its own line.
+		const carryOptions = await ap.evaluate(() =>
+			['VoidRifles', 'VoidSwords', 'QueensWrath'].map((n) =>
+				ModularItemDataLookup[`ItemHandheld${n}`].modules
+					.find((m) => m.Key === 'Position')
+					.Options.map((o) => AssetTextGet(`ItemHandheld${n}Option${o.Name}`))
+					.join('/'),
+			),
+		);
+		check(
+			'each kind offers its carries by name',
+			carryOptions.join('|') ===
+				'Hand on the trigger/Port arms/On the shoulder/On the back|Held/On the back|Held/Held in front/On the back',
+			carryOptions,
+		);
+		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
+		await wait(1800);
+		await ap.evaluate(() => (window.sent = []));
+		await hold(ap, 'VoidSwords', { w: 0, Position: 1 });
+		await wait(1800);
+		const backLine = await ap.evaluate(() =>
+			window.sent.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action').map(([, d]) => d.Dictionary[0].Text),
+		);
+		check('slinging a sword on the back gets its line', backLine.includes('Ann slings the Recider across the back.'), backLine);
+		// Only where it makes sense, and none of the game's item activities for our weapons.
+		await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			bea.ArousalSettings = { ...JSON.parse(JSON.stringify(Player.ArousalSettings)), Active: 'Hybrid' };
+		});
+		const zones = await ap.evaluate(() => {
+			const bea = ChatRoomCharacter[1];
+			const on = (g) => ActivityAllowedForGroup(bea, g);
+			const ours = (g) =>
+				on(g)
+					.filter((a) => /^Void/.test(a.Activity.Name))
+					.map((a) => a.Activity.Name);
+			const itemActs = ['ItemArms', 'ItemTorso', 'ItemButt'].flatMap((g) =>
+				on(g)
+					.filter((a) => a.Item && a.Item.Asset.Name === 'VoidSwords' && !/^Void/.test(a.Activity.Name))
+					.map((a) => a.Activity.Name),
+			);
+			return { arms: ours('ItemArms'), pelvis: ours('ItemPelvis'), butt: ours('ItemButt'), ears: ours('ItemEars'), itemActs };
+		});
+		check('a slash lands on an arm', zones.arms.includes('VoidSlash'), zones);
+		check('and never on the pelvis, the butt or the ears', !zones.pelvis.length && !zones.butt.length && !zones.ears.length, zones);
+		check('holding a Void sword offers none of the game’s item activities (rub, spank…)', !zones.itemActs.length, zones.itemActs);
+		await hold(ap, 'VoidPistols');
+		const whip = await ap.evaluate(() =>
+			ActivityAllowedForGroup(ChatRoomCharacter[1], 'ItemHead')
+				.filter((a) => /^Void/.test(a.Activity.Name))
+				.map((a) => ActivityDictionaryText(`Label-ChatOther-ItemHead-${a.Activity.Name}`)),
+		);
+		check('a pistol is used in melee as a pistol-whip', whip.includes('Pistol-whip') && !whip.includes('Butt-strike'), whip);
+		await ap.evaluate(() => InventoryWear(Player, 'Crop', 'ItemHandheld'));
+		const crop = await ap.evaluate(() =>
+			['ItemButt', 'ItemTorso', 'ItemArms'].flatMap((g) =>
+				ActivityAllowedForGroup(ChatRoomCharacter[1], g)
+					.filter((a) => a.Item && a.Item.Asset.Name === 'Crop')
+					.map((a) => a.Activity.Name),
+			),
+		);
+		check('a vanilla crop still offers its own activities', crop.length > 0, crop);
+		await hold(ap, 'VoidSwords', { w: 0, Position: 1 });
+		await ap.evaluate(() => (window.local = []));
+		await ap.evaluate(() => Commands.find((c) => c.Tag === 'void').Action('diag', '/void diag', []));
+		const diagText = await ap.evaluate(() => window.local.join('\n'));
+		check(
+			'/void diag tells the version, the modules, what is held and the actions',
+			/Oculus Nihili /.test(diagText) &&
+				/Modules: guard on, reports on, items on, overflow on, actions on/.test(diagText) &&
+				/Holding: VoidSwords/.test(diagText) &&
+				/Actions on/.test(diagText),
+			diagText,
 		);
 		// Queen's Wrath: its own set; its owner lends it into someone's hands and recalls it.
 		await hold(ap, 'QueensWrath');

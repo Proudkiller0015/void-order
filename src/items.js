@@ -44,7 +44,7 @@
 		 * The Armory weapon a character holds: the item's name, the weapon (key, name and catalog category), its option
 		 * number in the item and the carry option; null when they hold none.
 		 * @param {any} c a character
-		 * @returns {{ item: string, weapon: { key: string, name: string, cat: string }, option: number, position: number } | null}
+		 * @returns {{ item: string, weapon: { key: string, name: string, cat: string }, option: number, position: number, carry: string } | null}
 		 */
 		function held(c) {
 			const worn = c && Array.isArray(c.Appearance) ? c.Appearance.find((/** @type {any} */ i) => i && isArmory(i.Asset)) : null;
@@ -55,7 +55,10 @@
 			const record = (worn.Property && worn.Property.TypeRecord) || {};
 			const option = Number.isInteger(record.w) ? record.w : 0;
 			const weapon = item.weapons[option] || item.weapons[0];
-			return { item: item.name, weapon, option, position: Number.isInteger(record.Position) ? record.Position : 0 };
+			const position = Number.isInteger(record.Position) ? record.Position : 0;
+			// What that carry is: 'trigger', 'portarms', 'shoulder', 'back', 'held' or 'front' ('' for none).
+			const carry = (Array.isArray(item.carries) && item.carries[position]) || '';
+			return { item: item.name, weapon, option, position, carry };
 		}
 
 		/** Fetches the definitions and registers them, once the game has loaded its own items. */

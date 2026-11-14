@@ -46,7 +46,31 @@
 		ItemTorso: 'chest',
 		ItemPelvis: 'waist',
 		ItemLegs: 'thigh',
-		ItemFeet: 'legs',
+		ItemFeet: 'feet',
+		ItemBreast: 'chest',
+		ItemMouth: 'chin',
+	};
+	/**
+	 * Where each action may land: only zones where it makes sense (never ears, nose, hair, nails, boots or any intimate
+	 * zone, which also keeps them clearly non-sexual). Own-hands actions are on ItemHands only.
+	 */
+	const ZONES_FOR = {
+		VoidAim: ['ItemHead', 'ItemNeck', 'ItemTorso', 'ItemBreast', 'ItemArms', 'ItemLegs', 'ItemFeet'],
+		VoidShoot: ['ItemHead', 'ItemNeck', 'ItemTorso', 'ItemBreast', 'ItemArms', 'ItemLegs', 'ItemFeet'],
+		VoidLoose: ['ItemHead', 'ItemNeck', 'ItemTorso', 'ItemBreast', 'ItemArms', 'ItemLegs', 'ItemFeet'],
+		VoidMuzzle: ['ItemMouth', 'ItemHead', 'ItemNeck', 'ItemTorso'],
+		VoidButt: ['ItemHead', 'ItemTorso', 'ItemArms'],
+		VoidSlash: ['ItemArms', 'ItemTorso', 'ItemLegs'],
+		VoidStab: ['ItemTorso'],
+		VoidNeck: ['ItemNeck'],
+		VoidPoint: ['ItemHead', 'ItemNeck', 'ItemTorso'],
+		VoidStrike: ['ItemHead', 'ItemTorso', 'ItemArms', 'ItemLegs'],
+		VoidCast: ['ItemHead', 'ItemTorso'],
+		VoidReap: ['ItemTorso', 'ItemLegs'],
+		VoidSweep: ['ItemLegs', 'ItemFeet'],
+		VoidHook: ['ItemNeck', 'ItemArms'],
+		VoidLend: ['ItemHands'],
+		VoidRecall: ['ItemHands'],
 	};
 	/** Rounds or charges when full, by kind. */
 	const FULL = { Pistols: 15, SMGs: 30, Rifles: 30, SniperRifles: 5, Shotguns: 6, Crossbows: 1, GlowingBlades: 5, Staffs: 5, QW: 5 };
@@ -57,7 +81,7 @@
 	 * when that's on); `fills`: what an upkeep action refills. `ownerOnly`: Queen's Wrath's owner only.
 	 * @typedef {{ name: string, label: string, kinds: string[], target?: string[], self?: string[],
 	 *   say: (a: string, b: string, wpn: string, zone: string) => string, attack?: boolean, uses?: string, fills?: string,
-	 *   ownerOnly?: boolean, special?: string, prayer?: boolean, when?: (target: any) => boolean }} Def
+	 *   ownerOnly?: boolean, special?: string, prayer?: boolean, melee?: boolean, when?: (target: any) => boolean }} Def
 	 * @type {Def[]}
 	 */
 	const DEFS = [
@@ -65,14 +89,14 @@
 			name: 'VoidAim',
 			label: 'Aim',
 			kinds: [...GUNS, ...BOWS],
-			target: ['ItemHead', 'ItemTorso'],
+			target: ZONES_FOR.VoidAim,
 			say: (a, b, x, z) => `${a} levels the ${x} at ${b}'s ${z}.`,
 		},
 		{
 			name: 'VoidShoot',
 			label: 'Shoot',
 			kinds: GUNS,
-			target: ['ItemTorso', 'ItemArms', 'ItemLegs', 'ItemFeet'],
+			target: ZONES_FOR.VoidShoot,
 			attack: true,
 			uses: 'shot',
 			say: (a, b, x, z) => `${a} fires the ${x} at ${b}'s ${z}.`,
@@ -81,7 +105,7 @@
 			name: 'VoidLoose',
 			label: 'Loose a bolt',
 			kinds: BOWS,
-			target: ['ItemTorso', 'ItemArms', 'ItemLegs'],
+			target: ZONES_FOR.VoidLoose,
 			attack: true,
 			uses: 'shot',
 			say: (a, b, x, z) => `${a} looses a bolt from the ${x} at ${b}'s ${z}.`,
@@ -90,22 +114,42 @@
 			name: 'VoidMuzzle',
 			label: 'Press the muzzle',
 			kinds: GUNS,
-			target: ['ItemHead', 'ItemNeck', 'ItemTorso'],
+			target: ZONES_FOR.VoidMuzzle,
 			say: (a, b, x, z) => `${a} presses the muzzle of the ${x} against ${b}'s ${z}.`,
+		},
+		// Melee with a gun: a blow, not a shot, so its dice take half the gun's base damage.
+		{
+			name: 'VoidWhip',
+			label: 'Pistol-whip',
+			kinds: ['Pistols'],
+			target: ZONES_FOR.VoidButt,
+			attack: true,
+			melee: true,
+			say: (a, b, x, z) => `${a} pistol-whips ${b} across the ${z} with the ${x}.`,
 		},
 		{
 			name: 'VoidButt',
-			label: 'Strike with the stock',
-			kinds: [...GUNS, ...BOWS],
-			target: ['ItemTorso', 'ItemArms', 'ItemHead'],
+			label: 'Butt-strike',
+			kinds: ['SMGs', 'Rifles', 'SniperRifles', 'Shotguns'],
+			target: ZONES_FOR.VoidButt,
 			attack: true,
+			melee: true,
+			say: (a, b, x, z) => `${a} butt-strikes ${b}'s ${z} with the stock of the ${x}.`,
+		},
+		{
+			name: 'VoidStock',
+			label: 'Strike with the stock',
+			kinds: BOWS,
+			target: ZONES_FOR.VoidButt,
+			attack: true,
+			melee: true,
 			say: (a, b, x, z) => `${a} drives the stock of the ${x} into ${b}'s ${z}.`,
 		},
 		{
 			name: 'VoidSlash',
 			label: 'Slash',
 			kinds: [...BLADES, 'QW'],
-			target: ['ItemArms', 'ItemTorso', 'ItemLegs'],
+			target: ZONES_FOR.VoidSlash,
 			attack: true,
 			say: (a, b, x, z) => `${a} slashes at ${b}'s ${z} with the ${x}.`,
 		},
@@ -113,7 +157,7 @@
 			name: 'VoidStab',
 			label: 'Thrust',
 			kinds: BLADES,
-			target: ['ItemTorso', 'ItemLegs'],
+			target: ZONES_FOR.VoidStab,
 			attack: true,
 			say: (a, b, x, z) => `${a} thrusts the ${x} at ${b}'s ${z}.`,
 		},
@@ -121,21 +165,21 @@
 			name: 'VoidNeck',
 			label: 'Blade to the neck',
 			kinds: [...BLADES, 'QW'],
-			target: ['ItemNeck'],
+			target: ZONES_FOR.VoidNeck,
 			say: (a, b, x) => `${a} rests the edge of the ${x} against ${b}'s throat.`,
 		},
 		{
 			name: 'VoidPoint',
 			label: 'Point the blade',
 			kinds: BLADES,
-			target: ['ItemHead', 'ItemTorso'],
+			target: ZONES_FOR.VoidPoint,
 			say: (a, b, x, z) => `${a} points the ${x} at ${b}'s ${z}.`,
 		},
 		{
 			name: 'VoidStrike',
 			label: 'Strike',
 			kinds: ['Blunt', 'Staffs'],
-			target: ['ItemHead', 'ItemTorso', 'ItemArms', 'ItemLegs'],
+			target: ZONES_FOR.VoidStrike,
 			attack: true,
 			say: (a, b, x, z) => `${a} swings the ${x} into ${b}'s ${z}.`,
 		},
@@ -143,7 +187,7 @@
 			name: 'VoidCast',
 			label: 'Cast a spell',
 			kinds: ['Staffs', 'QW'],
-			target: ['ItemHead', 'ItemTorso'],
+			target: ZONES_FOR.VoidCast,
 			attack: true,
 			uses: 'charge',
 			say: (a, b, x) => `${a} raises the ${x} and casts a spell at ${b}.`,
@@ -152,7 +196,7 @@
 			name: 'VoidReap',
 			label: 'Reap',
 			kinds: ['QW'],
-			target: ['ItemTorso'],
+			target: ZONES_FOR.VoidReap,
 			attack: true,
 			say: (a, b, x) => `${a} brings ${x} around in a reaping arc at ${b}.`,
 		},
@@ -160,7 +204,7 @@
 			name: 'VoidSweep',
 			label: 'Sweep',
 			kinds: ['QW'],
-			target: ['ItemLegs', 'ItemFeet'],
+			target: ZONES_FOR.VoidSweep,
 			attack: true,
 			say: (a, b, x) => `${a} sweeps ${b}'s legs out with the shaft of ${x}.`,
 		},
@@ -168,14 +212,14 @@
 			name: 'VoidHook',
 			label: 'Hook',
 			kinds: ['QW'],
-			target: ['ItemNeck', 'ItemPelvis'],
+			target: ZONES_FOR.VoidHook,
 			say: (a, b, x, z) => `${a} hooks ${b}'s ${z} with the blade of ${x} and drags them close.`,
 		},
 		{
 			name: 'VoidLend',
 			label: 'Lend Queen’s Wrath',
 			kinds: ['QW'],
-			target: ['ItemHands'],
+			target: ZONES_FOR.VoidLend,
 			ownerOnly: true,
 			special: 'lend',
 			say: (a, b, x) => `${a} places ${x} in ${b}'s hands. For now, it lets ${b} lift it.`,
@@ -184,7 +228,7 @@
 			name: 'VoidRecall',
 			label: 'Recall Queen’s Wrath',
 			kinds: ['*'],
-			target: ['ItemHands'],
+			target: ZONES_FOR.VoidRecall,
 			ownerOnly: true,
 			special: 'recall',
 			when: (C) => isQw(items.held(C)),
@@ -460,7 +504,8 @@
 		});
 		if ((d.attack || d.prayer) && h && on('actionDice')) {
 			// An attack: the weapon's attack dice. A prayer: 1d20, whether the Void answers.
-			const roll = d.prayer ? { dice: [20], mod: 0 } : attackDice(h);
+			// A prayer: 1d20, whether the Void answers. A gun's blow: 1d6 and half its base damage (that is for shooting).
+			const roll = d.prayer ? { dice: [20], mod: 0 } : d.melee ? { dice: [6], mod: Math.floor(baseDamage(h) / 2) } : attackDice(h);
 			const why = await ctx.roll(roll.dice, roll.mod);
 			if (why) {
 				ctx.note(why);
@@ -525,14 +570,19 @@
 		if (!C || !Array.isArray(list)) {
 			return list;
 		}
+		// A weapon of ours is for our actions only: none of the game's activities "with an item" (rub, spank…) for it.
+		const kept = list.filter(
+			(a) => !(a && a.Item && a.Item.Asset && items.isArmory(a.Item.Asset) && !(a.Activity && a.Activity.VoidOrder)),
+		);
 		if (
 			C.MemberNumber !== w.Player.MemberNumber &&
 			typeof w.InventoryIsBlockedByDistance === 'function' &&
 			w.InventoryIsBlockedByDistance(C)
 		) {
-			return list;
+			return kept;
 		}
-		return [...list, ...offered(C, group)];
+		const have = new Set(kept.map((a) => a && a.Activity && a.Activity.Name));
+		return [...kept, ...offered(C, group).filter((a) => !have.has(a.Activity.Name))];
 	});
 	hook('ActivityRun', (args, next) => {
 		const [actor, acted, targetGroup, itemActivity] = args;
@@ -568,7 +618,16 @@
 	/** @type {string | null} */
 	let last = null;
 	let warnedQw = false;
-	const CARRY = ['puts a finger on the trigger of the', 'holds across the chest the', 'rests on a shoulder the'];
+	/** The line for taking a carry, by what it is (held().carry); `x` is the weapon, with its article. */
+	const CARRY = {
+		trigger: (a, x) => `${a} puts a finger on the trigger of ${x}.`,
+		portarms: (a, x) => `${a} holds ${x} across the chest, at port arms.`,
+		shoulder: (a, x) => `${a} rests ${x} on a shoulder, muzzle up.`,
+		back: (a, x) => `${a} slings ${x} across the back.`,
+		held: (a, x) => `${a} takes ${x} in hand.`,
+		front: (a, x) => `${a} holds ${x} out in front.`,
+	};
+	const withArticle = (/** @type {any} */ h) => (isQw(h) ? QW_NAME : `the ${nameOf(h)}`);
 	setInterval(
 		() =>
 			ctx.guard(
@@ -584,8 +643,8 @@
 						const x = nameOf(h);
 						if (before !== ammoKey(h)) {
 							sendLine(before ? `${a} switches to ${isQw(h) ? x : `the ${x}`}.` : `${a} takes up ${isQw(h) ? x : `the ${x}`}.`);
-						} else if (typeof h.position === 'number' && CARRY[h.position]) {
-							sendLine(`${a} ${CARRY[h.position]} ${x}.`);
+						} else if (h.carry && CARRY[/** @type {keyof typeof CARRY} */ (h.carry)]) {
+							sendLine(CARRY[/** @type {keyof typeof CARRY} */ (h.carry)](a, withArticle(h)));
 						}
 					}
 					last = now;
@@ -645,5 +704,19 @@
 		}
 	});
 
-	return { offered, run, defs: DEFS };
+	/** For /void diag: whether the actions are on, and those your weapon gives on someone and on your own hands. */
+	function diag() {
+		const other = Array.isArray(w.ChatRoomCharacter) ? w.ChatRoomCharacter.find((C) => C.MemberNumber !== w.Player.MemberNumber) : null;
+		const names = (/** @type {any} */ C, /** @type {string[]} */ groups) => [
+			...new Set(groups.flatMap((g) => offered(C, g).map((a) => a.Activity.Name))),
+		];
+		return {
+			on: !!on('actions'),
+			onOther: other
+				? names(other, ['ItemHead', 'ItemNeck', 'ItemArms', 'ItemHands', 'ItemTorso', 'ItemPelvis', 'ItemLegs', 'ItemFeet'])
+				: [],
+			onHands: names(w.Player, ['ItemHands']),
+		};
+	}
+	return { offered, run, diag, defs: DEFS };
 };
