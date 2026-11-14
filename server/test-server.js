@@ -580,6 +580,28 @@ async function joined(member, name) {
 		'she swaps one for the third',
 	);
 	check((await d.req({ t: 'card', member: 13 })).card.carried.join() === '3,2', 'her card has the two she carries');
+	// The Void Paladin power armour: worn, she carries 4; taken off, the oldest beyond 2 are put down.
+	check((await c2.req({ t: 'armor', on: 'yes' })).why === 'bad request', 'the armour report is a yes or no');
+	check(
+		(await c2.req({ t: 'armor', on: true })).t === 'ok' && listed(a, 13).carryLimit === 4 && listed(a, 13).armor === 1,
+		'in power armour Cat carries 4',
+		listed(a, 13),
+	);
+	await b.req({ t: 'issue', member: 13, weapon: 4 });
+	check((await c2.req({ t: 'carry', weapons: [3, 2, 1, 4] })).t === 'ok' && listed(a, 13).carried.join() === '3,2,1,4', 'and does');
+	const off = await c2.req({ t: 'armor', on: false });
+	check(
+		off.t === 'ok' && listed(a, 13).carryLimit === 2 && listed(a, 13).carried.join() === '1,4' && off.dropped.length === 2,
+		'out of it she is back to 2: the two she took up first are put down, and named',
+		{ off, carried: listed(a, 13).carried },
+	);
+	check((await a.req({ t: 'armor', on: false })).t === 'ok' && listed(b, 11).carryLimit === 4, 'the app admin keeps 4 without it');
+	check(
+		(await c2.req({ t: 'armor', on: false })).dropped.length === 0 && listed(a, 13).carried.join() === '1,4',
+		'saying it again changes nothing',
+	);
+	await b.req({ t: 'issue', member: 13, weapon: 4, on: false });
+	await c2.req({ t: 'carry', weapons: [3, 2] });
 	check(
 		(await a.req({ t: 'carry', weapons: [1, 2, 3, 4, 100] })).t === 'ok' && listed(b, 11).carried.length === 5,
 		'the app admin carries 4 and Queen’s Wrath on top',

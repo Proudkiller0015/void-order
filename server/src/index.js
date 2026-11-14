@@ -692,6 +692,7 @@ export class Order extends DurableObject {
 			carryLimit: this.carryLimit(m.n),
 			badge: badgeOf(m),
 			...(m.mon ? { mon: 1 } : {}),
+			...(m.armor ? { armor: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
 			...(m.n in on ? { on: 1, room: seesRoom ? on[m.n] : '' } : {}),
@@ -952,6 +953,8 @@ export class Order extends DurableObject {
 					return await this.issue(ws, me, p);
 				case 'carry':
 					return await this.carry(ws, me, p);
+				case 'armor':
+					return await this.armor(ws, me, p);
 				case 'hidebounty':
 					return await this.hideBounty(ws, me, p);
 				case 'badge':
@@ -1784,10 +1787,40 @@ export class Order extends DurableObject {
 	}
 	/**
 	 * How many weapons member n carries at once, Queen's Wrath not counted (it comes to its Queen when called): 2, and 4
-	 * for the app admin (her slime body). Power armour, when it exists, raises it to 4 here.
+	 * for the app admin (her slime body) or while wearing the Void Paladin power armour.
 	 */
 	carryLimit(n) {
-		return n === this.appAdmin ? 4 : 2;
+		const m = this.members[n];
+		return n === this.appAdmin || (m && m.armor) ? 4 : 2;
+	}
+	/**
+	 * Whether you wear the Void Paladin power armour, as your own add-on sees it: { on }. Only your own limit follows it.
+	 * Taken off, the weapons you carry beyond your limit are put down, the oldest first (Queen's Wrath stays); the answer
+	 * names them in `dropped`.
+	 */
+	async armor(ws, me, p) {
+		if (typeof p.on !== 'boolean') {
+			return this.no(ws, 'bad request', p);
+		}
+		const m = this.members[me];
+		const was = !!m.armor;
+		if (p.on) {
+			m.armor = 1;
+		} else {
+			delete m.armor;
+		}
+		const carried = this.carriedOf(me);
+		const counted = carried.filter((id) => id !== QUEENS_WRATH);
+		const put = counted.slice(0, Math.max(0, counted.length - this.carryLimit(me)));
+		if (put.length) {
+			m.carried = carried.filter((id) => !put.includes(id));
+			delete m.carry;
+		}
+		if (was !== !!m.armor || put.length) {
+			await this.putMember(me);
+			this.broadcast();
+		}
+		this.ok(ws, p, { dropped: put.map((id) => (WEAPONS.find((x) => x.id === id) || { name: `weapon ${id}` }).name) });
 	}
 	/** The weapons member n carries, still theirs (a record from before, with one in `carry`, reads as that one). */
 	carriedOf(n) {

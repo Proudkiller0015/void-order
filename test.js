@@ -2237,7 +2237,7 @@ const openCardOf = async (page, name) => {
 		check(
 			'/void diag tells the version, the modules, what is held and the actions',
 			/Oculus Nihili /.test(diagText) &&
-				/Modules: guard on, reports on, items on, overflow on, actions on/.test(diagText) &&
+				/Modules: guard on, reports on, items on, armor on, overflow on, actions on/.test(diagText) &&
 				/Holding: VoidSwords/.test(diagText) &&
 				/Actions on/.test(diagText),
 			diagText,
@@ -2290,6 +2290,117 @@ const openCardOf = async (page, name) => {
 		check('no page errors with the Armory', armed.errors.length === 0 && zed.errors.length === 0, [...armed.errors, ...zed.errors]);
 		await armed.page.close();
 		await zed.page.close();
+		// The Void Paladin armour: five pieces of clothing, drawn from the add-on's pictures, standing only.
+		await page.bringToFront();
+		await page.waitForFunction(() => !!AssetGet('Female3DCG', 'Garters', 'VoidPaladinLegRig'), { timeout: 20000 }).catch(() => {});
+		const registered = await page.evaluate(
+			() =>
+				[
+					['Hat', 'VoidPaladinHelmet'],
+					['Necklace', 'VoidPaladinPlateCarrier'],
+					['Gloves', 'VoidPaladinGloves'],
+					['ClothAccessory', 'VoidPaladinCloak'],
+					['Garters', 'VoidPaladinLegRig'],
+				].filter(([g, n]) => {
+					const a = AssetGet('Female3DCG', g, n);
+					return a && a.Value === 0 && a.Layer.every((l) => l.ParentGroup && !Object.keys(l.ParentGroup).length);
+				}).length,
+		);
+		check('the five armour pieces are clothing anyone with the add-on can wear', registered === 5, registered);
+		const helmetColor = await page.evaluate(() => {
+			InventoryWear(Player, 'VoidPaladinHelmet', 'Hat');
+			const c = InventoryGet(Player, 'Hat').Color;
+			InventoryRemove(Player, 'Hat');
+			return JSON.stringify(c);
+		});
+		check('a piece is worn in its own colours', helmetColor === '["#262833","#262833","#262833","#17181D"]', helmetColor);
+		const helmetPixels = (wear) =>
+			page.evaluate(async (wear) => {
+				if (wear) InventoryWear(Player, 'VoidPaladinHelmet', 'Hat');
+				else InventoryRemove(Player, 'Hat');
+				CharacterRefresh(Player, false);
+				for (let i = 0; i < 4; i++) {
+					MainCanvas.clearRect(0, 0, 2000, 1000);
+					DrawCharacter(Player, 0, 0, 1);
+					await new Promise((r) => setTimeout(r, 250));
+				}
+				return Array.from(MainCanvas.getImageData(175, 45, 150, 110).data);
+			}, wear);
+		const bare = await helmetPixels(false);
+		const helmeted = await helmetPixels(true);
+		const differs = bare.filter((v, i) => Math.abs(v - helmeted[i]) > 30).length;
+		const fetched = await page.evaluate(async () => {
+			const r = await CommonFetch('Assets/Female3DCG/Hat/VoidPaladinHelmet_ShellPlates.png');
+			return { url: r.url, ok: r.ok };
+		});
+		check(
+			'the helmet is drawn on the character, from the add-on’s pictures',
+			differs > 2000 && fetched.ok && /\/void-assets\/armor\/img\/Hat\/VoidPaladinHelmet_ShellPlates\.png$/.test(fetched.url),
+			{ differs, fetched },
+		);
+		await shot(page, '24-armor-helmet');
+		const poses = await page.evaluate(() => ({
+			gloves: AssetGet('Female3DCG', 'Gloves', 'VoidPaladinGloves').Layer[0].PoseMapping.BackBoxTie,
+			taped: AssetGet('Female3DCG', 'Gloves', 'VoidPaladinGloves').Layer[0].PoseMapping.TapedHands,
+			legsClosed: AssetGet('Female3DCG', 'Garters', 'VoidPaladinLegRig').Layer[0].PoseMapping.LegsClosed,
+			allFours: AssetGet('Female3DCG', 'Garters', 'VoidPaladinLegRig').Layer[0].PoseMapping.AllFours,
+		}));
+		check(
+			'a piece hides only in the poses its standing pictures don’t fit',
+			poses.gloves === 'Hide' && poses.taped === '' && poses.legsClosed === '' && poses.allFours === 'Hide',
+			poses,
+		);
+		await page.evaluate(() => {
+			InventoryRemove(Player, 'Hat');
+			CharacterRefresh(Player, false);
+		});
+
+		// Power armour: Fay wears the plate carrier and the helmet and may carry 4; out of it, back to 2.
+		for (const id of [1, 2, 3]) await bea.req({ t: 'issue', member: 15, weapon: id });
+		const fayLimit = () => bea.state.members.find((m) => m.n === 15)?.carryLimit;
+		const fayCarries = () => (bea.state.members.find((m) => m.n === 15)?.carried || []).join();
+		await fay.page.bringToFront();
+		await fay.page.evaluate(() => {
+			InventoryWear(Player, 'VoidPaladinPlateCarrier', 'Necklace');
+			InventoryWear(Player, 'VoidPaladinHelmet', 'Hat');
+			CharacterRefresh(Player, false);
+		});
+		for (let i = 0; i < 20 && fayLimit() !== 4; i++) await wait(250);
+		check(
+			'in the power armour Fay may carry 4',
+			fayLimit() === 4,
+			bea.state.members.find((m) => m.n === 15),
+		);
+		await slash(fay.page, '');
+		await click(fay.page, 'Armory');
+		await fay.page.waitForSelector('#weapon-3', { timeout: 10000 }).catch(() => {});
+		for (const id of [1, 2, 3]) {
+			await fay.page.evaluate(
+				(id) => [...document.querySelectorAll(`#weapon-${id} button`)].find((b) => b.textContent === 'Carry')?.click(),
+				id,
+			);
+			await wait(400);
+		}
+		check('and carries 3', fayCarries() === '1,2,3', fayCarries());
+		await fay.page.evaluate(() => {
+			window.local = [];
+			InventoryRemove(Player, 'Hat');
+			CharacterRefresh(Player, false);
+		});
+		for (let i = 0; i < 20 && fayLimit() !== 2; i++) await wait(250);
+		await wait(400);
+		check(
+			'without the helmet she is back to 2: the first she took up is put down, and she is told',
+			fayLimit() === 2 &&
+				fayCarries() === '2,3' &&
+				(await fay.page.evaluate(() => window.local.some((l) => /you put down Old sawed-off shotgun/.test(l)))),
+			{ limit: fayLimit(), carries: fayCarries(), local: await fay.page.evaluate(() => window.local) },
+		);
+		await fay.page.evaluate(() => {
+			InventoryRemove(Player, 'Necklace');
+			CharacterRefresh(Player, false);
+			document.getElementById('void-panel')?.remove();
+		});
 		check('no page errors', errors.length === 0 && fay.errors.length === 0 && second.errors.length === 0, [
 			...errors,
 			...fay.errors,

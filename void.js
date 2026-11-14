@@ -5437,7 +5437,7 @@
 	// ---- Modules: the add-on's other parts (src/<name>.js next to assets/), loaded in order as the page starts.
 	/** The modules' folder (a test page sets VoidOrderSrc). */
 	const SRC = w.VoidOrderSrc || ASSETS.replace(/assets\/?$/, 'src/');
-	const MODULES = ['guard', 'reports', 'items', 'overflow', 'actions'];
+	const MODULES = ['guard', 'reports', 'items', 'armor', 'overflow', 'actions'];
 	/** Problems hit before the reporter is in: [feature, error, when], sent on to it once it loads. */
 	const early = /** @type {[string, any, number][]} */ ([]);
 	/** @type {((t: any) => void)[]} */
