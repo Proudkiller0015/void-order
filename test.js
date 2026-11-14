@@ -584,7 +584,7 @@ const openCardOf = async (page, name) => {
 			};
 		});
 		check(
-			'the Armory lists the catalog: pictures, rarity, Void and stats; the app admin holds every weapon',
+			'the Armory lists the catalog: pictures, rarity, Void and stats; the app admin holds her scythe, not the early-access rest',
 			arms.count === 100 &&
 				/Queen's Wrath[\s\S]*Legendary[\s\S]*Void Order[\s\S]*Slime’s signature[\s\S]*2 tons[\s\S]*Held by Ann/.test(arms.wrath) &&
 				/^Scythes · 1$/.test(arms.wrathKind || '') &&
@@ -592,7 +592,7 @@ const openCardOf = async (page, name) => {
 				arms.wabbajackPicture &&
 				arms.unpictured === 0 &&
 				arms.asValPicture &&
-				/Old sawed-off shotgun[\s\S]*Common[\s\S]*\+3 Base damage · \+1 Speed/.test(arms.shotgun) &&
+				/Old sawed-off shotgun[\s\S]*Common[\s\S]*\+3 Base damage · \+1 Speed[\s\S]*Nobody has it yet/.test(arms.shotgun) &&
 				/\/void-assets\/weapons\/1\.png$/.test(arms.shotgunPicture || ''),
 			arms,
 		);
@@ -1324,8 +1324,20 @@ const openCardOf = async (page, name) => {
 		// The ⸸ tab (off now that there is a bubble), its side, the look, and the open/close key.
 		await toggleSetting(page, 'Show the side tab');
 		await chooseSetting(page, 'Side tab position', 'Right');
-		await chooseSetting(page, 'Look', 'Lighter');
-		check('the lighter look applies', await page.evaluate(() => /#2b2140/.test(document.getElementById('void-look').textContent)));
+		await chooseSetting(page, 'Look', 'Light');
+		check(
+			'the light look applies: a light panel with dark text',
+			await page.evaluate(() => {
+				const p = getComputedStyle(document.getElementById('void-panel'));
+				const dark = (c) =>
+					c
+						.match(/\d+/g)
+						.slice(0, 3)
+						.reduce((a, v) => a + Number(v), 0) < 200;
+				return /#f7f3fd/.test(document.getElementById('void-look').textContent) && dark(p.color);
+			}),
+		);
+		await shot(page, '17b-light-look');
 		await chooseSetting(page, 'Look', 'Void dark');
 		await click(page, 'none');
 		await page.keyboard.press('F2');

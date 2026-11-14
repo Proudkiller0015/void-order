@@ -128,11 +128,9 @@
 		}
 	}
 	function report(/** @type {any} */ e, /** @type {((text: string) => void) | undefined} */ say, feature = 'Oculus Nihili') {
-		const text = `⚠ Oculus Nihili hit a problem: ${(e && e.message) || e}`;
+		console.warn(`[Oculus Nihili] ${feature}:`, e);
 		if (say) {
-			say(text);
-		} else {
-			console.warn(text);
+			say(`⚠ Something went wrong in ${feature}. It has been reported; if it keeps happening, reload the game.`);
 		}
 		if (problem) {
 			problem(feature, e);
@@ -228,9 +226,15 @@
 		return pub ? String(d.Name).slice(0, LIMITS.room) : '';
 	}
 
+	/** When the add-on started trying to reach the server and has had no answer since (0: it has one). */
+	let tryingSince = 0;
 	function connect() {
 		if (ws || !w.Player || !w.Player.MemberNumber) {
 			return;
+		}
+		if (!tryingSince) {
+			tryingSince = Date.now();
+			setTimeout(() => render(), UNREACHABLE + 500);
 		}
 		const me = w.Player.MemberNumber;
 		let sock;
@@ -347,6 +351,7 @@
 			drawBubble();
 		}
 		if (x.t === 'state') {
+			tryingSince = 0;
 			state = x;
 			if (!signedIn) {
 				signedIn = true;
@@ -646,7 +651,10 @@
 		#void-panel textarea { resize: vertical; min-height: 60px; }
 		#void-panel label { display: block; margin: 8px 0 3px; color: var(--v-dim); font-size: 12px; }
 		#void-panel label.check { display: inline-flex; gap: 5px; align-items: center; margin: 0; color: var(--v-text); font-size: 13px; }
-		#void-panel .msg { min-height: 1.3em; color: var(--v-hot); font-size: 13px; margin-top: 6px; white-space: pre-wrap; }
+		#void-panel .msg { color: var(--v-hot); font-size: 13px; white-space: pre-wrap; }
+		#void-panel main > .msg { position: sticky; top: -14px; z-index: 3; margin: -4px 0 10px; padding: 6px 10px; border: 1px solid var(--v-line); border-radius: 10px;
+			background: var(--v-bg2); box-shadow: 0 4px 12px #0006; }
+		#void-panel main > .msg:empty { display: none; }
 		#void-panel .order .head { display: flex; gap: 8px; align-items: baseline; }
 		#void-panel .order .title { font-weight: 600; flex: 1; }
 		#void-panel .order.open { border-color: #9b59ff99; box-shadow: inset 3px 0 0 var(--v-hot); }
@@ -694,7 +702,7 @@
 		@media (max-width: 520px) {
 			#void-panel h2 { font-size: 15px; letter-spacing: 2px; }
 			#void-panel header { padding: 10px 10px 0; gap: 6px; }
-			#void-panel nav { padding: 8px 6px 0; }
+			#void-panel nav { padding: 8px 6px 0; flex-wrap: wrap; overflow-x: visible; }
 			#void-panel nav button { padding: 6px 7px; }
 			#void-panel main { padding: 12px 10px 14px; }
 		}
@@ -811,8 +819,12 @@
 		#void-panel .threat { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid currentColor; }
 		#void-card .foot { margin-top: 12px; font-size: 11px; color: var(--v-dim); border-top: 1px solid #ffffff14; padding-top: 8px; display: flex; gap: 8px; align-items: center; justify-content: center; }
 		#void-card .copy { border: 1px solid #5b3d8f; border-radius: 999px; background: none; color: var(--v-dim); font-size: 11px; padding: 1px 8px; cursor: pointer; white-space: nowrap; }
-		.void-toast { position: fixed; z-index: 2147483003; right: 16px; width: 300px; padding: 10px 14px; border-radius: 12px; cursor: pointer;
-			border: 1px solid #7a52c4; background: #12091fee; box-shadow: 0 8px 30px #000c; transition: opacity .4s; }
+		.void-toast { position: fixed; z-index: 2147483003; right: 16px; width: 300px; max-width: calc(100vw - 32px); padding: 10px 30px 10px 14px; border-radius: 12px; cursor: pointer;
+			border: 1px solid #7a52c4; background: #12091fee; box-shadow: 0 8px 30px #000c; transition: opacity .4s, bottom .2s; }
+		.void-toast .shut { position: absolute; top: 4px; right: 6px; border: 0; background: none; color: var(--v-dim); font-size: 14px; cursor: pointer; padding: 2px 4px; }
+		#void-bubble canvas.eye { width: 82%; height: 82%; pointer-events: none; }
+		.void-tip { position: fixed; z-index: 2147483004; max-width: min(280px, calc(100vw - 24px)); padding: 6px 10px; border-radius: 8px; white-space: pre-wrap;
+			background: #1d1230f2; color: #f1e9ff; border: 1px solid #7a52c4; font: 12px/1.4 system-ui, sans-serif; box-shadow: 0 6px 20px #000a; pointer-events: none; }
 		#void-bubble { position: fixed; z-index: 2147483000; width: 52px; height: 52px; padding: 0; border-radius: 50%; border: 2px solid var(--v-accent); display: flex; align-items: center; justify-content: center;
 			background: radial-gradient(circle at 35% 30%, #3a1c66, #12091f 70%); color: #f1e9ff; font: 600 12px/1 Georgia, 'Segoe UI Historic', serif; cursor: pointer; touch-action: none; user-select: none;
 			box-shadow: 0 4px 16px #000c, 0 0 18px #6a2cff66; text-shadow: 0 0 8px var(--v-accent); }
@@ -1053,19 +1065,45 @@
 		}
 		style();
 		const t = make('div', 'void-toast', text);
-		const others = document.querySelectorAll('.void-toast').length;
-		t.style.bottom = `${16 + others * 64}px`;
+		const shut = make('button', 'shut', '✕');
+		shut.title = 'Close';
+		shut.addEventListener('click', (e) => {
+			e.stopPropagation();
+			t.remove();
+			restackToasts();
+		});
+		t.prepend(shut);
 		t.addEventListener('click', () => {
 			t.remove();
+			restackToasts();
 			if (click) {
 				guard(click);
 			}
 		});
+		const shown = [...document.querySelectorAll('.void-toast')];
+		for (const old of shown.slice(0, Math.max(0, shown.length - 2))) {
+			old.remove();
+		}
 		document.body.append(t);
+		restackToasts();
 		setTimeout(() => {
 			t.style.opacity = '0';
-			setTimeout(() => t.remove(), 500);
+			setTimeout(() => {
+				t.remove();
+				restackToasts();
+			}, 500);
 		}, 9000);
+	}
+	/** Stacks the pop-ups up from the bottom right, above the eye button when it is shown there. */
+	function restackToasts() {
+		const bubble = document.getElementById('void-bubble');
+		const r = bubble ? bubble.getBoundingClientRect() : null;
+		const clear = r && r.right > innerWidth - 340 && r.top > innerHeight / 2 ? innerHeight - r.top + 8 : 16;
+		let y = clear;
+		for (const t of [...document.querySelectorAll('.void-toast')].reverse()) {
+			/** @type {HTMLElement} */ (t).style.bottom = `${y}px`;
+			y += /** @type {HTMLElement} */ (t).offsetHeight + 8;
+		}
 	}
 
 	// ---- Commendations: a medal on a ribbon, with one of the Order's pictures
@@ -1542,11 +1580,16 @@
 	/** @type {Promise<any[]> | null} */
 	let catalogLoading = null;
 	/** Loads the catalog once; a failed load is tried again next time. */
+	/** Why the Armory's list didn't load ('' while it is loading or loaded). */
+	let catalogFailed = '';
 	function loadCatalog() {
+		if (catalogFailed) {
+			return Promise.resolve(null);
+		}
 		catalogLoading =
 			catalogLoading ||
 			fetch(`${ASSETS}weapons/index.json`)
-				.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`the Armory's list: HTTP ${r.status}`))))
+				.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
 				.then((list) => {
 					catalog = Array.isArray(list) ? list : [];
 					render();
@@ -1554,9 +1597,26 @@
 				})
 				.catch((e) => {
 					catalogLoading = null;
-					throw e;
+					catalogFailed = String((e && e.message) || e);
+					console.warn('[Oculus Nihili] the Armory list did not load:', e);
+					render(true);
+					return null;
 				});
 		return catalogLoading;
+	}
+	/** The Armory's list could not load: say so, with a Try again. */
+	function catalogDown(/** @type {HTMLElement} */ into) {
+		into.append(
+			make('p', '', "The Armory's list didn't load. Check your connection and try again."),
+			button(
+				'Try again',
+				() => {
+					catalogFailed = '';
+					render(true);
+				},
+				'b main',
+			),
+		);
 	}
 	/** The app admin's own weapon, shown as a scythe and marked as hers. */
 	const SIGNATURE = 100;
@@ -1613,6 +1673,9 @@
 	const armsOf = (/** @type {any} */ m) => (catalog || []).filter((x) => (m.weapons || []).includes(x.id));
 	/** The Armory tab: every weapon by kind, who has it, and carrying your own. */
 	function drawArmory(/** @type {HTMLElement} */ body) {
+		if (!catalog && catalogFailed) {
+			return catalogDown(body);
+		}
 		if (!catalog) {
 			body.append(make('p', 'dim', 'Opening the Armory…'));
 			guard(loadCatalog, panelSay);
@@ -1623,7 +1686,7 @@
 			make(
 				'p',
 				'dim',
-				'The Order’s catalog of weapons for its DnD games. The hierarchy issues them; you carry one of yours, and it shows on your ID card.',
+				'The Order’s catalog of weapons for its DnD games. The hierarchy issues them; you carry up to two of yours, and they show on your ID card. To hold one, put it on from the wardrobe’s hand-held items.',
 			),
 		);
 		const filter = field('w:filter', '', 40);
@@ -1665,8 +1728,9 @@
 				if (x.lore) {
 					text.append(make('div', 'dim', x.lore));
 				}
+				// The app admin has every weapon early, for testing: that isn't holding one (Queen's Wrath, hers, is).
 				const holders = state.members
-					.filter((/** @type {any} */ m) => (m.weapons || []).includes(x.id))
+					.filter((/** @type {any} */ m) => (m.n !== state.appAdmin || x.id === SIGNATURE) && (m.weapons || []).includes(x.id))
 					.map((/** @type {any} */ m) => m.name);
 				text.append(make('div', 'dim', holders.length ? `Held by ${holders.join(', ')}` : 'Nobody has it yet'));
 				const side = make('div');
@@ -1727,12 +1791,14 @@
 		const now = carriedOf(me);
 		const box = make('div');
 		if (now.includes(x.id)) {
-			box.append(button('Put down', () => act({ t: 'carry', weapons: now.filter((id) => id !== x.id) })));
+			box.append(
+				button('Put down', () => act({ t: 'carry', weapons: now.filter((id) => id !== x.id) }, () => panelSay(`Put down: ${x.name}.`))),
+			);
 			return box;
 		}
 		const counted = now.filter((id) => id !== QUEENS_WRATH);
 		if (x.id === QUEENS_WRATH || counted.length < (me.carryLimit || 2)) {
-			box.append(button('Carry', () => act({ t: 'carry', weapons: [...now, x.id] }), 'b main'));
+			box.append(button('Carry', () => act({ t: 'carry', weapons: [...now, x.id] }, () => panelSay(`Carrying ${x.name}.`)), 'b main'));
 			return box;
 		}
 		if (drafts['w:swap'] !== String(x.id)) {
@@ -1753,7 +1819,7 @@
 			box.append(
 				button(weaponOf(id)?.name || `#${id}`, () => {
 					delete drafts['w:swap'];
-					act({ t: 'carry', weapons: [...now.filter((y) => y !== id), x.id] });
+					act({ t: 'carry', weapons: [...now.filter((y) => y !== id), x.id] }, () => panelSay(`Carrying ${x.name}.`));
 				}),
 			);
 		}
@@ -1874,7 +1940,25 @@
 	}
 	function drawHunt(/** @type {HTMLElement} */ body) {
 		if (!huntBoard) {
+			if (huntAsked && Date.now() - huntAsked > UNREACHABLE) {
+				body.append(
+					make('p', '', "The hunt board hasn't come in yet: the boards it reads may be down. Try again in a little while."),
+					button(
+						'Try again',
+						() => {
+							huntAsked = 0;
+							render(true);
+						},
+						'b main',
+					),
+				);
+				return;
+			}
 			body.append(make('p', 'dim', 'The Order’s server is reading the hunt board; it comes in a moment.'));
+			if (!huntAsked) {
+				huntAsked = Date.now();
+				setTimeout(() => render(), UNREACHABLE + 500);
+			}
 			req({ t: 'hunt' });
 			return;
 		}
@@ -2593,6 +2677,43 @@
 	}
 
 	// ---- The panel
+	/** How long the server, or the hunt board, may take before the panel says it can't be reached (ms). */
+	const UNREACHABLE = 12000;
+	/** When the hunt board was first asked for and hasn't come (0: not waiting). */
+	let huntAsked = 0;
+	/** The first time the eye button shows in a session, a note that the add-on is on and how to open it. */
+	function loadedNote() {
+		try {
+			if (sessionStorage.getItem('voidOrderLoadedNote')) {
+				return;
+			}
+			sessionStorage.setItem('voidOrderLoadedNote', '1');
+		} catch (e) {
+			return;
+		}
+		toast('⸸ Oculus Nihili is on. Type /void or tap the eye button to open the Order.', () => openPanel());
+	}
+	/** On phones a hover tip never shows: a tap on something with one shows it for a moment. */
+	function tapTips() {
+		document.addEventListener(
+			'click',
+			(e) => {
+				const t = /** @type {HTMLElement} */ (e.target);
+				const el = t && t.closest ? /** @type {HTMLElement | null} */ (t.closest('#void-panel [title], #void-card [title]')) : null;
+				if (!el || !el.title || el.closest('button, a, input, select, textarea, label, summary')) {
+					return;
+				}
+				document.querySelector('.void-tip')?.remove();
+				const tip = make('div', 'void-tip', el.title);
+				const r = el.getBoundingClientRect();
+				tip.style.left = `${Math.max(8, Math.min(innerWidth - 290, r.left))}px`;
+				tip.style.top = `${Math.min(innerHeight - 60, r.bottom + 6)}px`;
+				document.body.append(tip);
+				setTimeout(() => tip.remove(), 3500);
+			},
+			true,
+		);
+	}
 	let tab = 'orders';
 	/** Unsaved form text, kept across re-renders. */
 	const drafts = /** @type {Record<string, any>} */ ({});
@@ -2604,12 +2725,35 @@
 			m.textContent = text;
 		}
 	}
+	/** The server's short refusals, in words a player understands. */
+	const FRIENDLY = {
+		'not allowed': "Your place in the Order doesn't allow that.",
+		'bad form': "That choice isn't available.",
+		'bad choice': "That choice isn't available.",
+		'slow down': 'Too much at once: wait a few seconds and try again.',
+		unknown: "The Order's server didn't understand that. Reload the game to get the newest Oculus Nihili.",
+		'bad message': "The Order's server didn't understand that. Reload the game to get the newest Oculus Nihili.",
+		'server error': "The Order's server hit a problem. Try again in a moment.",
+		'sign in first': 'Still signing in to the Order: try again in a moment.',
+		'not a member': 'Join the Order first.',
+		'signed in with another key': "The Order doesn't recognise this device yet. Ask a branch leader or an admin for a reset code.",
+		'no answer from the Order': "The Order's server didn't answer. Check your connection and try again.",
+	};
+	/** A server answer's reason as a sentence. */
+	function friendly(/** @type {any} */ why) {
+		const s = String(why || '');
+		if (Object.prototype.hasOwnProperty.call(FRIENDLY, s)) {
+			return /** @type {any} */ (FRIENDLY)[s];
+		}
+		const t = s.charAt(0).toUpperCase() + s.slice(1);
+		return /[.!?]$/.test(t) ? t : `${t}.`;
+	}
 	/** Runs a request; its error shows in the panel, and `done` runs when it worked. */
 	async function act(/** @type {Record<string, any>} */ x, /** @type {((r: any) => void) | undefined} */ done) {
 		panelSay('');
 		const r = await req(x);
 		if (r.t === 'error') {
-			panelSay(`⚠ ${r.why}`);
+			panelSay(`⚠ ${friendly(r.why)}`);
 		} else if (done) {
 			done(r);
 		}
@@ -2893,7 +3037,7 @@
 			dflt: 'dark',
 			choices: [
 				['dark', 'Void dark'],
-				['light', 'Lighter'],
+				['light', 'Light'],
 			],
 		},
 		{ k: 'accent', group: 'Panel', label: 'Accent colour', kind: 'choice', dflt: ACCENTS[0][0], choices: ACCENTS },
@@ -2957,11 +3101,19 @@
 	}
 	/** The lighter look, and the accent colour, over the Void dark one. */
 	const LIGHT_CSS = `
-		#void-panel, #void-card, .void-toast, #void-dice { --v-bg: #2b2140; --v-line: #5d4a85; --v-text: #f6f0ff; --v-dim: #cfc3ea; }
-		#void-panel { background: radial-gradient(120% 80% at 50% -10%, #5a3d8f 0%, #2b2140 60%) #2b2140; }
-		#void-panel input, #void-panel textarea, #void-panel select { background: #1d1530; }
-		#void-card { background: radial-gradient(140% 90% at 50% 0%, #6a4aa5 0%, #2e2148 60%, #221935 100%); }
-		.void-toast { background: #2e2148ee; }
+		#void-panel, .void-toast, #void-dice { --v-bg: #f7f3fd; --v-bg2: #ece4f8; --v-line: #cdbbe8; --v-text: #23162f; --v-dim: #5e5078; --v-hot: #a3189f; --v-bad: #c0263f; }
+		#void-panel { background: linear-gradient(180deg, #ffffff 0%, #f1eafb 100%); box-shadow: 0 0 0 1px #0002, 0 20px 60px #0005; }
+		#void-panel h2 { color: #2a1648; text-shadow: none; }
+		#void-panel h3 { color: #6a3fc4; }
+		#void-panel input, #void-panel textarea, #void-panel select { background: #ffffff; }
+		#void-panel .box, #void-panel button.b { background: #ffffffb0; }
+		#void-panel button.b.on { background: #b48cff40; }
+		#void-panel .member:hover { background: #2a164812; }
+		#void-panel .when { color: #9a2fa0; }
+		#void-panel .code { color: #23162f; }
+		#void-panel a { color: #6a3fc4; }
+		#void-panel main > .msg { box-shadow: 0 4px 12px #0002; }
+		.void-toast { background: #fbf8ffee; color: #23162f; border-color: #b48cff; box-shadow: 0 8px 30px #0004; }
 	`;
 	function applyLook() {
 		style();
@@ -3298,7 +3450,23 @@
 		const body = make('main');
 		guard(() => {
 			if (!state) {
-				body.append(make('p', 'dim', ws ? 'Signing in…' : 'Connecting to the Order…'));
+				if (tryingSince && Date.now() - tryingSince > UNREACHABLE) {
+					body.append(
+						make('p', '', "Can't reach the Order's server. Oculus Nihili keeps trying; check your connection, or try again now."),
+						button(
+							'Try again',
+							() => {
+								tryingSince = Date.now();
+								setTimeout(() => render(), UNREACHABLE + 500);
+								reconnect();
+								render(true);
+							},
+							'b main',
+						),
+					);
+				} else {
+					body.append(make('p', 'dim', ws ? 'Signing in…' : 'Connecting to the Order…'));
+				}
 			} else {
 				const draw = {
 					orders: drawOrders,
@@ -3315,8 +3483,9 @@
 				(fromModule ? fromModule.draw : draw[tab])(body);
 			}
 		}, panelSay);
+		// Above the view, so a confirmation or an error shows where you are, however far down you scrolled.
 		const msg = make('div', 'msg', lastMsg);
-		body.append(msg);
+		body.prepend(msg);
 		p.append(body);
 		for (const d of body.querySelectorAll('details[data-k]')) {
 			if (open.includes(/** @type {any} */ (d).dataset.k)) {
@@ -3347,7 +3516,7 @@
 			return 'offline';
 		}
 		if (!isMember()) {
-			return { guest: 'Not a member', invited: 'Invited', mismatch: 'Key not recognised' }[state.status] || '';
+			return { guest: 'Not a member', invited: 'Invited', mismatch: 'Device not recognised' }[state.status] || '';
 		}
 		return placeSummary(state.me);
 	}
@@ -3406,6 +3575,18 @@
 			const ob = waitsForMe(b) ? 0 : 1;
 			return oa - ob || b.at - a.at;
 		});
+		if (isMember() && !state.me.places.length && !state.me.mon && !isTop(state.me)) {
+			const box = make('div', 'box');
+			box.append(
+				make('b', '', `You're in the ${ORDER_NAME}.`),
+				make(
+					'p',
+					'dim',
+					'A branch leader will place you in a branch soon. Until then, orders for new members show here, and your ID card is under your name at the top.',
+				),
+			);
+			body.append(box);
+		}
 		body.append(make('h3', '', 'Orders and sessions'));
 		if (!list.length) {
 			body.append(make('p', 'dim', 'Nothing from the hierarchy yet.'));
@@ -4435,6 +4616,9 @@
 	}
 	/** A sheet's Armory: their weapons as tiles, and Issue, which opens a picker of the rest by kind. */
 	function sheetArmory(/** @type {HTMLElement} */ sec, /** @type {any} */ m) {
+		if (!catalog && catalogFailed) {
+			return catalogDown(sec);
+		}
 		if (!catalog) {
 			sec.append(make('div', 'dim', 'Opening the Armory…'));
 			guard(loadCatalog, panelSay);
@@ -4500,7 +4684,9 @@
 				t.title = `${x.name} (${x.rarity})${statsLine(x) ? `\n${statsLine(x)}` : ''}`;
 				t.style.setProperty('--c', RARITY[x.rarity] || '#c9c4d8');
 				t.append(sprite(x, 40), make('span', 'nm', x.name));
-				t.addEventListener('click', () => guard(() => act({ t: 'issue', member: m.n, weapon: x.id }), panelSay));
+				t.addEventListener('click', () =>
+					guard(() => act({ t: 'issue', member: m.n, weapon: x.id }, () => panelSay(`Issued ${x.name} to ${m.name}.`)), panelSay),
+				);
 				grid.append(t);
 			}
 			pick.append(grid);
@@ -4888,6 +5074,9 @@
 		return wrap;
 	}
 	// -- My card
+	/** Whether you have a picture on your card (null until your card came). */
+	let hasPic = /** @type {boolean | null} */ (null);
+	let picAsked = false;
 	function drawMe(/** @type {HTMLElement} */ body) {
 		if (state && state.me) {
 			setPref('medalsSeen', state.me.medalCount || 0);
@@ -4910,7 +5099,7 @@
 			select(
 				Object.entries(FORM_NAME).map(([f, name]) => [f, `${name}${sample(f)}`]),
 				me.form,
-				(form) => act({ t: 'profile', form }),
+				(form) => act({ t: 'profile', form }, () => panelSay('Saved.')),
 			),
 		);
 		const needsElement = me.places.some((/** @type {any} */ p) => {
@@ -4921,11 +5110,23 @@
 		if (needsElement && elements.length) {
 			body.append(
 				label('Your element'),
-				select([['', 'None yet'], ...elements.map((/** @type {string} */ e) => [e, e])], me.el, (el) => act({ t: 'profile', el })),
+				select([['', 'None yet'], ...elements.map((/** @type {string} */ e) => [e, e])], me.el, (el) =>
+					act({ t: 'profile', el }, () => panelSay('Saved.')),
+				),
 			);
 		}
 		body.append(label(`Bio (up to ${LIMITS.bio} characters)`), field('bio', me.bio, LIMITS.bio, 'textarea'));
-		body.append(button('Save bio', () => act({ t: 'profile', bio: drafts.bio ?? me.bio }, () => delete drafts.bio), 'b main'));
+		body.append(
+			button(
+				'Save bio',
+				() =>
+					act({ t: 'profile', bio: drafts.bio ?? me.bio }, () => {
+						delete drafts.bio;
+						panelSay('Bio saved.');
+					}),
+				'b main',
+			),
+		);
 		body.append(label('Picture'));
 		const file = make('input');
 		file.type = 'file';
@@ -4937,14 +5138,35 @@
 					return;
 				}
 				const pic = await shrink(f);
-				await act({ t: 'profile', pic }, () => panelSay('Picture saved.'));
+				await act({ t: 'profile', pic }, () => {
+					hasPic = true;
+					panelSay('Picture saved.');
+				});
 			}, panelSay),
 		);
 		const picRow = make('div', 'row');
-		picRow.append(
-			file,
-			button('Remove picture', () => act({ t: 'profile', pic: '' }), 'b bad'),
-		);
+		picRow.append(file);
+		if (hasPic === null && !picAsked) {
+			// Whether you have a picture comes with your card.
+			picAsked = true;
+			req({ t: 'card', member: me.n }).then((r) => {
+				hasPic = !!(r && r.card && r.card.pic);
+				render();
+			});
+		}
+		if (hasPic) {
+			picRow.append(
+				button(
+					'Remove picture',
+					() =>
+						act({ t: 'profile', pic: '' }, () => {
+							hasPic = false;
+							panelSay('Picture removed.');
+						}),
+					'b bad',
+				),
+			);
+		}
 		body.append(picRow);
 
 		if (slimeBeep()) {
@@ -5010,9 +5232,12 @@
 			b = make('button');
 			b.id = 'void-bubble';
 			b.title = 'Oculus Nihili (drag to move)';
-			b.append(make('span', 'eye', '𓁹‿𓁹'));
+			const eye = eyeCanvas();
+			eye.className = 'eye';
+			b.append(eye);
 			wireBubble(b);
 			document.body.append(b);
+			loadedNote();
 		}
 		b.classList.toggle('small', opts.bubbleSize === 'small');
 		const n = bubbleCount();
@@ -5384,6 +5609,7 @@
 			addEventListener('keydown', escapeFromPage, true);
 			addEventListener('pointerdown', pointerDown, true);
 			document.addEventListener('keydown', hotkeyDown, true);
+			tapTips();
 			applyLook();
 			guard(hookRoom, undefined, 'Room hooks');
 			guard(registerExtension, undefined, 'Extensions page');

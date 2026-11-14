@@ -9,7 +9,7 @@ opens.
 
 ## Using it
 
-Type `/void` in a chat room, or click the ⸸ tab on the left of the screen.
+Type `/void` in a chat room, or tap the round eye button at the bottom right of the screen.
 
 - **Orders**: orders, photo sessions and notices from the hierarchy. They only go down: to everyone below the sender,
   or to branches, ranks, chapters and members below them. Answer an order with _Read_ or _Done_, and a session with
@@ -87,8 +87,9 @@ turns them off.
 
 The **Armory** tab is the Order's catalog of weapons for its DnD games: each with its picture (a plain mark for those
 not drawn yet), rarity, the Void Order mark, its stats, and who has it. The Founder, admins and branch leaders issue
-weapons to the members below them (_Manage_ › their name), and take them back. You carry one of yours (_Carry_): it
-shows big on your ID card, the others in a row under it. The member who runs the app has every weapon, as early access.
+weapons to the members below them (_Manage_ › their name), and take them back. You carry up to two (_Carry_): they
+show on your ID card, the first big and the other under it. The member who runs the app has every weapon, as early access
+(not listed as holding them).
 
 The pictures and the list are in `assets/weapons/`; `tools/export-weapons.py` makes them again as more are finished.
 
