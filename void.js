@@ -2474,12 +2474,6 @@
 		drawTab();
 		render(true);
 	}
-	/** The next choice of a setting, going round (for the Extensions page's buttons). */
-	function nextChoice(/** @type {(typeof SETTINGS)[number]} */ s) {
-		const list = s.choices || [];
-		const i = list.findIndex(([c]) => c === getSetting(s));
-		return list[(i + 1) % list.length][0];
-	}
 	/** The lighter look, and the accent colour, over the Void dark one. */
 	const LIGHT_CSS = `
 		#void-panel, #void-card, .void-toast, #void-dice { --v-bg: #2b2140; --v-line: #5d4a85; --v-text: #f6f0ff; --v-dim: #cfc3ea; }
@@ -2617,7 +2611,7 @@
 			make(
 				'p',
 				'dim',
-				'Kept in this browser, except who sees your room, which the Order keeps. The same settings are in the game’s Settings › Extensions.',
+				'Kept in this browser, except who sees your room, which the Order keeps. Settings › Extensions in the game opens this tab.',
 			),
 			make(
 				'p',
@@ -2653,9 +2647,8 @@
 		return c.toDataURL('image/png');
 	}
 	/**
-	 * Registers the add-on's page in the game's Settings > Extensions, drawn on the game's canvas with its own checkbox
-	 * and button helpers: the on/off settings on the left, the others as buttons on the right (a click moves to the
-	 * next choice), and a button that opens the panel.
+	 * Registers the add-on in the game's Settings > Extensions. Choosing it opens the panel's ⚙ Settings tab and leaves the
+	 * game on its list of extensions, so the settings live in one place.
 	 */
 	function registerExtension() {
 		if (typeof w.PreferenceRegisterExtensionSetting !== 'function') {
@@ -2664,82 +2657,20 @@
 		if (w.PreferenceExtensionsSettings && w.PreferenceExtensionsSettings.OculusNihili) {
 			return;
 		}
-		/** @typedef {[number, number, number, number]} Rect x, y, width, height on the canvas */
-		/** @type {Rect} */
-		const EXIT = [1815, 75, 90, 90];
-		const LEFT = 400;
-		const TOP = 170;
-		const ROW = 72;
-		const bools = () => SETTINGS.filter((s) => s.kind === 'bool' && shownSetting(s));
-		const others = () => SETTINGS.filter((s) => s.kind !== 'bool' && shownSetting(s));
-		/** @returns {Rect} */
-		const buttonAt = (/** @type {number} */ i) => [1240, TOP + i * ROW, 560, 64];
-		const mouse = (/** @type {Rect} */ r) => typeof w.MouseIn === 'function' && w.MouseIn(...r);
-		const canvas = () => /** @type {HTMLCanvasElement | null} */ (document.getElementById('MainCanvas'))?.getContext('2d');
-		let drawFailed = false;
+		/** Back to the game's list of extensions, once the game has finished choosing this one. */
+		const back = () => setTimeout(() => guard(() => w.PreferenceSubscreenExtensionsClear?.()), 0);
 		w.PreferenceRegisterExtensionSetting({
 			Identifier: 'OculusNihili',
 			ButtonText: 'Oculus Nihili',
 			Image: eyeIcon(),
 			load: () => {
-				pickingKey = false;
+				guard(() => openPanel('settings'));
+				back();
 			},
-			run: () => {
-				const g = canvas();
-				try {
-					if (g) {
-						g.textAlign = 'left';
-					}
-					w.DrawText(`- Oculus Nihili Settings - v${VERSION}`, LEFT, 125, 'Black', 'Gray');
-					bools().forEach((s, i) => w.DrawCheckbox(LEFT, TOP + i * ROW, 64, 64, s.label, !!getSetting(s)));
-					// The game centres button labels with the current textAlign.
-					if (g) {
-						g.textAlign = 'center';
-					}
-					others().forEach((s, i) => w.DrawButton(...buttonAt(i), `${s.label}: ${settingText(s)}`, 'White'));
-					w.DrawButton(...buttonAt(others().length), 'Open the Oculus Nihili panel', 'White');
-					w.DrawButton(...EXIT, '', 'White', 'Icons/Exit.png');
-				} catch (e) {
-					// Never throw inside the game's draw loop; say so once.
-					if (!drawFailed) {
-						drawFailed = true;
-						report(e, undefined, 'Extensions page');
-					}
-				} finally {
-					if (g) {
-						g.textAlign = 'center';
-					}
-				}
-			},
-			click: () =>
-				guard(() => {
-					if (mouse(EXIT)) {
-						pickingKey = false;
-						w.PreferenceSubscreenExtensionsClear?.();
-						return;
-					}
-					bools().forEach((s, i) => {
-						if (mouse([LEFT, TOP + i * ROW, 64, 64])) {
-							setSetting(s, !getSetting(s));
-						}
-					});
-					others().forEach((s, i) => {
-						if (mouse(buttonAt(i))) {
-							if (s.kind === 'key') {
-								pickingKey = !pickingKey;
-							} else {
-								setSetting(s, nextChoice(s));
-							}
-						}
-					});
-					if (mouse(buttonAt(others().length))) {
-						openPanel('settings');
-					}
-				}),
-			exit: () => {
-				pickingKey = false;
-				return true;
-			},
+			// Only for the moment before the game goes back to its list.
+			run: () => {},
+			click: back,
+			exit: () => true,
 		});
 	}
 

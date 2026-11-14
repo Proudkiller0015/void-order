@@ -1109,44 +1109,35 @@ const openCardOf = async (page, name) => {
 			bea.state.members.find((m) => m.n === 15),
 		);
 
-		// The Extensions page: Ann turns off other people's dice there; the panel agrees.
+		// Settings > Extensions: the add-on's entry opens the panel's ⚙ Settings tab and leaves the game on its list.
 		await page.bringToFront();
-		const ext = await page.evaluate(() => {
+		await page.evaluate(() => document.getElementById('void-panel')?.remove());
+		const ext = await page.evaluate(async () => {
+			const was = [CurrentModule, CurrentScreen];
+			const hadChat = !!document.getElementById('InputChat');
+			await CommonSetScreen('Character', 'Preference');
+			await PreferenceOpenSubscreen('Extensions');
 			const e = PreferenceExtensionsSettings.OculusNihili;
-			e.load();
-			e.run();
-			// "Play dice others roll in my room", the seventh checkbox: rows of 72 from 170, at x 400.
-			MouseX = 420;
-			MouseY = 170 + 6 * 72 + 20;
-			e.click();
-			return { text: e.ButtonText, image: /^data:image\/png/.test(e.Image) };
+			PreferenceExtensionsDisplay.find((d) => d.Button === 'Oculus Nihili').click();
+			await new Promise((r) => setTimeout(r, 300));
+			const out = {
+				text: e.ButtonText,
+				image: /^data:image\/png/.test(e.Image),
+				tab: document.querySelector('#void-panel nav .on')?.textContent || '',
+				current: PreferenceExtensionsCurrent,
+				subscreen: PreferenceSubscreen?.name,
+			};
+			await CommonSetScreen(...was);
+			// This test room had no chat box; going back to it made the game's, which later checks make for themselves.
+			if (!hadChat) document.getElementById('InputChat')?.remove();
+			return out;
 		});
 		check('Settings > Extensions lists Oculus Nihili with its eye', ext.text === 'Oculus Nihili' && ext.image, ext);
-		await page.evaluate(() => document.querySelectorAll('body > :not(canvas)').forEach((el) => el.classList.add('vo-test-hidden')));
-		await page.addStyleTag({ content: '.vo-test-hidden { visibility: hidden !important; }' });
-		// Drawn twice: the checkbox ticks are pictures the game loads on first use.
-		const drawExtensions = () =>
-			page.evaluate(() => {
-				const g = document.getElementById('MainCanvas').getContext('2d');
-				g.fillStyle = '#eee';
-				g.fillRect(0, 0, 2000, 1000);
-				PreferenceExtensionsSettings.OculusNihili.run();
-			});
-		await drawExtensions();
-		await wait(500);
-		await drawExtensions();
-		await shot(page, '16-extensions-page');
-		await page.evaluate(() => document.querySelectorAll('.vo-test-hidden').forEach((el) => el.classList.remove('vo-test-hidden')));
-		await slash(page, '');
-		await click(page, '⚙ Settings');
-		const diceBox = await page.evaluate(
-			() =>
-				[...document.querySelectorAll('#void-panel label.check')]
-					.find((l) => /Play dice others roll/.test(l.textContent))
-					.querySelector('input').checked,
+		check(
+			'choosing it opens the ⚙ Settings tab and the game stays on its list',
+			/Settings/.test(ext.tab) && ext.current === null && ext.subscreen === 'Extensions',
+			ext,
 		);
-		check('a checkbox clicked on the Extensions page shows in the panel', diceBox === false);
-		await toggleSetting(page, 'Play dice others roll');
 
 		// The ⸸ tab (off now that there is a bubble), its side, the look, and the open/close key.
 		await toggleSetting(page, 'Show the side tab');
