@@ -30,6 +30,7 @@
 
 import { DurableObject } from 'cloudflare:workers';
 import { HUNT_BOARD_URL, huntBoardPages, parseHuntBoard } from './hunt-board.js';
+import { addReport, clearReports, listReports } from './reports.js';
 import WEAPONS from '../../assets/weapons/index.json';
 
 const LIMITS = {
@@ -775,7 +776,8 @@ export class Order extends DurableObject {
 
 	/**
 	 * A client message (JSON with `t`). Before sign-in only 'auth'. Anyone signed in: 'card', 'room', 'roll',
-	 * 'getroll', 'hunt'. Guests: 'join', and 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave',
+	 * 'getroll', 'hunt', 'report' (and the app admin 'reports', 'clearreports': see reports.js). Guests: 'join', and
+	 * 'found' for the app admin. Members: 'orders', 'profile', 'ack', 'leave',
 	 * 'chat', 'carry', and with the powers for it 'place', 'unplace', 'monsignor', 'admin', 'kick', 'reset', 'add',
 	 * 'about', 'award', 'unaward', 'issue', 'order', 'unorder', 'founder'. A request may carry a number `rid`, sent back with its 'ok' or 'error'.
 	 */
@@ -818,6 +820,12 @@ export class Order extends DurableObject {
 					return this.send(ws, { t: 'hunt', ...ridOf(p), board: this.huntBoard() });
 				case 'getroll':
 					return this.getRoll(ws, p);
+				case 'report':
+					return await addReport(this, ws, a, p);
+				case 'reports':
+					return await listReports(this, ws, a, p);
+				case 'clearreports':
+					return await clearReports(this, ws, a, p);
 			}
 			if (status !== 'member') {
 				switch (p.t) {
