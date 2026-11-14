@@ -3,8 +3,8 @@
 	"private": true,
 	"description": "The Void Order: a Bondage Club add-on for the Void Order's members",
 	"scripts": {
-		"format": "prettier --write void.js void.user.js test.js server/src/index.js server/test-server.js",
-		"check": "prettier --check void.js void.user.js test.js server/src/index.js server/test-server.js && eslint void.js void.user.js test.js server/src/index.js server/test-server.js",
+		"format": "prettier --write void.js void.user.js test.js server/src/index.js server/src/hunt-board.js server/test-server.js server/test-hunt-board.js",
+		"check": "prettier --check void.js void.user.js test.js server/src/index.js server/src/hunt-board.js server/test-server.js server/test-hunt-board.js && eslint void.js void.user.js test.js server/src/index.js server/src/hunt-board.js server/test-server.js server/test-hunt-board.js",
 		"test": "node test.js"
 	},
 	"devDependencies": {

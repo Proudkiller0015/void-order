@@ -1,0 +1,2540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="hb-etag" content="&quot;hb-e29402c1b72d572cad071ea75def4989&quot;">
+<style id="vop-page-loader-css">#vop-page-loader{position:fixed;top:0;left:0;right:0;height:3px;z-index:10003;pointer-events:none;opacity:0;transition:opacity .18s ease;}#vop-page-loader b{position:absolute;top:0;left:0;height:100%;width:0;background:linear-gradient(90deg,var(--accent,#ff8c1a),var(--orange,#ff9f2e));box-shadow:0 0 10px rgba(255,140,26,.7);transition:width .22s ease;}#vop-page-loader.on{opacity:1;}[data-theme="light"] #vop-page-loader b{background:linear-gradient(90deg,#e2700a,#d96b0a);}@media print{#vop-page-loader{display:none;}}</style><div id="vop-page-loader" aria-hidden="true"><b></b></div><script type="94edff118a637b1a43638a9e-text/javascript">(function(){var el=document.getElementById("vop-page-loader");try{var _vt=sessionStorage.getItem("vop-vt-landed");if(_vt&&Date.now()-(+_vt||0)<5000){if(el&&el.parentNode)el.parentNode.removeChild(el);return;}}catch(e){}var bar=el?el.firstElementChild:null;if(!el||!bar)return;var s=0.06,fin=0,t=setInterval(function(){if(fin)return;s=Math.min(0.9,s+Math.random()*0.06);bar.style.width=(s*100)+"%";},350);function finish(){if(fin)return;fin=1;clearInterval(t);bar.style.width="100%";el.classList.remove("on");setTimeout(function(){if(el&&el.parentNode)el.parentNode.removeChild(el);},400);}el.classList.add("on");bar.style.width=(s*100)+"%";if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",finish);}else{finish();}window.addEventListener("load",finish);setTimeout(finish,8000);})();</script><title>Hunt Board — Void Order Prison</title>
+<link rel="stylesheet" href="style.css?v=1790418270">
+<script type="94edff118a637b1a43638a9e-text/javascript">(function(){var t=localStorage.getItem('vop-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+<style>
+/* Deliberately mirrors most_wanted.php's card language so the two boards read
+   as the same publication. */
+.hb-page { max-width: var(--maxw); margin: 0 auto; padding: 0 16px 40px; }
+/* ── The top row ──
+   Replaces a hero that repeated the site header directly above it. The numbers
+   sit on the same line as the title because they are the same thought: what
+   this board is, and how much is on it. */
+.hb-top {
+    display: flex; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap;
+    padding: 22px 0 14px; border-bottom: 1px solid var(--border-dim); margin-bottom: 14px;
+}
+.hb-top-title { flex: 1 1 auto; min-width: 0; }
+.hb-top-title h1 {
+    font-size: 1.55rem; font-weight: 900; letter-spacing: 3px;
+    margin: 0; text-transform: uppercase; line-height: 1.1;
+}
+.hb-top-title p {
+    font-size: .66rem; letter-spacing: 2.4px; text-transform: uppercase;
+    color: var(--accent); margin: 5px 0 0;
+}
+.hb-top-nums { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; }
+.hb-num { font-size: .68rem; letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-muted); }
+.hb-num strong {
+    font-size: 1.15rem; font-weight: 900; color: var(--accent);
+    letter-spacing: 0; margin-right: 4px; font-variant-numeric: tabular-nums;
+}
+@media (max-width: 560px) {
+    .hb-top { padding-top: 16px; }
+    .hb-top-nums { gap: 14px; }
+    .hb-num strong { font-size: 1rem; }
+}
+
+/* ── The toolbar ──
+   Six stacked rows of chips became one row and a disclosure. Sticky under the
+   site header: on a five-page board, sorting from row 40 should not mean
+   scrolling back to the top to find the control. */
+.hb-bar {
+    position: sticky; top: var(--header-h); z-index: 20;
+    background: var(--bg-main); border-bottom: 1px solid var(--border-dim);
+    padding: 10px 0 8px; margin-bottom: 18px;
+}
+.hb-bar-row { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+.hb-bar-spacer { flex: 1 1 auto; }
+.hb-bar-lab {
+    font-size: .6rem; letter-spacing: 1.6px; text-transform: uppercase; color: var(--text-muted);
+}
+/* Chips that belong to one choice, drawn as one control. */
+.hb-seg { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+
+.hb-runpill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 4px 12px; border-radius: 40px; text-decoration: none;
+    border: 1px solid rgba(251,191,36,.45); background: rgba(251,191,36,.1);
+    color: var(--gold); font-size: .68rem; letter-spacing: 1px; text-transform: uppercase;
+}
+.hb-runpill:hover, .hb-runpill.is-on { border-color: var(--gold); background: rgba(251,191,36,.2); text-decoration: none; }
+.hb-runpill strong { font-weight: 900; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.hb-runpill-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--gold);
+    animation: hb-pulse 2.4s infinite;
+}
+@media (prefers-reduced-motion: reduce) { .hb-runpill-dot { animation: none; } }
+
+.hb-more { margin-top: 8px; }
+.hb-more > summary {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font-size: .62rem; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--text-muted); list-style: none; padding: 2px 0;
+}
+.hb-more > summary::-webkit-details-marker { display: none; }
+.hb-more > summary::before { content: "\25B8"; transition: transform .15s ease; font-size: .8em; }
+.hb-more[open] > summary::before { transform: rotate(90deg); }
+.hb-more > summary:hover { color: var(--accent); }
+.hb-more-n {
+    display: inline-block; min-width: 15px; padding: 0 4px; border-radius: 8px;
+    background: var(--accent); color: var(--bg-main); font-weight: 900;
+    font-size: .95em; text-align: center; letter-spacing: 0;
+}
+.hb-more-body { display: flex; flex-direction: column; gap: 7px; padding: 10px 0 4px; }
+.hb-filter-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.hb-filter-label {
+    font-size: .62rem; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--text-muted); min-width: 96px;
+}
+@media (max-width: 640px) {
+    /* Not sticky on a phone: 200px of controls pinned to the top of an 812px
+       screen is a quarter of the viewport spent on chrome. It scrolls away and
+       the reader gets the board. */
+    .hb-bar { position: static; }
+    /* The spacer exists to push Sort to the right on a wide row. On a narrow
+       one it only forces a line break before it. */
+    .hb-bar-spacer { display: none; }
+    .hb-filter-label { min-width: 0; width: 100%; margin-bottom: 1px; }
+}
+
+/* ── Open season, as a pointer ──
+   The 465 people this used to truncate to 60 now have their own page. */
+.hb-os {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    border: 1px solid var(--border-dim); border-left: 3px solid var(--accent);
+    border-radius: var(--radius); background: var(--surface);
+    padding: 14px 18px; margin: 26px 0 0; text-decoration: none;
+}
+.hb-os:hover { border-color: var(--accent); text-decoration: none; }
+.hb-os-n {
+    font-size: 1.6rem; font-weight: 900; color: var(--accent);
+    font-variant-numeric: tabular-nums; line-height: 1;
+}
+.hb-os-text { flex: 1 1 260px; font-size: .82rem; color: var(--text-dim); line-height: 1.5; }
+.hb-os-text strong { color: var(--text-main); }
+.hb-os-go {
+    font-size: .68rem; font-weight: 900; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent);
+}
+
+/* ── What a card offers ── */
+.hb-act {
+    display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-dim);
+}
+.hb-act-note { font-size: .66rem; color: var(--text-muted); line-height: 1.4; }
+.hb-act-note code { font-size: .95em; }
+
+.hb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+@media (max-width: 680px) { .hb-grid { grid-template-columns: 1fr; } }
+
+.hb-card {
+    background: var(--surface); border: 1px solid var(--border-dim);
+    border-radius: 10px; overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: transform .2s, box-shadow .2s, border-color .2s;
+}
+.hb-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,.3); border-color: var(--accent); }
+
+/* The frame keeps a fixed 3/4 so cards line up in the grid, but the photo is
+   contained rather than cropped — these are full-body BC screenshots and
+   `cover` was cutting the head off every one of them. The blurred copy behind
+   fills the letterbox so a portrait or a landscape shot both sit on something
+   deliberate instead of a bare black bar. */
+.hb-photo { position: relative; width: 100%; aspect-ratio: 3/4; background: #0a0a0a; overflow: hidden; }
+.hb-photo-bg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; filter: blur(18px) brightness(.45); transform: scale(1.15);
+}
+.hb-photo img.hb-photo-main {
+    position: relative; width: 100%; height: 100%;
+    object-fit: contain; transition: transform .3s;
+}
+.hb-card:hover .hb-photo img.hb-photo-main { transform: scale(1.04); }
+.hb-noimg {
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6px;
+    color: var(--accent); opacity: .35;
+}
+.hb-noimg span { font-size: 3.4rem; }
+.hb-noimg small { font-size: 0.55rem; letter-spacing: 2px; text-transform: uppercase; }
+
+.hb-badge {
+    position: absolute; top: 10px; right: 10px;
+    font-size: 0.62rem; font-weight: 900; letter-spacing: 2px;
+    padding: 3px 10px; border-radius: 3px; text-transform: uppercase;
+}
+.hb-badge-open    { background: rgba(239,68,68,.2);  color: #ef4444; border: 1px solid #ef4444; }
+.hb-badge-hunted  { background: rgba(251,191,36,.2); color: #fbbf24; border: 1px solid #fbbf24; }
+.hb-badge-review  { background: rgba(59,130,246,.2); color: #3b82f6; border: 1px solid #3b82f6; }
+.hb-badge-done    { background: rgba(34,197,94,.2);  color: #22c55e; border: 1px solid #22c55e; }
+
+/* Trackability sits opposite the status badge so the two never collide. Only
+   ever a positive claim: see bhTrackableStates() for why there is no
+   "untrackable" variant to style. */
+.hb-track {
+    position: absolute; top: 10px; left: 10px;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 0.58rem; font-weight: 900; letter-spacing: 1.5px;
+    padding: 3px 9px; border-radius: 3px; text-transform: uppercase;
+}
+.hb-track-live  { background: rgba(34,197,94,.22); color: #22c55e; border: 1px solid #22c55e; }
+.hb-track-known { background: rgba(148,163,184,.16); color: #94a3b8; border: 1px solid rgba(148,163,184,.5); }
+.hb-track-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+/* The pulse marks the live state only, and stops for anyone who would rather
+   it did not move. */
+.hb-track-live .hb-track-dot { animation: hb-pulse 1.8s ease-in-out infinite; }
+@keyframes hb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) {
+    .hb-track-live .hb-track-dot { animation: none; }
+}
+
+.hb-strip {
+    position: absolute; bottom: 0; left: 0; right: 0; padding: 6px 12px;
+    font-size: 0.6rem; font-weight: 900; letter-spacing: 2px;
+    text-transform: uppercase; text-align: center;
+    background: rgba(124,58,237,.85); color: #fff;
+}
+
+.hb-body { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.hb-name { font-size: 1.05rem; font-weight: 800; letter-spacing: .5px; }
+.hb-code { font-size: 0.65rem; color: var(--text-muted); font-family: monospace; letter-spacing: 1px; }
+.hb-member { color: var(--accent); font-weight: 700; }
+.hb-amount { font-size: 1.1rem; font-weight: 900; color: var(--gold); }
+/* The taunt sits under the amount rather than being added into it: the two are
+   settled differently and a hunter needs to see which half is conditional. */
+.hb-taunt {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    margin-top: -2px; padding: 2px 8px; border-radius: 3px;
+    background: rgba(251,191,36,.14); border: 1px solid rgba(251,191,36,.45);
+}
+.hb-taunt-amt { font-size: .82rem; font-weight: 900; color: #fbbf24; }
+.hb-taunt-label {
+    font-size: .55rem; letter-spacing: 1.5px; text-transform: uppercase;
+    color: #fbbf24; opacity: .85;
+}
+/* Team strip. Sits at the foot of a claimed card, because that is the only
+   status a hunter can join and the only time the information means anything. */
+.hb-team {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border-dim);
+}
+.hb-team-count {
+    font-size: .68rem; font-weight: 800; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--accent);
+}
+.hb-team-share { font-size: .7rem; color: var(--text-muted); }
+.hb-team-signin { font-size: .7rem; color: var(--accent); }
+/* Manhunt banner. Red and above the fold because it is the only thing on this
+   page with a countdown that ends. */
+.hb-manhunt {
+    border: 1px solid rgba(239,68,68,.5); border-left: 3px solid var(--red);
+    border-radius: var(--radius); background: rgba(239,68,68,.07);
+    padding: 12px 16px; margin: 0 0 18px;
+}
+.hb-manhunt-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.hb-manhunt-tag {
+    font-size: .74rem; font-weight: 900; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--red);
+}
+.hb-manhunt-clock {
+    margin-left: auto; font-size: .74rem; font-weight: 700; color: var(--red);
+    font-variant-numeric: tabular-nums;
+}
+.hb-manhunt-body { margin-top: 6px; font-size: .82rem; color: var(--text-dim); }
+.hb-manhunt-body strong { color: var(--text-main); }
+.hb-manhunt-bonus {
+    display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 3px;
+    background: rgba(251,191,36,.16); border: 1px solid rgba(251,191,36,.45);
+    color: #fbbf24; font-size: .7rem; font-weight: 800;
+}
+@media (max-width: 560px) { .hb-manhunt-clock { margin-left: 0; width: 100%; } }
+.hb-tagline { font-size: 0.78rem; font-style: italic; color: var(--text-dim); line-height: 1.4; }
+.hb-meta { font-size: 0.7rem; color: var(--text-muted); line-height: 1.5; margin-top: auto; }
+.hb-empty { text-align: center; padding: 50px 16px; color: var(--text-muted); font-size: 0.85rem; }
+/* The way in, for visitors who arrive without an account. */
+.hb-joinbar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    justify-content: center; text-align: center;
+    border: 1px solid var(--border-dim); border-radius: var(--radius);
+    background: var(--surface); padding: 14px 18px; margin: 0 0 18px;
+}
+.hb-joinbar-text { font-size: .86rem; color: var(--text-dim); }
+.hb-joinbar-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+/* The poster's brief. The largest body of player writing on the site. */
+.hb-reason {
+    font-size: .8rem; color: var(--text-dim); line-height: 1.6;
+    border-left: 2px solid var(--border-dim); padding-left: 10px;
+}
+
+/* ── Collapsible sections ──────────────────────────────────
+   The toggle is added by script and the body is visible by default, so with
+   JavaScript off the board is exactly the page it always was rather than a
+   stack of headings nothing can open. */
+.hb-sec > h2, .hb-sec .hb-mw-head h2 { cursor: default; }
+.hb-sec-toggle {
+    background: none; border: 0; padding: 0 6px 0 0; margin: 0;
+    color: var(--text-muted); font: inherit; font-size: .8em; cursor: pointer;
+    line-height: 1; transition: transform .15s ease;
+}
+.hb-sec-toggle:hover { color: var(--accent); }
+.hb-sec.is-collapsed .hb-sec-toggle { transform: rotate(-90deg); }
+.hb-sec.is-collapsed .hb-sec-body { display: none; }
+.hb-sec.is-collapsed { margin-bottom: 14px; }
+
+/* ── Live refresh ──────────────────────────────────────────
+   A brief edge-glow on a region that just changed. Loud enough to notice if you
+   were looking at it, quiet enough to ignore if you were not. */
+@keyframes hb-refreshed { from { box-shadow: 0 0 0 2px var(--accent); } to { box-shadow: 0 0 0 2px transparent; } }
+.hb-refreshed { animation: hb-refreshed 1.4s ease-out; border-radius: 8px; }
+.hb-live-status {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: .66rem; letter-spacing: 1.4px; text-transform: uppercase;
+    color: var(--text-muted); margin: 0 0 10px;
+}
+.hb-live-status .hb-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34,197,94,.6); animation: hb-pulse 2.4s infinite;
+}
+@keyframes hb-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(34,197,94,.5); }
+    70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}
+.hb-live-status.is-paused .hb-dot { background: var(--text-muted); animation: none; }
+.hb-live-status button {
+    background: none; border: 1px solid var(--border, #333); border-radius: 4px;
+    color: inherit; font: inherit; font-size: .62rem; letter-spacing: 1.2px;
+    text-transform: uppercase; padding: 2px 7px; cursor: pointer;
+}
+.hb-live-status button:hover { color: var(--accent); border-color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+    .hb-refreshed { animation: none; }
+    .hb-live-status .hb-dot { animation: none; }
+}
+
+/* ── Most wanted ──
+   The prison's own board. Red where the rest of the page is accent-coloured, so
+   the two sets of bounties never read as the same thing: these are escapees, not
+   volunteers.
+
+   Rows, not the photo cards this used to draw. Four escapees in 3/4-aspect cards
+   spent nine hundred pixels above the board saying there were four of them. The
+   left edge carries the meaning, as it does on every other list on this site. */
+.hb-mw { margin-bottom: 24px; }
+.hb-mw-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 6px; }
+.hb-mw-head h2 {
+    font-size: 1rem; letter-spacing: 2px; text-transform: uppercase;
+    margin: 0; color: var(--red);
+}
+/* The debtor section: same structure, different color so the two boards
+   read as different lists at a glance — nobody here broke out, they owe
+   the casino. Reuses the tone admin.php already uses for money-owed
+   tiles rather than inventing a new token. */
+.hb-mw.is-debtor .hb-mw-head h2 { color: var(--orange-lite); }
+.hb-mw-n { color: var(--text-muted); }
+.hb-mw-sum { font-size: .7rem; color: var(--text-muted); letter-spacing: 1px; }
+.hb-mw-all { margin-left: auto; font-size: .68rem; color: var(--accent); }
+.hb-mw-lede { font-size: .76rem; color: var(--text-muted); margin: 0 0 10px; max-width: 62ch; line-height: 1.5; }
+
+.hb-mw-list { display: flex; flex-direction: column; gap: 7px; }
+.hb-mw-row {
+    display: flex; align-items: center; gap: 12px;
+    border: 1px solid var(--border-dim); border-left: 3px solid var(--red);
+    border-radius: var(--radius-sm); background: var(--surface);
+    padding: 9px 13px;
+}
+.hb-mw.is-debtor .hb-mw-row { border-left-color: var(--orange-lite); }
+/* Somebody is already on them — still worth reporting, less worth chasing. */
+.hb-mw-row.is-claimed { border-left-color: var(--gold); }
+.hb-mw-thumb {
+    flex: 0 0 44px; width: 44px; height: 56px; border-radius: 3px;
+    overflow: hidden; background: var(--surface-dark);
+    display: flex; align-items: center; justify-content: center;
+}
+.hb-mw-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.hb-mw-noimg { font-size: 1.3rem; opacity: .35; }
+.hb-mw-main { flex: 1 1 auto; min-width: 0; }
+.hb-mw-line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.hb-mw-name { font-size: .95rem; font-weight: 800; color: var(--text-main); text-decoration: none; }
+.hb-mw-name:hover { color: var(--accent); }
+.hb-mw-code { font-size: .62rem; font-family: var(--font-mono, monospace); color: var(--text-muted); letter-spacing: 1px; }
+.hb-mw-threat {
+    font-size: .55rem; font-weight: 900; letter-spacing: 1.5px;
+    padding: 1px 7px; border-radius: 3px; text-transform: uppercase;
+}
+.hb-mw-claimed { font-size: .6rem; font-weight: 800; letter-spacing: 1px; color: var(--gold); text-transform: uppercase; }
+.hb-mw-sub { font-size: .7rem; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+.hb-mw-sub em { color: var(--text-dim); font-style: italic; }
+.hb-mw-money {
+    flex: 0 0 auto; font-size: .86rem; font-weight: 900; color: var(--gold);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.hb-mw-act { flex: 0 0 auto; }
+.hb-threat-critical { background: rgba(239,68,68,.85); color: #fff; }
+.hb-threat-high     { background: rgba(249,115,22,.85); color: #fff; }
+.hb-threat-medium   { background: rgba(234,179,8,.85);  color: #000; }
+.hb-threat-low      { background: rgba(34,197,94,.85);  color: #000; }
+@media (max-width: 620px) {
+    /* The thumbnail and the text keep the first line; the money and the button
+       share the second. Giving the button a line of its own was costing 180px
+       an escapee, which on a phone is most of the screen before the board. */
+    .hb-mw-row { flex-wrap: wrap; padding: 8px 11px; gap: 9px; }
+    .hb-mw-thumb { flex: 0 0 38px; width: 38px; height: 48px; }
+    .hb-mw-main { flex: 1 1 140px; }
+    .hb-mw-money { order: 2; }
+    .hb-mw-act { order: 3; margin-left: auto; }
+    .hb-mw-sub { font-size: .66rem; }
+}
+</style>
+</head>
+<body>
+
+<header class="site-header"><div class="header-brand"><a href="/" class="header-logo">&#127919;</a><div><div class="header-title">Void Order Prison</div><div class="header-subtitle">HUNT BOARD</div></div></div><button class="nav-hamburger" aria-label="Toggle navigation" onclick="if (!window.__cfRLUnblockHandlers) return false; this.closest('.site-header').classList.toggle('nav-open')" data-cf-modified-94edff118a637b1a43638a9e-="">&#9776;</button><nav class="header-nav"><a href="standings.php" class="nav-btn">&#128081; STANDINGS</a><a href="hall_of_fame.php" class="nav-btn">&#127942; HALL OF FAME</a><a href="/hunt-board#most-wanted" class="nav-btn nav-btn-danger">&#128683; MOST WANTED</a><a href="/hunt-board" class="nav-btn nav-btn-active">&#127919; HUNT BOARD</a><a href="/open-season" class="nav-btn">&#128100; OPEN SEASON</a><a href="/incidents" class="nav-btn">&#128240; INCIDENTS</a><a href="/archive" class="nav-btn">&#128193; ARCHIVE</a><a href="/files" class="nav-btn">&#128220; FILES</a><a href="/handbook" class="nav-btn">&#128220; HANDBOOK</a><a href="/report-a-sighting" class="nav-btn">&#128064; REPORT A SIGHTING</a><a href="/hunt-me" class="nav-btn">HUNT ME</a><a href="/wardens" class="nav-btn">WARDENS</a><a href="/warden-login" class="nav-btn">WARDEN LOGIN</a><a href="/hunter-register" class="nav-btn">JOIN THE GUILD</a><a href="/claim-account" class="nav-btn nav-btn-dim">CLAIM ACCOUNT</a><a href="/hunter-login" class="nav-btn nav-btn-bh">BOUNTY HUNTERS</a><a href="/resident-login" class="nav-btn nav-btn-citizen">RESIDENTS</a><button id="theme-btn" class="theme-btn" onclick="if (!window.__cfRLUnblockHandlers) return false; vopToggleTheme()" title="Toggle light/dark mode" data-cf-modified-94edff118a637b1a43638a9e-="">&#x2600;&#xFE0F;</button></nav></header><script type="94edff118a637b1a43638a9e-text/javascript">function vopToggleTheme(){var c=document.documentElement.getAttribute('data-theme')||'dark',at=window.vopAccountTheme,n;if(c==='ember'||c==='void_purple'){n='light';}else if(c==='light'&&at){n=at;}else{n=(c==='dark')?'light':'dark';}document.documentElement.setAttribute('data-theme',n);localStorage.setItem('vop-theme',n);var b=document.getElementById('theme-btn');if(b)b.textContent=n==='light'?'\ud83c\udf19':'\u2600\ufe0f';}(function(){var t=document.documentElement.getAttribute('data-theme')||'dark';var b=document.getElementById('theme-btn');if(b)b.textContent=t==='light'?'\ud83c\udf19':'\u2600\ufe0f';})();document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('.flash-msg').forEach(function(el){el.classList.add('flash-msg-auto');setTimeout(function(){el.classList.add('flash-out');var done=false;function hide(){if(done)return;done=true;el.style.display='none';}el.addEventListener('animationend',hide,{once:true});setTimeout(hide,600);},4000);});});</script><script type="94edff118a637b1a43638a9e-text/javascript">(function(){
+  var wrap, input, items = [], sel = -1, seq = 0, timer = null, lastQ = '';
+
+  function el(){ wrap = document.getElementById('global-search-results');
+                 input = document.getElementById('global-search-input');
+                 return wrap && input; }
+  function esc(s){ return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function close(){ if(wrap){ wrap.style.display='none'; wrap.innerHTML=''; } items=[]; sel=-1; }
+
+  function highlight(){
+    items.forEach(function(a,i){ a.classList.toggle('gsr-active', i===sel); });
+    if(sel>=0 && items[sel] && items[sel].scrollIntoView) items[sel].scrollIntoView({block:'nearest'});
+  }
+
+  function render(d){
+    if(!d || !d.results || !d.results.length){
+      wrap.innerHTML = '<div class="gsr-empty">No matches for &ldquo;'+esc(d && d.q)+'&rdquo;</div>';
+      wrap.style.display = 'block'; items = []; sel = -1; return;
+    }
+    var html = '', group = '';
+    d.results.forEach(function(r){
+      if(r.group !== group){ group = r.group;
+        html += '<div class="gsr-group">'+(r.icon||'')+' '+esc(group)+'</div>'; }
+      html += '<a href="'+esc(r.url)+'" class="gsr-item">'
+            +   '<span class="gsr-label">'+esc(r.label)+'</span>'
+            +   '<span class="gsr-sub">'+esc(r.sub)+'</span>'
+            + '</a>';
+    });
+    /* Always offered, not only when results were trimmed: the dropdown shows a
+       few of each kind, the page shows them all. */
+    html += '<a href="'+esc(d.all_url)+'" class="gsr-item gsr-all">'
+          +   '<span class="gsr-label">See all '+(d.total||0)+' results</span>'
+          +   '<span class="gsr-sub">Enter</span></a>';
+    wrap.innerHTML = html;
+    wrap.style.display = 'block';
+    items = Array.prototype.slice.call(wrap.querySelectorAll('.gsr-item'));
+    sel = -1;
+  }
+
+  /* Debounced: typing a name should not be one request per keystroke, and an
+     older reply must never overwrite a newer one. */
+  function run(q){
+    var mine = ++seq;
+    fetch('/search?format=json&q='+encodeURIComponent(q), {credentials:'same-origin'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){ if(mine === seq && d) render(d); })
+      .catch(function(){});
+  }
+
+  window.vopGlobalSearch = function(q){
+    if(!el()) return;
+    q = (q||'').trim();
+    if(q === lastQ) return;
+    lastQ = q;
+    if(timer) clearTimeout(timer);
+    if(q.length < 2){ close(); return; }
+    timer = setTimeout(function(){ run(q); }, 160);
+  };
+
+  document.addEventListener('keydown', function(e){
+    if(!el() || e.target !== input) return;
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      if(!items.length) return;
+      e.preventDefault();
+      sel = e.key === 'ArrowDown'
+          ? (sel + 1) % items.length
+          : (sel <= 0 ? items.length - 1 : sel - 1);
+      highlight();
+    } else if(e.key === 'Enter'){
+      var q = input.value.trim();
+      if(sel >= 0 && items[sel]){ e.preventDefault(); window.location = items[sel].getAttribute('href'); }
+      else if(q.length){ e.preventDefault(); window.location = '/search?q=' + encodeURIComponent(q); }
+    } else if(e.key === 'Escape'){
+      close(); input.blur();
+    }
+  });
+
+  /* Re-opening on focus saves retyping when someone clicks away and back. */
+  document.addEventListener('focusin', function(e){
+    if(el() && e.target === input && input.value.trim().length >= 2 && !wrap.innerHTML){
+      lastQ = ''; window.vopGlobalSearch(input.value);
+    }
+  });
+})(); document.addEventListener('click',function(e){if(!e.target.closest('#global-search-wrap')){var w=document.getElementById('global-search-results');if(w)w.style.display='none';}});document.addEventListener('keydown',function(e){if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'){if(e.key==='Escape'){e.target.blur();}return;}if(e.key==='?'){vopShortcutModal(true);return;}if(e.key==='Escape'){vopShortcutModal(false);return;}if(e.key==='n'){window.location='/admin?new=1';return;}if(e.key==='a'){window.location='/audit-log';return;}if(e.key==='s'){window.location='/stats';return;}if(e.key==='\/'){e.preventDefault();var si=document.getElementById('global-search-input');if(si)si.focus();return;}});function vopShortcutModal(show){var m=document.getElementById('vop-shortcut-modal');if(!m){m=document.createElement('div');m.id='vop-shortcut-modal';m.innerHTML='<div class="shortcut-modal-backdrop" onclick="vopShortcutModal(false)"></div><div class="shortcut-modal-box"><div class="shortcut-modal-title">KEYBOARD SHORTCUTS</div><table class="shortcut-table"><tr><td><kbd>?</kbd></td><td>Open this help</td></tr><tr><td><kbd>n</kbd></td><td>New inmate</td></tr><tr><td><kbd>a</kbd></td><td>Audit log</td></tr><tr><td><kbd>s</kbd></td><td>Statistics</td></tr><tr><td><kbd>/</kbd></td><td>Focus search</td></tr><tr><td><kbd>Esc</kbd></td><td>Close modal</td></tr></table><button onclick="vopShortcutModal(false)" class="btn-secondary" style="margin-top:12px">CLOSE</button></div>';document.body.appendChild(m);}m.style.display=show?'flex':'none';}</script><script type="94edff118a637b1a43638a9e-text/javascript">(function(){if(window.vopTransitionsBound)return;window.vopTransitionsBound=true;function settle(vt){vt.ready.catch(function(){});vt.finished.catch(function(){});vt.updateCallbackDone.catch(function(){});}try{var _vt=sessionStorage.getItem("vop-vt-landed");if(_vt){sessionStorage.removeItem("vop-vt-landed");if(Date.now()-(+_vt||0)<5000)document.documentElement.classList.add("vop-vt-landed");}}catch(err){}window.addEventListener("pageswap",function(e){if(!e.viewTransition)return;settle(e.viewTransition);try{sessionStorage.setItem("vop-vt-landed",String(Date.now()));sessionStorage.setItem("vop-scroll",String(window.scrollY));}catch(err){}});window.addEventListener("pagereveal",function(e){if(!e.viewTransition)return;settle(e.viewTransition);document.documentElement.classList.add("vop-vt-landed");try{sessionStorage.removeItem("vop-vt-landed");}catch(err){}var y=0;try{var s=sessionStorage.getItem("vop-scroll");if(s!==null){sessionStorage.removeItem("vop-scroll");y=+s;}}catch(err){}if(y>0){try{history.scrollRestoration="manual";}catch(err){}var restore=function(){try{window.scrollTo(0,y);}catch(err){}};restore();e.viewTransition.finished.then(restore,restore);window.addEventListener("load",restore,{once:true});}});})();</script>
+<div class="hb-page">
+        <div class="hb-top">
+        <div class="hb-top-title">
+            <h1>Hunt Board</h1>
+            <p>Volunteers &amp; contracts &mdash; every name here consented</p>
+        </div>
+        <!--HB:stats-->
+        <div class="hb-top-nums" id="hb-stats">
+            <span class="hb-num"><strong>101</strong> open</span>
+            <span class="hb-num"><strong>1</strong> being hunted</span>
+            <span class="hb-num"><strong>3,854,136</strong> credits on the table</span>
+        </div>
+        <!--/HB:stats-->
+    </div>
+
+        <p class="hb-live-status" id="hb-live-status" hidden>
+        <span class="hb-dot" aria-hidden="true"></span>
+        <span id="hb-live-text">Live &mdash; updating automatically</span>
+        <button type="button" id="hb-live-toggle">Pause</button>
+    </p>
+
+            <div class="hb-joinbar">
+        <span class="hb-joinbar-text">
+            Every name here agreed to be hunted. Want to chase them, or be chased?
+        </span>
+        <span class="hb-joinbar-acts">
+            <a href="/hunter-register" class="btn btn-sm btn-primary">JOIN THE GUILD</a>
+            <a href="/claim-account" class="btn btn-sm btn-dim">THE BOT MADE ME AN ACCOUNT</a>
+            <a href="/inmate-register" class="btn btn-sm btn-dim">REGISTER AS A BOUNTY</a>
+            <a href="/handbook" class="btn btn-sm btn-dim">HOW IT WORKS</a>
+        </span>
+    </div>
+    
+    
+        
+    <!-- ══ MOST WANTED ═══════════════════════════════════════ -->
+        <!--HB:mostwanted-->
+        <div class="hb-mw hb-sec" id="most-wanted" data-sec="mostwanted">
+        <div class="hb-mw-head">
+            <h2>&#128683; Most wanted <span class="hb-mw-n">(30)</span></h2>
+                        <span class="hb-mw-sum">L$ 689,205,138 in prison bounties</span>
+                        <a class="hb-mw-all" href="/report-a-sighting">Report a sighting &rarr;</a>
+        </div>
+        <div class="hb-sec-body">
+        <p class="hb-mw-lede">Escaped inmates the prison wants back. Unlike the contracts below, nobody here consented to being hunted &mdash; they broke out.</p>
+
+        <div class="hb-mw-list">
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=421"
+                   aria-label="Dossier for Escapee 1">
+                                            <img src="uploads/inmate_1.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=421">Escapee 1</a>
+                        <span class="hb-mw-code">VOP-000408</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>Room 1</em>
+                                                                            &middot; escaped 45 days ago                                                                            &middot; 6 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 217,657,242</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=421">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=372"
+                   aria-label="Dossier for Escapee 2">
+                                            <img src="uploads/inmate_2.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=372">Escapee 2</a>
+                        <span class="hb-mw-code">VOP-000349</span>
+                                                    <span class="hb-mw-threat hb-threat-high">HIGH</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 54 days ago                                                                            &middot; 1 sighting                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 195,957,810</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=372">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=36"
+                   aria-label="Dossier for Escapee 3">
+                                            <img src="uploads/inmate_3.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=36">Escapee 3</a>
+                        <span class="hb-mw-code">VOP-000018</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>Room 3</em>
+                                                                            &middot; escaped 86 days ago                                                                            &middot; 3 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 95,959,461</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=36">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=367"
+                   aria-label="Dossier for Escapee 4">
+                                            <img src="uploads/inmate_4.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=367">Escapee 4</a>
+                        <span class="hb-mw-code">VOP-000341</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 71 days ago                                                                            &middot; 13 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 73,205,000</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=367">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=564"
+                   aria-label="Dossier for Escapee 5">
+                                            <img src="uploads/inmate_5.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=564">Escapee 5</a>
+                        <span class="hb-mw-code">VOP-000556</span>
+                                                    <span class="hb-mw-threat hb-threat-high">HIGH</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    No sightings reported
+                                                                            &middot; escaped 50 days ago                                                                    </div>
+                </div>
+                                <div class="hb-mw-money">L$ 28,078,224</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=564">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=316"
+                   aria-label="Dossier for Escapee 6">
+                                            <img src="uploads/inmate_6.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=316">Escapee 6</a>
+                        <span class="hb-mw-code">VOP-002377</span>
+                                                    <span class="hb-mw-threat hb-threat-high">HIGH</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 12 days ago                                                                            &middot; 1 sighting                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 23,579,476</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=316">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=700"
+                   aria-label="Dossier for Escapee 7">
+                                            <img src="uploads/inmate_7.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=700">Escapee 7</a>
+                        <span class="hb-mw-code">VOP-000684</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 28 days ago                                                                            &middot; 4 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 21,243,300</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=700">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=64"
+                   aria-label="Dossier for Escapee 8">
+                                            <img src="uploads/inmate_8.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=64">Escapee 8</a>
+                        <span class="hb-mw-code">VOP-000064</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 21 days ago                                                                            &middot; 2 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 6,000,000</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=64">REPORT SIGHTING</a>
+            </div>
+                    </div>
+        </div>
+    </div>
+        <div class="hb-mw hb-sec is-debtor" id="most-wanted-debtors" data-sec="mostwanteddebtors">
+        <div class="hb-mw-head">
+            <h2>&#127920; Casino debtors <span class="hb-mw-n">(30)</span></h2>
+                        <span class="hb-mw-sum">L$ 39,709,855 in prison bounties</span>
+                        <a class="hb-mw-all" href="/report-a-sighting">Report a sighting &rarr;</a>
+        </div>
+        <div class="hb-sec-body">
+        <p class="hb-mw-lede">Inmates who owe the VOP Casino unpaid forfeits. Unlike the escapees above, they did not break out &mdash; the house just wants its money.</p>
+
+        <div class="hb-mw-list">
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=60"
+                   aria-label="Dossier for Escapee 9">
+                                            <img src="uploads/inmate_9.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=60">Escapee 9</a>
+                        <span class="hb-mw-code">VOP-000093</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 38 days ago                                                                            &middot; 12 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 8,574,355</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=60">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=645"
+                   aria-label="Dossier for Escapee 10">
+                                            <img src="uploads/inmate_10.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=645">Escapee 10</a>
+                        <span class="hb-mw-code">VOP-000627</span>
+                                                    <span class="hb-mw-threat hb-threat-high">HIGH</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 39 days ago                                                                            &middot; 4 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 4,285,500</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=645">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=561"
+                   aria-label="Dossier for Escapee 11">
+                                            <span class="hb-mw-noimg" aria-hidden="true">&#128683;</span>
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=561">Escapee 11</a>
+                        <span class="hb-mw-code">VOP-000553</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 50 days ago                                                                            &middot; 2 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 1,200,000</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=561">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=516"
+                   aria-label="Dossier for Escapee 12">
+                                            <img src="uploads/inmate_12.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=516">Escapee 12</a>
+                        <span class="hb-mw-code">VOP-000507</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 50 days ago                                                                            &middot; 32 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 1,200,000</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=516">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=312"
+                   aria-label="Dossier for Escapee 13">
+                                            <img src="uploads/inmate_13.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=312">Escapee 13</a>
+                        <span class="hb-mw-code">VOP-002373</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 51 days ago                                                                            &middot; 38 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 1,200,000</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=312">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=542"
+                   aria-label="Dossier for Escapee 14">
+                                            <span class="hb-mw-noimg" aria-hidden="true">&#128683;</span>
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=542">Escapee 14</a>
+                        <span class="hb-mw-code">VOP-000533</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 53 days ago                                                                            &middot; 15 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 1,200,000</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=542">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=536"
+                   aria-label="Dossier for Escapee 15">
+                                            <img src="uploads/inmate_15.png" alt="" loading="lazy">
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=536">Escapee 15</a>
+                        <span class="hb-mw-code">VOP-000527</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 53 days ago                                                                            &middot; 4 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 1,200,000</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=536">REPORT SIGHTING</a>
+            </div>
+                        <div class="hb-mw-row">
+                <a class="hb-mw-thumb" href="/inmate?id=512"
+                   aria-label="Dossier for Escapee 16">
+                                            <span class="hb-mw-noimg" aria-hidden="true">&#128683;</span>
+                                    </a>
+                <div class="hb-mw-main">
+                    <div class="hb-mw-line">
+                        <a class="hb-mw-name" href="/inmate?id=512">Escapee 16</a>
+                        <span class="hb-mw-code">VOP-000503</span>
+                                                    <span class="hb-mw-threat hb-threat-critical">CRITICAL</span>
+                                                                    </div>
+                    <div class="hb-mw-sub">
+                                                    Last seen <em>VOP Casino</em>
+                                                                            &middot; escaped 55 days ago                                                                            &middot; 5 sightings                                            </div>
+                </div>
+                                <div class="hb-mw-money">L$ 1,200,000</div>
+                                <a class="btn btn-sm btn-danger hb-mw-act"
+                   href="/report-a-sighting?inmate=512">REPORT SIGHTING</a>
+            </div>
+                    </div>
+        </div>
+    </div>
+        <!--/HB:mostwanted-->
+
+        <div class="hb-bar">
+        <div class="hb-bar-row">
+            <span class="hb-seg">
+                <a class="btn btn-sm btn-primary" href="hunt_board.php">OPEN BOARD</a>                <a class="btn btn-sm btn-dim" href="hunt_board.php?show=all">INCLUDE SETTLED</a>            </span>
+
+                                    <a class="hb-runpill"
+               href="hunt_board.php?sort=lapsing&amp;avail=claimed"
+               title="Hunts with a hunter on them and a clock running. Soonest to lapse first.">
+                <span class="hb-runpill-dot"></span>
+                <strong>1</strong> hunt running
+            </a>
+            
+            <span class="hb-bar-spacer"></span>
+
+            <label class="hb-bar-lab" for="hb-sort">Sort</label>
+            <span class="hb-seg" id="hb-sort">
+                <a class="btn btn-sm btn-primary" href="hunt_board.php">NEWEST</a>                <a class="btn btn-sm btn-dim" href="hunt_board.php?sort=rich">RICHEST</a>                <a class="btn btn-sm btn-dim" href="hunt_board.php?sort=lapsing">ENDING SOON</a>                <a class="btn btn-sm btn-dim" href="hunt_board.php?sort=old">OLDEST</a>            </span>
+        </div>
+
+        <details class="hb-more">
+            <summary>
+                Filters            </summary>
+            <div class="hb-more-body">
+                                <div class="hb-filter-row">
+                    <span class="hb-filter-label" title="Whether the bot can see the target — /bot locate reports their room.">Trackable</span>
+                    <a class="btn btn-sm btn-primary" href="hunt_board.php">ANY</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?track=live">&#9679; ONLINE NOW</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?track=known">FRIENDED BOT</a>                </div>
+                
+                <div class="hb-filter-row">
+                    <span class="hb-filter-label">Worth at least</span>
+                    <a class="btn btn-sm btn-primary" href="hunt_board.php">ANY</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?min=500">500</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?min=1000">1,000</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?min=5000">5,000</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?min=25000">25,000</a>                </div>
+
+                <div class="hb-filter-row">
+                    <span class="hb-filter-label">Funded by</span>
+                    <a class="btn btn-sm btn-primary" href="hunt_board.php">ANY</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?source=prison">VOLUNTEERS</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?source=player">PLAYERS</a>                </div>
+
+                <div class="hb-filter-row">
+                    <span class="hb-filter-label">Status</span>
+                    <a class="btn btn-sm btn-primary" href="hunt_board.php">ANY</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?avail=unclaimed">UNCLAIMED ONLY</a>                    <a class="btn btn-sm btn-dim" href="hunt_board.php?avail=claimed">BEING HUNTED</a>                </div>
+
+                <div class="hb-filter-row">
+                    <span class="hb-filter-label">Also</span>
+                    <a class="btn btn-sm btn-dim" href="hunt_board.php?photo=yes">HAS A PHOTO</a>                                    </div>
+            </div>
+        </details>
+    </div>
+
+    <!--HB:board-->
+    <div class="hb-sec" data-sec="board">
+        <h2 style="font-size:1rem;letter-spacing:2px;text-transform:uppercase;margin:0 0 4px">
+            &#128203; The board
+            <span style="color:var(--text-muted)">(102)</span>
+        </h2>
+        <div class="hb-sec-body">
+        <p style="text-align:center;font-size:.72rem;color:var(--text-muted);margin:0 0 14px">
+        Showing 42 of 102        bounties                &middot; page 2 of 2    </p>
+    
+        <div class="hb-grid">
+                        <div class="hb-card" id="BH-003095">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 61</div>
+                                <div class="hb-code">
+                    BH-003095 &middot;
+                    <span class="hb-member">BC #102257</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 976 credits</div>
+                                                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003095</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003094">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102294_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102294_photo.png"
+                         alt="Target 62" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 62</div>
+                                <div class="hb-code">
+                    BH-003094 &middot;
+                    <span class="hb-member">BC #102294</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 976 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+1,000</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003094</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003093">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102331_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102331_photo.png"
+                         alt="Target 63" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 63</div>
+                                <div class="hb-code">
+                    BH-003093 &middot;
+                    <span class="hb-member">BC #102331</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 107,181 credits</div>
+                                                                                                        <div class="hb-reason">Cuffs, a cell, and a long walk back.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003093</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003092">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 64</div>
+                                <div class="hb-code">
+                    BH-003092 &middot;
+                    <span class="hb-member">BC #102368</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 1,074 credits</div>
+                                                                                                        <div class="hb-reason">Open season &mdash; volunteered from the bounty office.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003092</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003091">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102405_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102405_photo.png"
+                         alt="Target 65" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 65</div>
+                                <div class="hb-code">
+                    BH-003091 &middot;
+                    <span class="hb-member">BC #102405</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 214,359 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+10,000</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                                                        <div class="hb-reason">Rope &amp; tape &mdash; &quot;no silent snatching&quot;, please &#128578;<br>Limits in bio &#x2764;&#xFE0F;</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003091</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003090">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102442_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102442_photo.png"
+                         alt="Target 66" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 66</div>
+                                <div class="hb-code">
+                    BH-003090 &middot;
+                    <span class="hb-member">BC #102442</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 21,437 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Run &amp; hide!&rdquo;</div>
+                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003090</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003088">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102479_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102479_photo.png"
+                         alt="Target 67" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 67</div>
+                                <div class="hb-code">
+                    BH-003088 &middot;
+                    <span class="hb-member">BC #102479</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 178,508 credits</div>
+                                                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003088</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003087">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 68</div>
+                                <div class="hb-code">
+                    BH-003087 &middot;
+                    <span class="hb-member">BC #102516</span>
+                                                            &middot; <a href="/inmate?id=603"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 6,430 credits</div>
+                                                                                                        <div class="hb-reason">Cuffs, a cell, and a long walk back.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003087</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003086">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 69</div>
+                                <div class="hb-code">
+                    BH-003086 &middot;
+                    <span class="hb-member">BC #102553</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 11,790 credits</div>
+                                                                                                        <div class="hb-reason">Open season &mdash; volunteered from the bounty office.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003086</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003085">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102590_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102590_photo.png"
+                         alt="Target 70" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 70</div>
+                                <div class="hb-code">
+                    BH-003085 &middot;
+                    <span class="hb-member">BC #102590</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 11,790 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Catch me if you can.&rdquo;</div>
+                                                                        <div class="hb-reason">Rope &amp; tape &mdash; &quot;no silent snatching&quot;, please &#128578;<br>Limits in bio &#x2764;&#xFE0F;</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003085</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003084">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102627_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102627_photo.png"
+                         alt="Target 71" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 71</div>
+                                <div class="hb-code">
+                    BH-003084 &middot;
+                    <span class="hb-member">BC #102627</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 1,181 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+10,000</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                    <div class="hb-tagline">&ldquo;Run &amp; hide!&rdquo;</div>
+                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003084</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003082">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 72</div>
+                                <div class="hb-code">
+                    BH-003082 &middot;
+                    <span class="hb-member">BC #102664</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 23,577 credits</div>
+                                                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003082</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003081">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102701_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102701_photo.png"
+                         alt="Target 73" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 73</div>
+                                <div class="hb-code">
+                    BH-003081 &middot;
+                    <span class="hb-member">BC #102701</span>
+                                                            &middot; <a href="/inmate?id=330"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 215 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Hi.&rdquo;</div>
+                                                                        <div class="hb-reason">Cuffs, a cell, and a long walk back.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003081</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003080">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 74</div>
+                                <div class="hb-code">
+                    BH-003080 &middot;
+                    <span class="hb-member">BC #102738</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 1,074 credits</div>
+                                                                                                        <div class="hb-reason">Open season &mdash; volunteered from the bounty office.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003080</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003079">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102775_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102775_photo.png"
+                         alt="Target 75" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 75</div>
+                                <div class="hb-code">
+                    BH-003079 &middot;
+                    <span class="hb-member">BC #102775</span>
+                                                            &middot; <a href="/inmate?id=747"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 176,848 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+10,000</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                    <div class="hb-tagline">&ldquo;Catch me if you can.&rdquo;</div>
+                                                                        <div class="hb-reason">Rope &amp; tape &mdash; &quot;no silent snatching&quot;, please &#128578;<br>Limits in bio &#x2764;&#xFE0F;</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003079</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003077">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 76</div>
+                                <div class="hb-code">
+                    BH-003077 &middot;
+                    <span class="hb-member">BC #102812</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 1,181 credits</div>
+                                                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003077</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003076">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 77</div>
+                                <div class="hb-code">
+                    BH-003076 &middot;
+                    <span class="hb-member">BC #102849</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 9,079 credits</div>
+                                                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003076</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003075">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102886_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102886_photo.png"
+                         alt="Target 78" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 78</div>
+                                <div class="hb-code">
+                    BH-003075 &middot;
+                    <span class="hb-member">BC #102886</span>
+                                                            &middot; <a href="/inmate?id=757"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 1,181 credits</div>
+                                                                                                        <div class="hb-reason">Cuffs, a cell, and a long walk back.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003075</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003074">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102923_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102923_photo.png"
+                         alt="Target 79" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 79</div>
+                                <div class="hb-code">
+                    BH-003074 &middot;
+                    <span class="hb-member">BC #102923</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 1,729 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Bring snacks.&rdquo;</div>
+                                                                        <div class="hb-reason">Open season &mdash; volunteered from the bounty office.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003074</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003071">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102960_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102960_photo.png"
+                         alt="Target 80" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 80</div>
+                                <div class="hb-code">
+                    BH-003071 &middot;
+                    <span class="hb-member">BC #102960</span>
+                                                            &middot; <a href="/inmate?id=758"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 11,790 credits</div>
+                                                                                                        <div class="hb-reason">Rope &amp; tape &mdash; &quot;no silent snatching&quot;, please &#128578;<br>Limits in bio &#x2764;&#xFE0F;</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003071</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003070">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_102997_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_102997_photo.png"
+                         alt="Target 81" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 81</div>
+                                <div class="hb-code">
+                    BH-003070 &middot;
+                    <span class="hb-member">BC #102997</span>
+                                                            &middot; <a href="/inmate?id=153"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 51,874 credits</div>
+                                                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003070</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003069">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103034_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103034_photo.png"
+                         alt="Target 82" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 82</div>
+                                <div class="hb-code">
+                    BH-003069 &middot;
+                    <span class="hb-member">BC #103034</span>
+                                                            &middot; <a href="/inmate?id=679"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 261 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Try harder.&rdquo;</div>
+                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003069</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003068">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103071_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103071_photo.png"
+                         alt="Target 83" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 83</div>
+                                <div class="hb-code">
+                    BH-003068 &middot;
+                    <span class="hb-member">BC #103071</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 25,939 credits</div>
+                                                                                                        <div class="hb-reason">Cuffs, a cell, and a long walk back.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003068</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003066">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103108_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103108_photo.png"
+                         alt="Target 84" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 84</div>
+                                <div class="hb-code">
+                    BH-003066 &middot;
+                    <span class="hb-member">BC #103108</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 2,593 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Bring snacks.&rdquo;</div>
+                                                                        <div class="hb-reason">Open season &mdash; volunteered from the bounty office.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003066</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003063">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103145_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103145_photo.png"
+                         alt="Target 85" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 85</div>
+                                <div class="hb-code">
+                    BH-003063 &middot;
+                    <span class="hb-member">BC #103145</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 261 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Catch me if you can.&rdquo;</div>
+                                                                        <div class="hb-reason">Rope &amp; tape &mdash; &quot;no silent snatching&quot;, please &#128578;<br>Limits in bio &#x2764;&#xFE0F;</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003063</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003062">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103182_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103182_photo.png"
+                         alt="Target 86" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 86</div>
+                                <div class="hb-code">
+                    BH-003062 &middot;
+                    <span class="hb-member">BC #103182</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 259,375 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+10,000</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                    <div class="hb-tagline">&ldquo;Run &amp; hide!&rdquo;</div>
+                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003062</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003060">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103219_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103219_photo.png"
+                         alt="Target 87" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 87</div>
+                                <div class="hb-code">
+                    BH-003060 &middot;
+                    <span class="hb-member">BC #103219</span>
+                                                            &middot; <a href="/inmate?id=335"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 233,460 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Try harder.&rdquo;</div>
+                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003060</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003059">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103256_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103256_photo.png"
+                         alt="Target 88" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 88</div>
+                                <div class="hb-code">
+                    BH-003059 &middot;
+                    <span class="hb-member">BC #103256</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 259,375 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Hi.&rdquo;</div>
+                                                                        <div class="hb-reason">Cuffs, a cell, and a long walk back.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003059</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003058">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103293_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103293_photo.png"
+                         alt="Target 89" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 89</div>
+                                <div class="hb-code">
+                    BH-003058 &middot;
+                    <span class="hb-member">BC #103293</span>
+                                                            &middot; <a href="/inmate?id=755"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 1,299 credits</div>
+                                                                    <div class="hb-tagline">&ldquo;Bring snacks.&rdquo;</div>
+                                                                        <div class="hb-reason">Open season &mdash; volunteered from the bounty office.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003058</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003057">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 90</div>
+                                <div class="hb-code">
+                    BH-003057 &middot;
+                    <span class="hb-member">BC #103330</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 12,969 credits</div>
+                                                                                                        <div class="hb-reason">Rope &amp; tape &mdash; &quot;no silent snatching&quot;, please &#128578;<br>Limits in bio &#x2764;&#xFE0F;</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003057</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003055">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103367_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103367_photo.png"
+                         alt="Target 91" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 91</div>
+                                <div class="hb-code">
+                    BH-003055 &middot;
+                    <span class="hb-member">BC #103367</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 129,689 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+5,500</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003055</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003054">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 92</div>
+                                <div class="hb-code">
+                    BH-003054 &middot;
+                    <span class="hb-member">BC #103404</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 261 credits</div>
+                                                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003054</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003053">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 93</div>
+                                <div class="hb-code">
+                    BH-003053 &middot;
+                    <span class="hb-member">BC #103441</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 2,851 credits</div>
+                                                                                                        <div class="hb-reason">Cuffs, a cell, and a long walk back.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003053</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003048">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103478_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103478_photo.png"
+                         alt="Target 94" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 94</div>
+                                <div class="hb-code">
+                    BH-003048 &middot;
+                    <span class="hb-member">BC #103478</span>
+                                                            &middot; <a href="/inmate?id=749"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 9,987 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+800</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                                                        <div class="hb-reason">Open season &mdash; volunteered from the bounty office.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003048</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003047">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 95</div>
+                                <div class="hb-code">
+                    BH-003047 &middot;
+                    <span class="hb-member">BC #103515</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 14,266 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+10,000</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                    <div class="hb-tagline">&ldquo;Catch me if you can.&rdquo;</div>
+                                                                        <div class="hb-reason">Rope &amp; tape &mdash; &quot;no silent snatching&quot;, please &#128578;<br>Limits in bio &#x2764;&#xFE0F;</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003047</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003046">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103552_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103552_photo.png"
+                         alt="Target 96" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 96</div>
+                                <div class="hb-code">
+                    BH-003046 &middot;
+                    <span class="hb-member">BC #103552</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 285,310 credits</div>
+                                                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003046</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003045">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103589_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103589_photo.png"
+                         alt="Target 97" loading="lazy">
+                                <div class="hb-badge hb-badge-hunted">&#127919; BEING HUNTED</div>
+                                <div class="hb-track hb-track-live"
+                     title="The bot can see this target right now — /bot locate will report their room.">
+                    <span class="hb-track-dot"></span>Trackable now                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 97</div>
+                                <div class="hb-code">
+                    BH-003045 &middot;
+                    <span class="hb-member">BC #103589</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 11,790 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+10,000</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                            <br>Hunter: <strong>Hunter One</strong>
+                                    </div>
+
+                                
+                                                <div class="hb-team">
+                    <span class="hb-team-count">&#128101; Team 1/4</span>
+                                            <span class="hb-team-share">5,895 credits each if you join</span>
+                                                <a href="/hunter-login" class="hb-team-signin">Sign in to join</a>
+                                                            </div>
+                            </div>
+        </div>
+                        <div class="hb-card" id="BH-003028">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103626_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103626_photo.png"
+                         alt="Target 98" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-live"
+                     title="The bot can see this target right now — /bot locate will report their room.">
+                    <span class="hb-track-dot"></span>Trackable now                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 98</div>
+                                <div class="hb-code">
+                    BH-003028 &middot;
+                    <span class="hb-member">BC #103626</span>
+                                                            &middot; <a href="/inmate?id=629"
+                                style="color:var(--accent)">prison file</a>
+                                    </div>
+                <div class="hb-amount">&#x1F4B0; 142,658 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+10,000</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                    <div class="hb-tagline">&ldquo;Hi.&rdquo;</div>
+                                                                        <div class="hb-reason">Cuffs, a cell, and a long walk back.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-003028</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-001312">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 99</div>
+                                <div class="hb-code">
+                    BH-001312 &middot;
+                    <span class="hb-member">BC #103663</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 1,500 credits</div>
+                                                <div class="hb-taunt" title="Added by the target themselves. Paid only if they are brought in alive and restrained in the room.">
+                    <span class="hb-taunt-amt">+100</span>
+                    <span class="hb-taunt-label">taunted &mdash; alive only</span>
+                </div>
+                                                                                        <div class="hb-reason">Open season &mdash; volunteered from the bounty office.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-001312</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-001310">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103700_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103700_photo.png"
+                         alt="Target 100" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 100</div>
+                                <div class="hb-code">
+                    BH-001310 &middot;
+                    <span class="hb-member">BC #103700</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 30,000 credits</div>
+                                                                                                        <div class="hb-reason">Rope &amp; tape &mdash; &quot;no silent snatching&quot;, please &#128578;<br>Limits in bio &#x2764;&#xFE0F;</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-001310</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-000200">
+            <div class="hb-photo">
+                                    <div class="hb-noimg"><span>&#128100;</span><small>No photo on file</small></div>
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 101</div>
+                                <div class="hb-code">
+                    BH-000200 &middot;
+                    <span class="hb-member">BC #103737</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 1,800 credits</div>
+                                                                                                        <div class="hb-reason">Catch me off guard. I&#039;m fine with gags &lt;3</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-000200</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+                        <div class="hb-card" id="BH-000011">
+            <div class="hb-photo">
+                                                        <img class="hb-photo-bg" src="uploads/hunt_103774_photo.png" alt="" aria-hidden="true" loading="lazy">
+                    <img class="hb-photo-main" src="uploads/hunt_103774_photo.png"
+                         alt="Target 102" loading="lazy">
+                                <div class="hb-badge hb-badge-open">&#128178; OPEN BOUNTY</div>
+                                <div class="hb-track hb-track-known"
+                     title="This target has friended the bot, but is not online at the moment.">
+                    <span class="hb-track-dot"></span>Trackable                </div>
+                                                    <div class="hb-strip">Volunteered &mdash; Prison Funded</div>
+                            </div>
+            <div class="hb-body">
+                <div class="hb-name">Target 102</div>
+                                <div class="hb-code">
+                    BH-000011 &middot;
+                    <span class="hb-member">BC #103774</span>
+                                                        </div>
+                <div class="hb-amount">&#x1F4B0; 15,000 credits</div>
+                                                                                                        <div class="hb-reason">Likes a chase.<br><br>Ask before anything permanent.</div>
+                                <div class="hb-meta">
+                    Posted by <strong>Void Order Prison</strong>
+                                    </div>
+
+                                                <div class="hb-act">
+                                        <a href="/hunter-login" class="btn btn-sm btn-dim">SIGN IN TO CLAIM</a>
+                    <span class="hb-act-note">
+                        or whisper <code>/bot claim BH-000011</code> in the
+                        Bounty Hunter Office                    </span>
+                                    </div>
+                
+                                            </div>
+        </div>
+            </div>
+
+            <nav class="hb-pager" aria-label="Board pages"
+         style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;padding:26px 16px 0">
+                    <a class="btn btn-sm btn-dim" href="hunt_board.php" rel="prev">&larr; PREV</a>
+        
+        
+                    <a class="btn btn-sm btn-dim"
+               href="hunt_board.php"
+               >1</a>
+                    <a class="btn btn-sm btn-primary"
+               href="hunt_board.php?p=2"
+               aria-current="page">2</a>
+        
+        
+            </nav>
+                </div>
+    </div>
+    <!--/HB:board-->
+
+            <a class="hb-os" href="/open-season">
+        <span class="hb-os-n">1,334</span>
+        <span class="hb-os-text">
+            <strong>Open season</strong>
+            &mdash; players who agreed to be hunted with no bounty on them yet.
+            Start a hunt and the prison funds it.
+        </span>
+        <span class="hb-os-go">BROWSE &rarr;</span>
+    </a>
+    
+    <div style="text-align:center;padding:40px 16px 10px">
+        <p style="font-size:0.72rem;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px">
+            Want your face up here?
+        </p>
+        <a href="/hunt-me" class="btn btn-primary btn-lg">&#127919; PUT A BOUNTY ON MYSELF</a>
+        <p style="margin-top:16px;font-size:0.68rem;color:var(--text-muted)">
+            Nobody appears on this board without agreeing to it, and you can withdraw at any time.
+        </p>
+    </div>
+</div>
+
+<footer class="site-footer">
+    <div class="footer-title">VOID ORDER PRISON — BOUNTY HUNTER GUILD</div>
+    <div class="footer-tagline">CONSENT IS THE CONTRACT</div>
+</footer>
+
+<script type="94edff118a637b1a43638a9e-text/javascript">
+(function () {
+    "use strict";
+
+    /* ── Collapsible sections ──────────────────────────────
+       Built in script rather than markup so the page still works without it:
+       every body starts visible, and the toggle only appears once there is
+       something able to drive it. Choices persist per section. */
+    var STORE = "hbCollapsed";
+    var closed = {};
+    try { closed = JSON.parse(localStorage.getItem(STORE) || "{}") || {}; } catch (e) { closed = {}; }
+
+    function save() {
+        try { localStorage.setItem(STORE, JSON.stringify(closed)); } catch (e) { /* private mode */ }
+    }
+
+    document.querySelectorAll(".hb-sec[data-sec]").forEach(function (sec) {
+        var key = sec.getAttribute("data-sec");
+        var head = sec.querySelector("h2");
+        if (!head || !sec.querySelector(".hb-sec-body")) return;
+
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "hb-sec-toggle";
+        btn.innerHTML = "&#9660;";
+        btn.setAttribute("aria-expanded", closed[key] ? "false" : "true");
+        btn.setAttribute("aria-label", "Show or hide this section");
+        head.insertBefore(btn, head.firstChild);
+
+        if (closed[key]) sec.classList.add("is-collapsed");
+
+        function toggle() {
+            var nowClosed = !sec.classList.contains("is-collapsed");
+            sec.classList.toggle("is-collapsed", nowClosed);
+            btn.setAttribute("aria-expanded", nowClosed ? "false" : "true");
+            if (nowClosed) { closed[key] = 1; } else { delete closed[key]; }
+            save();
+        }
+        btn.addEventListener("click", toggle);
+        /* The whole heading is the target: a 12px chevron is a poor tap area. */
+        head.addEventListener("click", function (ev) {
+            if (ev.target !== btn) toggle();
+        });
+        head.style.cursor = "pointer";
+    });
+
+    /* ── Live refresh ──────────────────────────────────────
+       Refetches this same URL with partial=1 and swaps only the regions whose
+       HTML actually changed, so filters, page and collapse state all survive and
+       nothing flickers when nothing happened. */
+    var REFRESH_MS = 30000;
+    var status = document.getElementById("hb-live-status");
+    var text   = document.getElementById("hb-live-text");
+    var toggle = document.getElementById("hb-live-toggle");
+    if (!status || !window.fetch) return;
+    status.hidden = false;
+
+    var paused = false;
+    var timer  = null;
+    var failures = 0;
+    var seed = document.querySelector('meta[name="hb-etag"]');
+    var etag = seed ? seed.getAttribute("content") : null;
+    /* Compared against what the server last sent, never against the live DOM:
+       the script decorates sections with a toggle button, so a DOM comparison
+       finds every section different every time and redraws the whole board. */
+    var lastHtml = {};
+
+    /* Three regions now: the counts, the escapee strip and the board itself.
+       "Hunts in progress" and "open season" are gone — the first was the board's
+       own claimed rows drawn twice, the second is its own page. */
+    function regionEl(name) {
+        if (name === "stats") return document.getElementById("hb-stats");
+        if (name === "mostwanted") return document.getElementById("most-wanted");
+        return document.querySelector('.hb-sec[data-sec="' + name + '"]');
+    }
+
+    /* A section the reader has open and is looking at must not be yanked out
+       from under them mid-click; anything else is safe to replace. */
+    function swap(name, html) {
+        var el = regionEl(name);
+        if (!el) return false;
+        var wrap = document.createElement("div");
+        wrap.innerHTML = html;
+        var next = wrap.querySelector(
+            name === "stats" ? "#hb-stats"
+                : name === "mostwanted" ? "#most-wanted"
+                : '.hb-sec[data-sec="' + name + '"]'
+        );
+        if (!next) return false;
+        if (el.contains(document.activeElement)) return false;
+        el.replaceWith(next);
+        return true;
+    }
+
+    function decorate() {
+        /* Replaced markup arrives without the toggle the script added, so the
+           collapsible wiring is rebuilt for anything that changed. */
+        document.querySelectorAll(".hb-sec[data-sec]").forEach(function (sec) {
+            if (sec.querySelector(".hb-sec-toggle")) return;
+            var key = sec.getAttribute("data-sec");
+            var head = sec.querySelector("h2");
+            if (!head || !sec.querySelector(".hb-sec-body")) return;
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "hb-sec-toggle";
+            btn.innerHTML = "&#9660;";
+            head.insertBefore(btn, head.firstChild);
+            head.style.cursor = "pointer";
+            if (closed[key]) sec.classList.add("is-collapsed");
+            function t() {
+                var nowClosed = !sec.classList.contains("is-collapsed");
+                sec.classList.toggle("is-collapsed", nowClosed);
+                btn.setAttribute("aria-expanded", nowClosed ? "false" : "true");
+                if (nowClosed) { closed[key] = 1; } else { delete closed[key]; }
+                save();
+            }
+            btn.addEventListener("click", t);
+            head.addEventListener("click", function (ev) { if (ev.target !== btn) t(); });
+        });
+    }
+
+    function refresh() {
+        if (paused || document.hidden) return;
+        var url = new URL(window.location.href);
+        url.searchParams.set("partial", "1");
+        var headers = { "X-Requested-With": "fetch" };
+        if (etag) headers["If-None-Match"] = etag;
+        fetch(url.toString(), { headers: headers, credentials: "same-origin", cache: "no-store" })
+            .then(function (r) {
+                failures = 0;
+                /* 304: the board is byte-for-byte what we already have. */
+                if (r.status === 304) return null;
+                if (!r.ok) return Promise.reject(r.status);
+                etag = r.headers.get("ETag") || etag;
+                return r.json();
+            })
+            .then(function (data) {
+                if (!data || !data.regions) return;
+                var changed = [];
+                Object.keys(data.regions).forEach(function (name) {
+                    var html = data.regions[name];
+                    var same = lastHtml[name] === html;
+                    lastHtml[name] = html;
+                    if (same) return;
+                    if (swap(name, html)) changed.push(name);
+                });
+                decorate();
+                changed.forEach(function (name) {
+                    var el = regionEl(name);
+                    if (!el) return;
+                    el.classList.remove("hb-refreshed");
+                    void el.offsetWidth;  /* restart the animation */
+                    el.classList.add("hb-refreshed");
+                });
+                text.textContent = changed.length
+                    ? "Updated just now"
+                    : "Live — updating automatically";
+            })
+            .catch(function () {
+                /* Three strikes and it stops rather than hammering a site that is
+                   already having a bad time. */
+                if (++failures >= 3) {
+                    stop();
+                    status.classList.add("is-paused");
+                    text.textContent = "Live updates stopped — reload to resume";
+                    toggle.hidden = true;
+                }
+            });
+    }
+
+    function start() { stop(); timer = setInterval(refresh, REFRESH_MS); }
+    function stop()  { if (timer) { clearInterval(timer); timer = null; } }
+
+    toggle.addEventListener("click", function () {
+        paused = !paused;
+        status.classList.toggle("is-paused", paused);
+        toggle.textContent = paused ? "Resume" : "Pause";
+        text.textContent = paused ? "Paused" : "Live — updating automatically";
+        if (paused) { stop(); } else { start(); refresh(); }
+    });
+
+    /* A hidden tab polls nothing; coming back checks straight away rather than
+       showing a stale board until the next tick. */
+    document.addEventListener("visibilitychange", function () {
+        if (document.hidden) { stop(); }
+        else if (!paused) { start(); refresh(); }
+    });
+
+    start();
+})();
+</script>
+<script src="/cdn-cgi/scripts/7d0fa10a/cloudflare-static/rocket-loader.min.js" data-cf-settings="94edff118a637b1a43638a9e-|49" defer></script></body>
+</html>

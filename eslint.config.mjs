@@ -14,7 +14,16 @@ export default [
 	},
 	{
 		files: ['server/src/**/*.js'],
-		languageOptions: { ecmaVersion: 2023, sourceType: 'module', globals: { ...globals.worker, WebSocketPair: 'readonly', WebSocketRequestResponsePair: 'readonly' } },
+		languageOptions: {
+			ecmaVersion: 2023,
+			sourceType: 'module',
+			globals: { ...globals.worker, WebSocketPair: 'readonly', WebSocketRequestResponsePair: 'readonly' },
+		},
+		rules: { 'no-unused-vars': ['error', { caughtErrors: 'none' }] },
+	},
+	{
+		files: ['server/test-hunt-board.js'],
+		languageOptions: { ecmaVersion: 2023, sourceType: 'module', globals: { ...globals.node } },
 		rules: { 'no-unused-vars': ['error', { caughtErrors: 'none' }] },
 	},
 	{
