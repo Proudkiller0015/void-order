@@ -11,7 +11,7 @@
 	if (w.VoidOrder) {
 		return;
 	}
-	const VERSION = '2.0.0-beta.2.9';
+	const VERSION = '2.0.0-beta.2.10';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
 	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
 	/** Where the add-on's pictures are (a test page sets VoidOrderAssets). */
