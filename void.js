@@ -11,7 +11,7 @@
 	if (w.VoidOrder) {
 		return;
 	}
-	const VERSION = '2.0.0';
+	const VERSION = '2.0.0-beta.1';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
 	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
 	/** Where the add-on's pictures are (a test page sets VoidOrderAssets). */
@@ -315,8 +315,17 @@
 			waiting.delete(x.rid);
 			done(x);
 		}
+		for (const f of serverListeners) {
+			guard(() => f(x));
+		}
 		if (x.t === 'state') {
 			state = x;
+			if (!signedIn) {
+				signedIn = true;
+				for (const f of signInListeners.splice(0)) {
+					guard(f);
+				}
+			}
 			if (resetCode && x.status === 'member') {
 				resetCode = '';
 				note('Your key is in. Welcome to the Order.');
@@ -3781,6 +3790,90 @@
 	}
 
 	w.VoidOrder = Object.freeze({ version: VERSION });
+
+	// ---- Modules: the add-on's other parts (src/<name>.js next to assets/), loaded in order as the page starts.
+	/** The modules' folder (a test page sets VoidOrderSrc). */
+	const SRC = w.VoidOrderSrc || ASSETS.replace(/assets\/?$/, 'src/');
+	const MODULES = ['guard', 'reports', 'items', 'overflow', 'actions'];
+	/** Problems hit before the reporter is in: [feature, error, when], sent on to it once it loads. */
+	const early = /** @type {[string, any, number][]} */ ([]);
+	/** @type {((t: any) => void)[]} */
+	const serverListeners = [];
+	/** @type {(() => void)[]} */
+	const signInListeners = [];
+	let signedIn = false;
+	/**
+	 * What every module is given. `report(feature, error)` notes a feature that failed: until src/reports.js loads it
+	 * queues them (reports.js takes over the queue), then it is reports.js's own.
+	 */
+	const ctx = {
+		w,
+		VERSION,
+		base: ASSETS.replace(/assets\/?$/, ''),
+		src: SRC,
+		assets: ASSETS,
+		guard,
+		toast,
+		note,
+		escapeHtml,
+		req,
+		pref,
+		setPref,
+		openPanel: (/** @type {string | undefined} */ which) => openPanel(which),
+		render: () => render(),
+		state: () => state,
+		me: () => (w.Player && w.Player.MemberNumber) || null,
+		isMember,
+		appAdmin: () => !!state && !!w.Player && state.appAdmin === w.Player.MemberNumber,
+		/** Calls f once signed in to the Order's server (at once if already). */
+		onSignIn: (/** @type {() => void} */ f) => (signedIn ? guard(f) : signInListeners.push(f)),
+		/** Calls f with every message from the server. */
+		onServer: (/** @type {(x: any) => void} */ f) => serverListeners.push(f),
+		early,
+		report: (/** @type {string} */ feature, /** @type {any} */ error) => {
+			console.warn(`[Oculus Nihili] ${feature}:`, error);
+			if (early.length < 30) {
+				early.push([String(feature), error, Date.now()]);
+			}
+		},
+		/** @type {Record<string, any>} */
+		modules: {},
+	};
+	/** Loads one module by a script tag (so its errors name its file) and resolves with its factory, or null. */
+	function loadModule(/** @type {string} */ name) {
+		return new Promise((resolve) => {
+			const slots = (w.VoidOrderModules = w.VoidOrderModules || {});
+			if (typeof slots[name] === 'function') {
+				resolve(slots[name]);
+				return;
+			}
+			const s = document.createElement('script');
+			s.src = `${SRC}${name}.js?v=${encodeURIComponent(VERSION)}`;
+			s.onload = () => resolve(typeof slots[name] === 'function' ? slots[name] : null);
+			s.onerror = () => resolve(null);
+			document.head.append(s);
+		});
+	}
+	/** Loads the modules in order; one that fails to load or throws is null in ctx.modules and is reported. */
+	async function loadModules() {
+		for (const name of MODULES) {
+			let api = null;
+			try {
+				const make = await loadModule(name);
+				if (!make) {
+					throw new Error(`src/${name}.js did not load`);
+				}
+				api = (await make(ctx)) || null;
+			} catch (e) {
+				ctx.report(`Module ${name}`, e);
+			}
+			ctx.modules[name] = api;
+		}
+		if (!ctx.modules.reports && early.length) {
+			toast('Oculus Nihili: some features are switched off after a game change. Reload to try again.');
+		}
+	}
+	loadModules();
 
 	// ---- Start: once the game is ready.
 	const start = setInterval(() => {

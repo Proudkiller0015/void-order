@@ -52,10 +52,14 @@ const relay = http.createServer((req, res) => {
 		res.end(JSON.stringify(req.url === '/link/invite' ? { code: `CODE${member}`, gid: 'g1' } : { removed: true }));
 	});
 });
-// The game from BC_ROOT, and the add-on's own pictures under /void-assets/.
+// The game from BC_ROOT, the add-on's own pictures under /void-assets/ and its modules under /void-src/.
 const web = http.createServer((req, res) => {
 	const url = decodeURIComponent(req.url.split('?')[0]);
-	const p = url.startsWith('/void-assets/') ? path.join(__dirname, 'assets', url.slice('/void-assets/'.length)) : path.join(ROOT, url);
+	const p = url.startsWith('/void-assets/')
+		? path.join(__dirname, 'assets', url.slice('/void-assets/'.length))
+		: url.startsWith('/void-src/')
+			? path.join(__dirname, 'src', url.slice('/void-src/'.length))
+			: path.join(ROOT, url);
 	fs.readFile(p, (err, data) => {
 		if (err) {
 			res.writeHead(404);
@@ -183,6 +187,7 @@ async function gamePage(browser, { me, other, settings = {}, slimebeep = false }
 			ServerPlayerExtensionSettingsSync = (k) => window.synced.push(k);
 			window.VoidOrderServer = `${server}/ws?o=${order}`;
 			window.VoidOrderAssets = `${location.origin}/void-assets/`;
+			window.VoidOrderSrc = `${location.origin}/void-src/`;
 			// Every dice tray that opens, in order.
 			window.trays = [];
 			new MutationObserver(() => {
