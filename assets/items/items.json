@@ -26846,8 +26846,8 @@
 					{
 						"Name": "ShaftHeld",
 						"CopyLayerColor": "Shaft",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 0
@@ -26856,8 +26856,8 @@
 					{
 						"Name": "BladeHeld",
 						"CopyLayerColor": "Blade",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 0
@@ -26866,8 +26866,8 @@
 					{
 						"Name": "EdgeHeld",
 						"CopyLayerColor": "Edge",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 0
@@ -26876,8 +26876,8 @@
 					{
 						"Name": "CrownHeld",
 						"CopyLayerColor": "Crown",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 0
@@ -26886,8 +26886,8 @@
 					{
 						"Name": "CrystalsHeld",
 						"CopyLayerColor": "Crystals",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 0
@@ -26896,8 +26896,8 @@
 					{
 						"Name": "ChainHeld",
 						"CopyLayerColor": "Chain",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 0
@@ -26906,8 +26906,8 @@
 					{
 						"Name": "GemHeld",
 						"CopyLayerColor": "Gem",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 0
@@ -26916,8 +26916,8 @@
 					{
 						"Name": "GlowHeld",
 						"CopyLayerColor": "Glow",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 0
@@ -26926,8 +26926,8 @@
 					{
 						"Name": "ShaftHeldLow",
 						"CopyLayerColor": "Shaft",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 0
 						}
@@ -26935,8 +26935,8 @@
 					{
 						"Name": "CrystalsHeldLow",
 						"CopyLayerColor": "Crystals",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 0
 						}
@@ -26944,8 +26944,8 @@
 					{
 						"Name": "ChainHeldLow",
 						"CopyLayerColor": "Chain",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 0
 						}
@@ -26953,17 +26953,8 @@
 					{
 						"Name": "GemHeldLow",
 						"CopyLayerColor": "Gem",
-						"Left": -149,
-						"Top": -78,
-						"AllowTypes": {
-							"Position": 0
-						}
-					},
-					{
-						"Name": "GlowHeldLow",
-						"CopyLayerColor": "Glow",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 0
 						}
@@ -26971,8 +26962,8 @@
 					{
 						"Name": "SpikeHeldLow",
 						"CopyLayerColor": "Spike",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 0
 						}
@@ -26980,8 +26971,8 @@
 					{
 						"Name": "ShaftFront",
 						"CopyLayerColor": "Shaft",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -26989,8 +26980,8 @@
 					{
 						"Name": "BladeFront",
 						"CopyLayerColor": "Blade",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -26998,8 +26989,8 @@
 					{
 						"Name": "EdgeFront",
 						"CopyLayerColor": "Edge",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -27007,8 +26998,8 @@
 					{
 						"Name": "CrownFront",
 						"CopyLayerColor": "Crown",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -27016,8 +27007,8 @@
 					{
 						"Name": "CrystalsFront",
 						"CopyLayerColor": "Crystals",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -27025,8 +27016,8 @@
 					{
 						"Name": "ChainFront",
 						"CopyLayerColor": "Chain",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -27034,8 +27025,8 @@
 					{
 						"Name": "GemFront",
 						"CopyLayerColor": "Gem",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -27043,8 +27034,8 @@
 					{
 						"Name": "GlowFront",
 						"CopyLayerColor": "Glow",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -27052,8 +27043,8 @@
 					{
 						"Name": "SpikeFront",
 						"CopyLayerColor": "Spike",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"AllowTypes": {
 							"Position": 1
 						}
@@ -27061,8 +27052,8 @@
 					{
 						"Name": "ShaftOnBack",
 						"CopyLayerColor": "Shaft",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27071,8 +27062,8 @@
 					{
 						"Name": "BladeOnBack",
 						"CopyLayerColor": "Blade",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27081,8 +27072,8 @@
 					{
 						"Name": "EdgeOnBack",
 						"CopyLayerColor": "Edge",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27091,8 +27082,8 @@
 					{
 						"Name": "CrownOnBack",
 						"CopyLayerColor": "Crown",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27101,8 +27092,8 @@
 					{
 						"Name": "CrystalsOnBack",
 						"CopyLayerColor": "Crystals",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27111,8 +27102,8 @@
 					{
 						"Name": "ChainOnBack",
 						"CopyLayerColor": "Chain",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27121,8 +27112,8 @@
 					{
 						"Name": "GemOnBack",
 						"CopyLayerColor": "Gem",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27131,8 +27122,8 @@
 					{
 						"Name": "GlowOnBack",
 						"CopyLayerColor": "Glow",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27141,8 +27132,8 @@
 					{
 						"Name": "SpikeOnBack",
 						"CopyLayerColor": "Spike",
-						"Left": -149,
-						"Top": -78,
+						"Left": -150,
+						"Top": -79,
 						"Priority": 4,
 						"AllowTypes": {
 							"Position": 2
@@ -27214,7 +27205,6 @@
 		"img/QueensWrath_GemOnBack.png",
 		"img/QueensWrath_GlowFront.png",
 		"img/QueensWrath_GlowHeld.png",
-		"img/QueensWrath_GlowHeldLow.png",
 		"img/QueensWrath_GlowOnBack.png",
 		"img/QueensWrath_Hand.png",
 		"img/QueensWrath_ShaftFront.png",

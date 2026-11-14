@@ -328,6 +328,18 @@ const playAround = (page) =>
 			return DialogInventory.filter((i) => /^(Void[A-Z]|QueensWrath$)/.test(i.Asset.Name)).length;
 		});
 		check('they are in the hand item list', listed === 12, listed);
+		// Every item has a "Hands" choice in its menu (the Hand layer on or off), with its texts.
+		const handsMenu = await page.evaluate(() =>
+			Asset.filter((a) => a.Group.Name === 'ItemHandheld' && /^(Void[A-Z]|QueensWrath$)/.test(a.Name))
+				.filter((a) => {
+					const m = a.Extended && ExtendedItemGetData(a, ExtendedArchetype.MODULAR);
+					const mod = m && m.modules.find((x) => x.Key === 'h');
+					const text = AssetTextGet(`ItemHandheld${a.Name}Optionh1`);
+					return !(mod && mod.Options.length === 2 && text && !/MISSING/.test(text));
+				})
+				.map((a) => a.Name),
+		);
+		check('every Armory item has the Hands choice (hands over the weapon, or not)', handsMenu.length === 0, handsMenu);
 		// Poses: in hand while the arms rest; slung on the back (the 'Bound' layers) when the hands are tied, up or
 		// behind the back; nothing on all fours. Weapons with no back art (pistols) show nothing when bound.
 		const shown = await page.evaluate(() => {
@@ -389,7 +401,7 @@ const playAround = (page) =>
 					ExtendedItemSetOptionByRecord(
 						Player,
 						it,
-						{ ...(it.Property?.TypeRecord || {}), w: 0, Position: 0 },
+						{ ...(it.Property?.TypeRecord || {}), w: 0, Position: 0, h: spec.hands || 0 },
 						{ push: false, refresh: false },
 					);
 					Object.assign(it.Property, spec.prop || {});
@@ -445,6 +457,9 @@ const playAround = (page) =>
 				const none = await snap({});
 				const on = await snap({ weapon: true });
 				const off = await snap({ weapon: true, prop: { OverridePriority: { Hand: 0 } } });
+				// The item's own "Hands" option, off: as if the mask were lowered, and the game keeps the choice.
+				const handsOff = await snap({ weapon: true, hands: 1 });
+				const kept = InventoryGet(Player, 'ItemHandheld').Property.TypeRecord.h;
 				const shifted = await snap({ weapon: true, prop: { TranslationX: 40, ScaleX: 1.2, ScaleY: 1.2, Rotation: 8 } });
 				const shiftedOff = await snap({
 					weapon: true,
@@ -492,6 +507,8 @@ const playAround = (page) =>
 				return {
 					onKeepsHands: same(on, none),
 					offCoversHands: same(off, none),
+					handsOffLikeLowered: same(handsOff, off),
+					handsOffKept: kept,
 					shiftedKeepsHands: same(shifted, none),
 					shiftedMoved: moved(shifted, on),
 					shiftedHoles: holes(shifted, shiftedOff),
@@ -524,6 +541,11 @@ const playAround = (page) =>
 			check(
 				`${path}: a weapon moved, resized or rotated in Layering is drawn whole, with no holes beside the hands`,
 				r.shiftedMoved > 500 && r.shiftedHoles === 0 && Object.values(r.each).every((e) => e.holes === 0),
+				r,
+			);
+			check(
+				`${path}: switching the item's Hands option off draws the weapon over the hands`,
+				r.handsOffLikeLowered >= 0.97 && r.handsOffKept === 1,
 				r,
 			);
 			check(`${path}: gloves and mittens stay whole`, r.glovesKept >= 0.97 && r.mittensKept >= 0.97, r);
