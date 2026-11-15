@@ -22,7 +22,7 @@
 		const FRESH = `?v=${encodeURIComponent(String(ctx.VERSION || ''))}`;
 		const GROUP = 'ItemHandheld';
 		const FEATURE = 'Weapon items';
-		/** The key of the "Hands" module every item with a Hand layer gets: 0 hands over the weapon (as before), 1 off. */
+		/** The key of the "Hands" module every item with a Hand layer gets: 0 the weapon over the hands (default), 1 the hands over it. */
 		const HANDS = 'h';
 		/** A transparent pixel: the picture for a pose the items have no drawing for. */
 		const EMPTY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
@@ -98,9 +98,12 @@
 		/** The item C wears of this asset. */
 		const wornIn = (/** @type {any} */ C, /** @type {any} */ asset) =>
 			Array.isArray(C.Appearance) ? C.Appearance.find((/** @type {any} */ i) => i && i.Asset === asset) : null;
-		/** Whether the player switched the item's Hand layer off (its "Hands" option, saved with the outfit). */
+		/**
+		 * Whether the item's Hand layer is off: the weapon drawn over the hands, which is the default (the owner's own
+		 * pictures, 14 Nov); its "Hands" option 1 puts the hands over the weapon. Saved with the outfit.
+		 */
 		const handsOff = (/** @type {any} */ item) =>
-			!!item && !!item.Property && !!item.Property.TypeRecord && item.Property.TypeRecord[HANDS] === 1;
+			!!item && !(item.Property && item.Property.TypeRecord && item.Property.TypeRecord[HANDS] === 1);
 		/**
 		 * Whether the Layering screen moved, resized or rotated an item (or one of its layers). The game's texture masks
 		 * don't follow those (in WebGL even a move shifts them), so such a weapon is drawn whole: its Hand layer is left
@@ -267,7 +270,7 @@
 		/**
 		 * The extended item config with a "Hands" module added when the item has a Hand layer (the hands drawn over the
 		 * weapon): the player can switch it off for that item, and the choice is saved with the outfit like the carry.
-		 * Outfits saved before have no such choice and keep the hands over the weapon. Its texts go with the item's.
+		 * Outfits saved before have no such choice and get the default, the weapon over the hands. Its texts go with the item's.
 		 * @param {any} item an assets/items/items.json entry
 		 * @param {string} group
 		 */
@@ -282,10 +285,10 @@
 				...item.texts,
 				[`${p}ModuleHands`]: 'Hands',
 				[`${p}SelectHands`]: 'Hands on the weapon:',
-				[`${p}Option${HANDS}0`]: 'Hands over the weapon',
-				[`${p}Set${HANDS}0`]: 'SourceCharacter puts DestinationCharacter hands over the weapon.',
-				[`${p}Option${HANDS}1`]: 'Weapon over the hands',
-				[`${p}Set${HANDS}1`]: 'SourceCharacter puts the weapon over DestinationCharacter hands.',
+				[`${p}Option${HANDS}0`]: 'Weapon over the hands',
+				[`${p}Set${HANDS}0`]: 'SourceCharacter puts the weapon over DestinationCharacter hands.',
+				[`${p}Option${HANDS}1`]: 'Hands over the weapon',
+				[`${p}Set${HANDS}1`]: 'SourceCharacter puts DestinationCharacter hands over the weapon.',
 			};
 			return { ...ext, Modules: [...ext.Modules, { Name: 'Hands', Key: HANDS, DrawImages: false, Options: [{}, {}] }] };
 		}

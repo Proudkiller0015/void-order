@@ -407,7 +407,7 @@ const playAround = (page) =>
 					ExtendedItemSetOptionByRecord(
 						Player,
 						it,
-						{ ...(it.Property?.TypeRecord || {}), w: 0, Position: 0, h: spec.hands || 0 },
+						{ ...(it.Property?.TypeRecord || {}), w: 0, Position: 0, h: spec.hands === 'off' ? 0 : 1 },
 						{ push: false, refresh: false },
 					);
 					Object.assign(it.Property, spec.prop || {});
@@ -463,8 +463,9 @@ const playAround = (page) =>
 				const none = await snap({});
 				const on = await snap({ weapon: true });
 				const off = await snap({ weapon: true, prop: { OverridePriority: { Hand: 0 } } });
-				// The item's own "Hands" option, off: as if the mask were lowered, and the game keeps the choice.
-				const handsOff = await snap({ weapon: true, hands: 1 });
+				// The item's own "Hands" option at its default (weapon over the hands): as if the mask were lowered, and
+				// the game keeps the choice. The other snapshots set it to "hands over the weapon".
+				const handsOff = await snap({ weapon: true, hands: 'off' });
 				const kept = InventoryGet(Player, 'ItemHandheld').Property.TypeRecord.h;
 				const shifted = await snap({ weapon: true, prop: { TranslationX: 40, ScaleX: 1.2, ScaleY: 1.2, Rotation: 8 } });
 				const shiftedOff = await snap({
@@ -550,8 +551,8 @@ const playAround = (page) =>
 				r,
 			);
 			check(
-				`${path}: switching the item's Hands option off draws the weapon over the hands`,
-				r.handsOffLikeLowered >= 0.97 && r.handsOffKept === 1,
+				`${path}: by default (Hands: weapon over the hands) the weapon is drawn over the hands`,
+				r.handsOffLikeLowered >= 0.97 && r.handsOffKept === 0,
 				r,
 			);
 			check(`${path}: gloves and mittens stay whole`, r.glovesKept >= 0.97 && r.mittensKept >= 0.97, r);

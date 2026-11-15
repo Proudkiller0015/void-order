@@ -1,6 +1,6 @@
 {
 	"group": "ItemHandheld",
-	"source": "77fc32589",
+	"source": "99de6c81f",
 	"items": [
 		{
 			"name": "VoidPistols",
@@ -110,8 +110,8 @@
 					{
 						"Name": "CrackheadPMPistolMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 275,
-						"Top": 402,
+						"Left": 204,
+						"Top": 368,
 						"AllowTypes": {
 							"w": 0
 						},
@@ -129,8 +129,8 @@
 					{
 						"Name": "CrackheadPMPistolGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 275,
-						"Top": 402,
+						"Left": 204,
+						"Top": 368,
 						"AllowTypes": {
 							"w": 0
 						},
@@ -148,8 +148,8 @@
 					{
 						"Name": "VoidFactoryMadeHKUSPMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 269,
-						"Top": 399,
+						"Left": 198,
+						"Top": 365,
 						"AllowTypes": {
 							"w": 1
 						},
@@ -167,8 +167,8 @@
 					{
 						"Name": "VoidFactoryMadeHKUSPGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 269,
-						"Top": 399,
+						"Left": 198,
+						"Top": 365,
 						"AllowTypes": {
 							"w": 1
 						},
@@ -186,8 +186,8 @@
 					{
 						"Name": "GlockMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 272,
-						"Top": 398,
+						"Left": 202,
+						"Top": 367,
 						"AllowTypes": {
 							"w": 2
 						},
@@ -205,8 +205,8 @@
 					{
 						"Name": "GlockGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 272,
-						"Top": 398,
+						"Left": 202,
+						"Top": 367,
 						"AllowTypes": {
 							"w": 2
 						},
@@ -224,8 +224,8 @@
 					{
 						"Name": "VoidHKUSPMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 269,
-						"Top": 398,
+						"Left": 205,
+						"Top": 370,
 						"AllowTypes": {
 							"w": 3
 						},
@@ -243,8 +243,8 @@
 					{
 						"Name": "VoidHKUSPGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 269,
-						"Top": 398,
+						"Left": 205,
+						"Top": 370,
 						"AllowTypes": {
 							"w": 3
 						},
@@ -262,8 +262,8 @@
 					{
 						"Name": "VoidHKUSPGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 269,
-						"Top": 398,
+						"Left": 205,
+						"Top": 370,
 						"AllowTypes": {
 							"w": 3
 						},
@@ -281,8 +281,8 @@
 					{
 						"Name": "PL15PistolMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 261,
-						"Top": 395,
+						"Left": 192,
+						"Top": 363,
 						"AllowTypes": {
 							"w": 4
 						},
@@ -300,8 +300,8 @@
 					{
 						"Name": "PL15PistolGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 261,
-						"Top": 395,
+						"Left": 192,
+						"Top": 363,
 						"AllowTypes": {
 							"w": 4
 						},
@@ -319,8 +319,8 @@
 					{
 						"Name": "PL15PistolGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 261,
-						"Top": 395,
+						"Left": 192,
+						"Top": 363,
 						"AllowTypes": {
 							"w": 4
 						},
@@ -338,8 +338,8 @@
 					{
 						"Name": "FN57PistolMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 269,
-						"Top": 398,
+						"Left": 206,
+						"Top": 370,
 						"AllowTypes": {
 							"w": 5
 						},
@@ -357,8 +357,8 @@
 					{
 						"Name": "FN57PistolGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 269,
-						"Top": 398,
+						"Left": 206,
+						"Top": 370,
 						"AllowTypes": {
 							"w": 5
 						},
@@ -376,8 +376,8 @@
 					{
 						"Name": "DesertEaglePistolMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 259,
-						"Top": 388,
+						"Left": 201,
+						"Top": 365,
 						"AllowTypes": {
 							"w": 6
 						},
@@ -395,8 +395,8 @@
 					{
 						"Name": "DesertEaglePistolGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 259,
-						"Top": 388,
+						"Left": 201,
+						"Top": 365,
 						"AllowTypes": {
 							"w": 6
 						},
@@ -414,8 +414,8 @@
 					{
 						"Name": "BuckyMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 266,
-						"Top": 399,
+						"Left": 193,
+						"Top": 364,
 						"AllowTypes": {
 							"w": 7
 						},
@@ -433,8 +433,8 @@
 					{
 						"Name": "BuckyGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 266,
-						"Top": 399,
+						"Left": 193,
+						"Top": 364,
 						"AllowTypes": {
 							"w": 7
 						},
@@ -704,8 +704,8 @@
 					{
 						"Name": "CrackheadIllegalGunMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 173,
-						"Top": 348,
+						"Left": 129,
+						"Top": 309,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -724,8 +724,8 @@
 					{
 						"Name": "CrackheadIllegalGunGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 173,
-						"Top": 348,
+						"Left": 129,
+						"Top": 309,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -818,8 +818,8 @@
 					{
 						"Name": "Mp5KMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 177,
-						"Top": 332,
+						"Left": 132,
+						"Top": 295,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -838,8 +838,8 @@
 					{
 						"Name": "Mp5KGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 177,
-						"Top": 332,
+						"Left": 132,
+						"Top": 295,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -932,8 +932,8 @@
 					{
 						"Name": "UpgradedMiniUziMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 170,
-						"Top": 323,
+						"Left": 127,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -952,8 +952,8 @@
 					{
 						"Name": "UpgradedMiniUziGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 170,
-						"Top": 323,
+						"Left": 127,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -1046,8 +1046,8 @@
 					{
 						"Name": "VectorSMGMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 196,
-						"Top": 359,
+						"Left": 149,
+						"Top": 321,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -1066,8 +1066,8 @@
 					{
 						"Name": "VectorSMGGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 196,
-						"Top": 359,
+						"Left": 149,
+						"Top": 321,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -1160,8 +1160,8 @@
 					{
 						"Name": "P100SMGMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 167,
-						"Top": 335,
+						"Left": 123,
+						"Top": 297,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 0
@@ -1180,8 +1180,8 @@
 					{
 						"Name": "P100SMGGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 167,
-						"Top": 335,
+						"Left": 123,
+						"Top": 297,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 0
@@ -1568,7 +1568,7 @@
 						"Name": "HK416Metal",
 						"CopyLayerColor": "Metal",
 						"Left": 90,
-						"Top": 309,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -1588,7 +1588,7 @@
 						"Name": "HK416Grip",
 						"CopyLayerColor": "Grip",
 						"Left": 90,
-						"Top": 309,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -1682,7 +1682,7 @@
 						"Name": "OldAKMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 113,
-						"Top": 332,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -1702,7 +1702,7 @@
 						"Name": "OldAKGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 113,
-						"Top": 332,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -1796,7 +1796,7 @@
 						"Name": "PKMMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 79,
-						"Top": 294,
+						"Top": 269,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -1816,7 +1816,7 @@
 						"Name": "PKMGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 79,
-						"Top": 294,
+						"Top": 269,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -1910,7 +1910,7 @@
 						"Name": "CommandoAKSUMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 128,
-						"Top": 338,
+						"Top": 313,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -1930,7 +1930,7 @@
 						"Name": "CommandoAKSUGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 128,
-						"Top": 338,
+						"Top": 313,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -2024,7 +2024,7 @@
 						"Name": "OverupgradedM4Metal",
 						"CopyLayerColor": "Metal",
 						"Left": 110,
-						"Top": 324,
+						"Top": 299,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 0
@@ -2044,7 +2044,7 @@
 						"Name": "OverupgradedM4Grip",
 						"CopyLayerColor": "Grip",
 						"Left": 110,
-						"Top": 324,
+						"Top": 299,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 0
@@ -2138,7 +2138,7 @@
 						"Name": "VoidExperimentalBlessedHK416Metal",
 						"CopyLayerColor": "Metal",
 						"Left": 93,
-						"Top": 304,
+						"Top": 279,
 						"AllowTypes": {
 							"w": 5,
 							"Position": 0
@@ -2158,7 +2158,7 @@
 						"Name": "VoidExperimentalBlessedHK416Grip",
 						"CopyLayerColor": "Grip",
 						"Left": 93,
-						"Top": 304,
+						"Top": 279,
 						"AllowTypes": {
 							"w": 5,
 							"Position": 0
@@ -2178,7 +2178,7 @@
 						"Name": "VoidExperimentalBlessedHK416Glow",
 						"CopyLayerColor": "Glow",
 						"Left": 93,
-						"Top": 304,
+						"Top": 279,
 						"AllowTypes": {
 							"w": 5,
 							"Position": 0
@@ -2309,7 +2309,7 @@
 						"Name": "GoodAKRifleMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 122,
-						"Top": 334,
+						"Top": 309,
 						"AllowTypes": {
 							"w": 6,
 							"Position": 0
@@ -2329,7 +2329,7 @@
 						"Name": "GoodAKRifleGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 122,
-						"Top": 334,
+						"Top": 309,
 						"AllowTypes": {
 							"w": 6,
 							"Position": 0
@@ -2423,7 +2423,7 @@
 						"Name": "TacticalAKRifleMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 117,
-						"Top": 332,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 7,
 							"Position": 0
@@ -2443,7 +2443,7 @@
 						"Name": "TacticalAKRifleGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 117,
-						"Top": 332,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 7,
 							"Position": 0
@@ -2537,7 +2537,7 @@
 						"Name": "ModernizedSteyrAugMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 104,
-						"Top": 309,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 8,
 							"Position": 0
@@ -2557,7 +2557,7 @@
 						"Name": "ModernizedSteyrAugGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 104,
-						"Top": 309,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 8,
 							"Position": 0
@@ -2651,7 +2651,7 @@
 						"Name": "PrototypeV02RifleMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 101,
-						"Top": 309,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 9,
 							"Position": 0
@@ -2671,7 +2671,7 @@
 						"Name": "PrototypeV02RifleGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 101,
-						"Top": 309,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 9,
 							"Position": 0
@@ -2765,7 +2765,7 @@
 						"Name": "VoidPaladinEliteHK416Metal",
 						"CopyLayerColor": "Metal",
 						"Left": 128,
-						"Top": 326,
+						"Top": 301,
 						"AllowTypes": {
 							"w": 10,
 							"Position": 0
@@ -2785,7 +2785,7 @@
 						"Name": "VoidPaladinEliteHK416Grip",
 						"CopyLayerColor": "Grip",
 						"Left": 128,
-						"Top": 326,
+						"Top": 301,
 						"AllowTypes": {
 							"w": 10,
 							"Position": 0
@@ -2805,7 +2805,7 @@
 						"Name": "VoidPaladinEliteHK416Glow",
 						"CopyLayerColor": "Glow",
 						"Left": 128,
-						"Top": 326,
+						"Top": 301,
 						"AllowTypes": {
 							"w": 10,
 							"Position": 0
@@ -2936,7 +2936,7 @@
 						"Name": "M60Metal",
 						"CopyLayerColor": "Metal",
 						"Left": 101,
-						"Top": 295,
+						"Top": 270,
 						"AllowTypes": {
 							"w": 11,
 							"Position": 0
@@ -2956,7 +2956,7 @@
 						"Name": "M60Grip",
 						"CopyLayerColor": "Grip",
 						"Left": 101,
-						"Top": 295,
+						"Top": 270,
 						"AllowTypes": {
 							"w": 11,
 							"Position": 0
@@ -3050,7 +3050,7 @@
 						"Name": "UpgradedAKRifleMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 111,
-						"Top": 337,
+						"Top": 312,
 						"AllowTypes": {
 							"w": 12,
 							"Position": 0
@@ -3070,7 +3070,7 @@
 						"Name": "UpgradedAKRifleGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 111,
-						"Top": 337,
+						"Top": 312,
 						"AllowTypes": {
 							"w": 12,
 							"Position": 0
@@ -3164,7 +3164,7 @@
 						"Name": "VoidDivisionSalvatorisCrusaderMCXMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 111,
-						"Top": 319,
+						"Top": 294,
 						"AllowTypes": {
 							"w": 13,
 							"Position": 0
@@ -3184,7 +3184,7 @@
 						"Name": "VoidDivisionSalvatorisCrusaderMCXGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 111,
-						"Top": 319,
+						"Top": 294,
 						"AllowTypes": {
 							"w": 13,
 							"Position": 0
@@ -3204,7 +3204,7 @@
 						"Name": "VoidDivisionSalvatorisCrusaderMCXGlow",
 						"CopyLayerColor": "Glow",
 						"Left": 111,
-						"Top": 319,
+						"Top": 294,
 						"AllowTypes": {
 							"w": 13,
 							"Position": 0
@@ -3335,7 +3335,7 @@
 						"Name": "ExperimentalAKRifleMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 113,
-						"Top": 324,
+						"Top": 299,
 						"AllowTypes": {
 							"w": 14,
 							"Position": 0
@@ -3355,7 +3355,7 @@
 						"Name": "ExperimentalAKRifleGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 113,
-						"Top": 324,
+						"Top": 299,
 						"AllowTypes": {
 							"w": 14,
 							"Position": 0
@@ -3449,7 +3449,7 @@
 						"Name": "VoidChampionASVALMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 84,
-						"Top": 323,
+						"Top": 298,
 						"AllowTypes": {
 							"w": 15,
 							"Position": 0
@@ -3469,7 +3469,7 @@
 						"Name": "VoidChampionASVALGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 84,
-						"Top": 323,
+						"Top": 298,
 						"AllowTypes": {
 							"w": 15,
 							"Position": 0
@@ -3489,7 +3489,7 @@
 						"Name": "VoidChampionASVALGlow",
 						"CopyLayerColor": "Glow",
 						"Left": 84,
-						"Top": 323,
+						"Top": 298,
 						"AllowTypes": {
 							"w": 15,
 							"Position": 0
@@ -4119,8 +4119,8 @@
 					{
 						"Name": "OldHuntingRifleMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 78,
-						"Top": 323,
+						"Left": 76,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -4139,8 +4139,8 @@
 					{
 						"Name": "OldHuntingRifleGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 78,
-						"Top": 323,
+						"Left": 76,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -4234,7 +4234,7 @@
 						"Name": "FlintaMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 82,
-						"Top": 317,
+						"Top": 300,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -4254,7 +4254,7 @@
 						"Name": "FlintaGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 82,
-						"Top": 317,
+						"Top": 300,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -4274,7 +4274,7 @@
 						"Name": "FlintaGlow",
 						"CopyLayerColor": "Glow",
 						"Left": 82,
-						"Top": 317,
+						"Top": 300,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -4404,8 +4404,8 @@
 					{
 						"Name": "R700Metal",
 						"CopyLayerColor": "Metal",
-						"Left": 89,
-						"Top": 316,
+						"Left": 85,
+						"Top": 298,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -4424,8 +4424,8 @@
 					{
 						"Name": "R700Grip",
 						"CopyLayerColor": "Grip",
-						"Left": 89,
-						"Top": 316,
+						"Left": 85,
+						"Top": 298,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -4518,8 +4518,8 @@
 					{
 						"Name": "SVDSMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 109,
-						"Top": 327,
+						"Left": 106,
+						"Top": 308,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -4538,8 +4538,8 @@
 					{
 						"Name": "SVDSGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 109,
-						"Top": 327,
+						"Left": 106,
+						"Top": 308,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -4632,8 +4632,8 @@
 					{
 						"Name": "VoidMRRifleMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 87,
-						"Top": 323,
+						"Left": 85,
+						"Top": 305,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 0
@@ -4652,8 +4652,8 @@
 					{
 						"Name": "VoidMRRifleGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 87,
-						"Top": 323,
+						"Left": 85,
+						"Top": 305,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 0
@@ -4746,8 +4746,8 @@
 					{
 						"Name": "VoidMarksmanHK416Metal",
 						"CopyLayerColor": "Metal",
-						"Left": 100,
-						"Top": 308,
+						"Left": 98,
+						"Top": 288,
 						"AllowTypes": {
 							"w": 5,
 							"Position": 0
@@ -4766,8 +4766,8 @@
 					{
 						"Name": "VoidMarksmanHK416Grip",
 						"CopyLayerColor": "Grip",
-						"Left": 100,
-						"Top": 308,
+						"Left": 98,
+						"Top": 288,
 						"AllowTypes": {
 							"w": 5,
 							"Position": 0
@@ -4786,8 +4786,8 @@
 					{
 						"Name": "VoidMarksmanHK416Glow",
 						"CopyLayerColor": "Glow",
-						"Left": 100,
-						"Top": 308,
+						"Left": 98,
+						"Top": 288,
 						"AllowTypes": {
 							"w": 5,
 							"Position": 0
@@ -4917,8 +4917,8 @@
 					{
 						"Name": "VoidDivisionRangerCrusaderRSASSMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 104,
-						"Top": 301,
+						"Left": 101,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 6,
 							"Position": 0
@@ -4937,8 +4937,8 @@
 					{
 						"Name": "VoidDivisionRangerCrusaderRSASSGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 104,
-						"Top": 301,
+						"Left": 101,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 6,
 							"Position": 0
@@ -4957,8 +4957,8 @@
 					{
 						"Name": "VoidDivisionRangerCrusaderRSASSGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 104,
-						"Top": 301,
+						"Left": 101,
+						"Top": 284,
 						"AllowTypes": {
 							"w": 6,
 							"Position": 0
@@ -5088,8 +5088,8 @@
 					{
 						"Name": "BloodshotMosinRifleMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 66,
-						"Top": 329,
+						"Left": 64,
+						"Top": 314,
 						"AllowTypes": {
 							"w": 7,
 							"Position": 0
@@ -5108,8 +5108,8 @@
 					{
 						"Name": "BloodshotMosinRifleGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 66,
-						"Top": 329,
+						"Left": 64,
+						"Top": 314,
 						"AllowTypes": {
 							"w": 7,
 							"Position": 0
@@ -5128,8 +5128,8 @@
 					{
 						"Name": "BloodshotMosinRifleGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 66,
-						"Top": 329,
+						"Left": 64,
+						"Top": 314,
 						"AllowTypes": {
 							"w": 7,
 							"Position": 0
@@ -5259,8 +5259,8 @@
 					{
 						"Name": "AK50Metal",
 						"CopyLayerColor": "Metal",
-						"Left": 64,
-						"Top": 280,
+						"Left": 60,
+						"Top": 263,
 						"AllowTypes": {
 							"w": 8,
 							"Position": 0
@@ -5279,8 +5279,8 @@
 					{
 						"Name": "AK50Grip",
 						"CopyLayerColor": "Grip",
-						"Left": 64,
-						"Top": 280,
+						"Left": 60,
+						"Top": 263,
 						"AllowTypes": {
 							"w": 8,
 							"Position": 0
@@ -5373,8 +5373,8 @@
 					{
 						"Name": "VoidNTW20Metal",
 						"CopyLayerColor": "Metal",
-						"Left": 37,
-						"Top": 256,
+						"Left": 30,
+						"Top": 241,
 						"AllowTypes": {
 							"w": 9,
 							"Position": 0
@@ -5393,8 +5393,8 @@
 					{
 						"Name": "VoidNTW20Grip",
 						"CopyLayerColor": "Grip",
-						"Left": 37,
-						"Top": 256,
+						"Left": 30,
+						"Top": 241,
 						"AllowTypes": {
 							"w": 9,
 							"Position": 0
@@ -5413,8 +5413,8 @@
 					{
 						"Name": "VoidNTW20Glow",
 						"CopyLayerColor": "Glow",
-						"Left": 37,
-						"Top": 256,
+						"Left": 30,
+						"Top": 241,
 						"AllowTypes": {
 							"w": 9,
 							"Position": 0
@@ -5902,8 +5902,8 @@
 					{
 						"Name": "OldSawedOffShotgunMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 215,
-						"Top": 394,
+						"Left": 165,
+						"Top": 365,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -5922,8 +5922,8 @@
 					{
 						"Name": "OldSawedOffShotgunGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 215,
-						"Top": 394,
+						"Left": 165,
+						"Top": 365,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -6017,7 +6017,7 @@
 						"Name": "PumpActionShotgunMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 68,
-						"Top": 338,
+						"Top": 313,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -6037,7 +6037,7 @@
 						"Name": "PumpActionShotgunGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 68,
-						"Top": 338,
+						"Top": 313,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -6131,7 +6131,7 @@
 						"Name": "SaigaShotgunMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 121,
-						"Top": 337,
+						"Top": 312,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -6151,7 +6151,7 @@
 						"Name": "SaigaShotgunGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 121,
-						"Top": 337,
+						"Top": 312,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -6245,7 +6245,7 @@
 						"Name": "VoidDivisionBellatorCrusaderMP155UltimaMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 85,
-						"Top": 338,
+						"Top": 313,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -6265,7 +6265,7 @@
 						"Name": "VoidDivisionBellatorCrusaderMP155UltimaGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 85,
-						"Top": 338,
+						"Top": 313,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -6285,7 +6285,7 @@
 						"Name": "VoidDivisionBellatorCrusaderMP155UltimaGlow",
 						"CopyLayerColor": "Glow",
 						"Left": 85,
-						"Top": 338,
+						"Top": 313,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -6416,7 +6416,7 @@
 						"Name": "MiseryKS23ShotgunMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 73,
-						"Top": 331,
+						"Top": 306,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 0
@@ -6436,7 +6436,7 @@
 						"Name": "MiseryKS23ShotgunGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 73,
-						"Top": 331,
+						"Top": 306,
 						"AllowTypes": {
 							"w": 4,
 							"Position": 0
@@ -6770,8 +6770,8 @@
 					{
 						"Name": "SimpleHandCrossbowMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 192,
-						"Top": 363,
+						"Left": 142,
+						"Top": 335,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -6790,8 +6790,8 @@
 					{
 						"Name": "SimpleHandCrossbowGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 192,
-						"Top": 363,
+						"Left": 142,
+						"Top": 335,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -6810,8 +6810,8 @@
 					{
 						"Name": "SimpleHandCrossbowGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 192,
-						"Top": 363,
+						"Left": 142,
+						"Top": 335,
 						"AllowTypes": {
 							"w": 0,
 							"Position": 0
@@ -6941,8 +6941,8 @@
 					{
 						"Name": "SmallCrossbowMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 198,
-						"Top": 396,
+						"Left": 149,
+						"Top": 368,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -6961,8 +6961,8 @@
 					{
 						"Name": "SmallCrossbowGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 198,
-						"Top": 396,
+						"Left": 149,
+						"Top": 368,
 						"AllowTypes": {
 							"w": 1,
 							"Position": 0
@@ -7055,8 +7055,8 @@
 					{
 						"Name": "GoodCrossbowMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 115,
-						"Top": 331,
+						"Left": 114,
+						"Top": 308,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -7075,8 +7075,8 @@
 					{
 						"Name": "GoodCrossbowGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 115,
-						"Top": 331,
+						"Left": 114,
+						"Top": 308,
 						"AllowTypes": {
 							"w": 2,
 							"Position": 0
@@ -7170,7 +7170,7 @@
 						"Name": "ModernCrossbowMetal",
 						"CopyLayerColor": "Metal",
 						"Left": 99,
-						"Top": 311,
+						"Top": 289,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -7190,7 +7190,7 @@
 						"Name": "ModernCrossbowGrip",
 						"CopyLayerColor": "Grip",
 						"Left": 99,
-						"Top": 311,
+						"Top": 289,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -7210,7 +7210,7 @@
 						"Name": "ModernCrossbowGlow",
 						"CopyLayerColor": "Glow",
 						"Left": 99,
-						"Top": 311,
+						"Top": 289,
 						"AllowTypes": {
 							"w": 3,
 							"Position": 0
@@ -13794,8 +13794,8 @@
 					{
 						"Name": "IneluctabilisMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 243,
-						"Top": 297,
+						"Left": 229,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 0
 						},
@@ -13813,8 +13813,8 @@
 					{
 						"Name": "IneluctabilisGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 243,
-						"Top": 297,
+						"Left": 229,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 0
 						},
@@ -13832,8 +13832,8 @@
 					{
 						"Name": "IneluctabilisGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 243,
-						"Top": 297,
+						"Left": 229,
+						"Top": 307,
 						"AllowTypes": {
 							"w": 0
 						},
@@ -13851,8 +13851,8 @@
 					{
 						"Name": "PaladinVoidKnifeMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 241,
-						"Top": 328,
+						"Left": 227,
+						"Top": 338,
 						"AllowTypes": {
 							"w": 1
 						},
@@ -13870,8 +13870,8 @@
 					{
 						"Name": "PaladinVoidKnifeGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 241,
-						"Top": 328,
+						"Left": 227,
+						"Top": 338,
 						"AllowTypes": {
 							"w": 1
 						},
@@ -13889,8 +13889,8 @@
 					{
 						"Name": "PaladinVoidKnifeGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 241,
-						"Top": 328,
+						"Left": 227,
+						"Top": 338,
 						"AllowTypes": {
 							"w": 1
 						},
@@ -13908,8 +13908,8 @@
 					{
 						"Name": "ThePaladinVoidBladeMetal",
 						"CopyLayerColor": "Metal",
-						"Left": 240,
-						"Top": 276,
+						"Left": 226,
+						"Top": 286,
 						"AllowTypes": {
 							"w": 2
 						},
@@ -13927,8 +13927,8 @@
 					{
 						"Name": "ThePaladinVoidBladeGrip",
 						"CopyLayerColor": "Grip",
-						"Left": 240,
-						"Top": 276,
+						"Left": 226,
+						"Top": 286,
 						"AllowTypes": {
 							"w": 2
 						},
@@ -13946,8 +13946,8 @@
 					{
 						"Name": "ThePaladinVoidBladeGlow",
 						"CopyLayerColor": "Glow",
-						"Left": 240,
-						"Top": 276,
+						"Left": 226,
+						"Top": 286,
 						"AllowTypes": {
 							"w": 2
 						},
