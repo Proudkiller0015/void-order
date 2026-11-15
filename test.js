@@ -1929,7 +1929,7 @@ const openCardOf = async (page, name) => {
 			['VoidRifles', 'VoidGlowingBlades', 'QueensWrath'].map((n) => AssetGet('Female3DCG', 'ItemHandheld', n).Description),
 		);
 		check('the items read well after the game’s "a"', names.join('|') === "Void rifle|Void glowing blade|Queen's Wrath scythe", names);
-		// The carry: moving a gun to port arms says so in the room.
+		// The carry: slinging a gun on the back says so in the room.
 		await hold(ap, 'VoidRifles', { w: 0, Position: 0 });
 		await wait(1800);
 		await ap.evaluate(() => (window.sent = []));
@@ -1939,13 +1939,13 @@ const openCardOf = async (page, name) => {
 			window.sent.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action').map(([, d]) => d.Dictionary[0].Text),
 		);
 		check(
-			'carrying a gun at port arms gets its line (from held().position)',
-			carryLine.some((t) => /holds the .+ across the chest, at port arms\./.test(t)),
+			'slinging a gun on the back gets its line (from held().position)',
+			carryLine.some((t) => /slings the .+ across the back\./.test(t)),
 			carryLine,
 		);
-		// Swords: held or slung on the back; Queen's Wrath: held, held in front or on the back; each with its own line.
+		// Guns: in the hands or on the back; swords and Queen's Wrath: held or on the back; pistols: in the hands only.
 		const carryOptions = await ap.evaluate(() =>
-			['VoidRifles', 'VoidSwords', 'QueensWrath', 'VoidPistols'].map((n) =>
+			['VoidRifles', 'VoidSwords', 'QueensWrath'].map((n) =>
 				ModularItemDataLookup[`ItemHandheld${n}`].modules
 					.find((m) => m.Key === 'Position')
 					.Options.map((o) => AssetTextGet(`ItemHandheld${n}Option${o.Name}`))
@@ -1954,9 +1954,7 @@ const openCardOf = async (page, name) => {
 		);
 		check(
 			'each kind offers its carries by name',
-			carryOptions.join('|') ===
-				'Hand on the trigger/Port arms/On the shoulder/On the back|Held/On the back|Held/Held in front/On the back|' +
-					'Hand on the trigger/On the hip/In the left hand',
+			carryOptions.join('|') === 'In the hands/On the back|Held/On the back|Held/On the back',
 			carryOptions,
 		);
 		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
@@ -1968,16 +1966,11 @@ const openCardOf = async (page, name) => {
 			window.sent.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action').map(([, d]) => d.Dictionary[0].Text),
 		);
 		check('slinging a sword on the back gets its line', backLine.includes('Ann slings the Recider across the back.'), backLine);
-		// A pistol's own carries: a hip holster, then the left hand.
-		await hold(ap, 'VoidPistols', { w: 2, Position: 0 });
-		await wait(1800);
-		await ap.evaluate(() => (window.sent = []));
-		await hold(ap, 'VoidPistols', { w: 2, Position: 1 });
-		await wait(1800);
-		const hipLine = await ap.evaluate(() =>
-			window.sent.filter(([t, d]) => t === 'ChatRoomChat' && d.Type === 'Action').map(([, d]) => d.Dictionary[0].Text),
+		// Pistols are held in the hands only: no carry choice at all.
+		const pistolCarry = await ap.evaluate(() =>
+			ModularItemDataLookup.ItemHandheldVoidPistols.modules.some((m) => m.Key === 'Position'),
 		);
-		check('holstering a pistol on the hip gets its line', hipLine.some((t) => /holsters the .+ on the hip\./.test(t)), hipLine);
+		check('a pistol has no carry choice (in the hands only)', pistolCarry === false, pistolCarry);
 		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
 		await wait(1800);
 		// Only where it makes sense, and none of the game's item activities for our weapons.
@@ -2347,8 +2340,8 @@ const openCardOf = async (page, name) => {
 			return { url: r.url, ok: r.ok };
 		});
 		check(
-			'the helmet is drawn on the character, from the add-on’s pictures',
-			differs > 2000 && fetched.ok && /\/void-assets\/armor\/img\/Hat\/VoidPaladinHelmet_ShellPlates\.png$/.test(fetched.url),
+			'the helmet is drawn on the character, from the add-on’s pictures (version-stamped, never a stale copy)',
+			differs > 2000 && fetched.ok && /\/void-assets\/armor\/img\/Hat\/VoidPaladinHelmet_ShellPlates\.png\?v=[^&]+$/.test(fetched.url),
 			{ differs, fetched },
 		);
 		await shot(page, '24-armor-helmet');

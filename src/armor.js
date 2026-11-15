@@ -16,6 +16,8 @@
 			return null;
 		}
 		const ARMOR = `${ctx.assets}armor/`;
+		/** Added to every picture's address, so a release that redraws a piece is never mixed with a browser's old copies. */
+		const FRESH = `?v=${encodeURIComponent(String(ctx.VERSION || ''))}`;
 		const FEATURE = 'Void Paladin armour';
 		/** @type {Map<string, any>} The registered pieces (assets/armor/armor.json entries) by asset name. */
 		const pieces = new Map();
@@ -173,10 +175,10 @@
 				return '';
 			}
 			if (m[2]) {
-				return m[4] ? '' : `${ARMOR}preview/${piece.name}.png`;
+				return m[4] ? '' : `${ARMOR}preview/${piece.name}.png${FRESH}`;
 			}
 			const file = `img/${piece.group}/${piece.name}_${m[4]}.png`;
-			return images.has(file) ? `${ARMOR}${file}` : '';
+			return images.has(file) ? `${ARMOR}${file}${FRESH}` : '';
 		}
 		/** Sends the game's requests for the armour's pictures to the add-on's copies, and gives its buttons their pictures. */
 		function hookPictures() {

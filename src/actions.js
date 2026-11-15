@@ -831,14 +831,9 @@
 	let warnedQw = false;
 	/** The line for taking a carry, by what it is (held().carry); `x` is the weapon, with its article. */
 	const CARRY = {
-		trigger: (a, x) => `${a} puts a finger on the trigger of ${x}.`,
-		portarms: (a, x) => `${a} holds ${x} across the chest, at port arms.`,
-		shoulder: (a, x) => `${a} rests ${x} on a shoulder, muzzle up.`,
+		trigger: (a, x) => `${a} holds ${x} in both hands.`,
 		back: (a, x) => `${a} slings ${x} across the back.`,
-		hip: (a, x) => `${a} holsters ${x} on the hip.`,
-		lefthand: (a, x) => `${a} takes ${x} in the left hand.`,
 		held: (a, x) => `${a} takes ${x} in hand.`,
-		front: (a, x) => `${a} holds ${x} out in front.`,
 	};
 	const withArticle = (/** @type {any} */ h) => (isQw(h) ? QW_NAME : `the ${nameOf(h)}`);
 	setInterval(

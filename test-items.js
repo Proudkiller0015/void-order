@@ -242,7 +242,13 @@ const edges = (page, { member, zoom = 1, inverted = false }) =>
 					if (out) outside++;
 					if (inn) {
 						inside++;
-						if (out || filled(edge + dir * 6, y + 1) || filled(edge + dir * 6, y - 1)) both++;
+						// A weapon held at a slant (guns cross the body at 30°) drops a few rows over the 12 px between the two
+						// samples: it carries on if there is colour outside within that drop.
+						let near = out;
+						for (let d = 1; d <= 9 && !near; d++) {
+							near = filled(edge + dir * 6, y + d) || filled(edge + dir * 6, y - d);
+						}
+						if (near) both++;
 					}
 				}
 				return { outside, inside, carried: inside ? both / inside : 1 };
@@ -346,7 +352,7 @@ const playAround = (page) =>
 			const out = {};
 			for (const [item, rec] of [
 				['VoidRifles', { Position: 0 }],
-				['VoidRifles', { Position: 3 }],
+				['VoidRifles', { Position: 1 }],
 				['VoidPistols', { Position: 0 }],
 				['QueensWrath', { Position: 0 }],
 			]) {
@@ -588,7 +594,7 @@ const playAround = (page) =>
 			const out = {};
 			for (const [item, rec] of [
 				['VoidSwords', { w: 0, Position: 0 }],
-				['QueensWrath', { Position: 1 }],
+				['QueensWrath', { Position: 0 }],
 			]) {
 				const asset = AssetGet('Female3DCG', 'ItemHandheld', item);
 				const slots = ItemColorGetColorableLayers({ Asset: asset }).map((l) => l.Name);
@@ -623,8 +629,8 @@ const playAround = (page) =>
 		console.log('parts', JSON.stringify(partsCheck));
 		const sword = partsCheck.VoidSwords || {};
 		check(
-			"a sword's blade, grip, guard and pommel each take their own colour",
-			['Metal', 'Grip', 'Guard', 'Pommel'].every((k) => sword[k] > 30) && Object.keys(sword).length === 5,
+			"a sword is one picture in three colours: blade, grip, glow",
+			Object.keys(sword).join() === 'Metal,Grip,Glow' && sword.Metal > 30 && sword.Grip > 30,
 			sword,
 		);
 		const wrath = partsCheck.QueensWrath || {};
@@ -643,7 +649,7 @@ const playAround = (page) =>
 		);
 		check(
 			'and names them',
-			!!partsCheck.headings && ['Blade', 'Guard', 'Pommel and fittings', 'Hand layer'].every((h) => partsCheck.headings.includes(h)),
+			!!partsCheck.headings && ['Blade', 'Grip', 'Hand layer'].every((h) => partsCheck.headings.includes(h)) && !partsCheck.headings.includes('Guard'),
 			partsCheck.headings,
 		);
 		const want = {
@@ -652,8 +658,8 @@ const playAround = (page) =>
 			'VoidRifles:0 BackBoxTie': 'bound',
 			'VoidRifles:0 OverTheHead': 'bound',
 			'VoidRifles:0 AllFours': 'none',
-			'VoidRifles:3 BaseUpper': 'held',
-			'VoidRifles:3 BackBoxTie': 'bound',
+			'VoidRifles:1 BaseUpper': 'held',
+			'VoidRifles:1 BackBoxTie': 'bound',
 			'VoidPistols:0 BaseUpper': 'held',
 			'VoidPistols:0 BackBoxTie': 'none',
 			'VoidPistols:0 TapedHands': 'none',

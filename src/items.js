@@ -15,6 +15,11 @@
 			return null;
 		}
 		const ITEMS = `${ctx.assets}items/`;
+		/**
+		 * Added to every picture's address: a release that moves a weapon changes its pictures under the same names, and
+		 * a browser that kept some of the old ones would draw the parts apart (guard and pommel off the blade).
+		 */
+		const FRESH = `?v=${encodeURIComponent(String(ctx.VERSION || ''))}`;
 		const GROUP = 'ItemHandheld';
 		const FEATURE = 'Weapon items';
 		/** The key of the "Hands" module every item with a Hand layer gets: 0 hands over the weapon (as before), 1 off. */
@@ -135,7 +140,7 @@
 			const option = Number.isInteger(record.w) ? record.w : 0;
 			const weapon = item.weapons[option] || item.weapons[0];
 			const position = Number.isInteger(record.Position) ? record.Position : 0;
-			// What that carry is: 'trigger', 'portarms', 'shoulder', 'back', 'hip', 'lefthand', 'held' or 'front' ('' for none).
+			// What that carry is: 'trigger' (a gun in the hands), 'held' (a blade or Queen's Wrath), 'back' ('' for none).
 			const carry = (Array.isArray(item.carries) && item.carries[position]) || '';
 			return { item: item.name, weapon, option, position, carry };
 		}
@@ -337,11 +342,11 @@
 				return '';
 			}
 			if (m[1] === 'Preview' && !m[3]) {
-				return `${ITEMS}preview/${item.name}.png`;
+				return `${ITEMS}preview/${item.name}.png${FRESH}`;
 			}
 			// A pose's folder (the bound layers ask for TapedHands/) has the same picture: the art doesn't change by pose.
 			const file = `img/${item.source}_${m[3]}.png`;
-			return images.has(file) ? `${ITEMS}${file}` : EMPTY_PNG;
+			return images.has(file) ? `${ITEMS}${file}${FRESH}` : EMPTY_PNG;
 		}
 		/**
 		 * Sends the game's requests for Armory pictures to the add-on's copies (every picture the game draws is fetched
