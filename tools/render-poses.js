@@ -43,7 +43,7 @@ const POSES = (
 	await new Promise((r) => web.listen(PORT, r));
 	const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 	const page = await browser.newPage();
-	if (process.env.FUSAM) page.on('pageerror', (e) => console.log('pageerror', String(e).slice(0, 160)));
+	if (process.env.FUSAM || process.env.ERRORS) page.on('pageerror', (e) => console.log('pageerror', String(e).slice(0, 160)));
 	await page.setViewport({ width: 2000, height: 1000 });
 	await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'load', timeout: 120000 });
 	await page.waitForFunction(() => typeof Asset !== 'undefined' && Asset.length > 1000 && typeof Player !== 'undefined' && !!Player, {
