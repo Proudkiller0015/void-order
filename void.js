@@ -11,7 +11,7 @@
 	if (w.VoidOrder) {
 		return;
 	}
-	const VERSION = '2.0.0-beta.2.21';
+	const VERSION = '2.0.0-beta.2.22';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
 	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
 	/** Where the add-on's pictures are (a test page sets VoidOrderAssets). */
@@ -309,6 +309,8 @@
 		retry = 0;
 		connect();
 	}
+	/** Whether this session already took a left-over power armour off the server's record (see onServer). */
+	let armorCleared = false;
 	/**
 	 * Sends a request and resolves with the server's answer ({ t: 'ok' | 'error' | 'card' | 'roll', ... }).
 	 * @param {Record<string, any>} x
@@ -362,6 +364,17 @@
 			if (resetCode && x.status === 'member') {
 				resetCode = '';
 				note('Your key is in. Welcome to the Order.');
+			}
+			// The Void Paladin outfit was taken out (its power armour raised the carry limit to 4): a member the server still
+			// counts as wearing it is taken out of it once, so their limit is 2 again.
+			if (x.me && x.me.armor && !armorCleared) {
+				armorCleared = true;
+				guard(async () => {
+					const r = await req({ t: 'armor', on: false });
+					if (r && r.t === 'ok' && Array.isArray(r.dropped) && r.dropped.length) {
+						note(`The Void Paladin armour is gone, so you carry 2 weapons: you put down ${r.dropped.join(' and ')}.`);
+					}
+				});
 			}
 			render();
 		} else if (x.t === 'orders') {
@@ -5437,7 +5450,7 @@
 	// ---- Modules: the add-on's other parts (src/<name>.js next to assets/), loaded in order as the page starts.
 	/** The modules' folder (a test page sets VoidOrderSrc). */
 	const SRC = w.VoidOrderSrc || ASSETS.replace(/assets\/?$/, 'src/');
-	const MODULES = ['guard', 'reports', 'items', 'armor', 'overflow', 'actions'];
+	const MODULES = ['guard', 'reports', 'items', 'overflow', 'actions'];
 	/** Problems hit before the reporter is in: [feature, error, when], sent on to it once it loads. */
 	const early = /** @type {[string, any, number][]} */ ([]);
 	/** @type {((t: any) => void)[]} */

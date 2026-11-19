@@ -1967,9 +1967,7 @@ const openCardOf = async (page, name) => {
 		);
 		check('slinging a sword on the back gets its line', backLine.includes('Ann slings the Recider across the back.'), backLine);
 		// Pistols are held in the hands only: no carry choice at all.
-		const pistolCarry = await ap.evaluate(() =>
-			ModularItemDataLookup.ItemHandheldVoidPistols.modules.some((m) => m.Key === 'Position'),
-		);
+		const pistolCarry = await ap.evaluate(() => ModularItemDataLookup.ItemHandheldVoidPistols.modules.some((m) => m.Key === 'Position'));
 		check('a pistol has no carry choice (in the hands only)', pistolCarry === false, pistolCarry);
 		await hold(ap, 'VoidSwords', { w: 0, Position: 0 });
 		await wait(1800);
@@ -2243,7 +2241,7 @@ const openCardOf = async (page, name) => {
 		check(
 			'/void diag tells the version, the modules, what is held and the actions',
 			/Oculus Nihili /.test(diagText) &&
-				/Modules: guard on, reports on, items on, armor on, overflow on, actions on/.test(diagText) &&
+				/Modules: guard on, reports on, items on, overflow on, actions on/.test(diagText) &&
 				/Holding: VoidSwords/.test(diagText) &&
 				/Actions on/.test(diagText),
 			diagText,
@@ -2296,318 +2294,23 @@ const openCardOf = async (page, name) => {
 		check('no page errors with the Armory', armed.errors.length === 0 && zed.errors.length === 0, [...armed.errors, ...zed.errors]);
 		await armed.page.close();
 		await zed.page.close();
-		// The Void Paladin armour: five pieces of clothing, drawn from the add-on's pictures, standing only.
+		// The Void Paladin outfit was taken out (the Void leader's call, 19 Nov 2026; kept on the archive/void-outfit branch):
+		// none of its pieces are registered, the wardrobe has no Void uniforms row, and nobody carries 4 for it.
 		await page.bringToFront();
-		await page.waitForFunction(() => !!AssetGet('Female3DCG', 'Garters', 'VoidPaladinLegRig'), { timeout: 20000 }).catch(() => {});
-		const registered = await page.evaluate(
-			() =>
-				[
-					['Hat', 'VoidPaladinHelmet'],
-					['Necklace', 'VoidPaladinPlateCarrier'],
-					['Gloves', 'VoidPaladinGloves'],
-					['ClothAccessory', 'VoidPaladinCloak'],
-					['Garters', 'VoidPaladinLegRig'],
-				].filter(([g, n]) => {
-					const a = AssetGet('Female3DCG', g, n);
-					return a && a.Value === 0 && a.Layer.every((l) => l.ParentGroup && !Object.keys(l.ParentGroup).length);
-				}).length,
-		);
-		check('the five armour pieces are clothing anyone with the add-on can wear', registered === 5, registered);
-		const helmetColor = await page.evaluate(() => {
-			InventoryWear(Player, 'VoidPaladinHelmet', 'Hat');
-			const c = InventoryGet(Player, 'Hat').Color;
-			InventoryRemove(Player, 'Hat');
-			return JSON.stringify(c);
-		});
-		check('a piece is worn in its own colours', helmetColor === '["#262833","#262833","#3FE6FF","#262833","#17181D"]', helmetColor);
-		const helmetPixels = (wear) =>
-			page.evaluate(async (wear) => {
-				if (wear) InventoryWear(Player, 'VoidPaladinHelmet', 'Hat');
-				else InventoryRemove(Player, 'Hat');
-				CharacterRefresh(Player, false);
-				for (let i = 0; i < 4; i++) {
-					MainCanvas.clearRect(0, 0, 2000, 1000);
-					DrawCharacter(Player, 0, 0, 1);
-					await new Promise((r) => setTimeout(r, 250));
-				}
-				return Array.from(MainCanvas.getImageData(175, 45, 150, 110).data);
-			}, wear);
-		const bare = await helmetPixels(false);
-		const helmeted = await helmetPixels(true);
-		const differs = bare.filter((v, i) => Math.abs(v - helmeted[i]) > 30).length;
-		const fetched = await page.evaluate(async () => {
-			const r = await CommonFetch('Assets/Female3DCG/Hat/VoidPaladinHelmet_ShellPlates.png');
-			return { url: r.url, ok: r.ok };
-		});
-		check(
-			'the helmet is drawn on the character, from the add-on’s pictures (version-stamped, never a stale copy)',
-			differs > 2000 && fetched.ok && /\/void-assets\/armor\/img\/Hat\/VoidPaladinHelmet_ShellPlates\.png\?v=[^&]+$/.test(fetched.url),
-			{ differs, fetched },
-		);
-		await shot(page, '24-armor-helmet');
-		const poses = await page.evaluate(() => ({
-			gloves: AssetGet('Female3DCG', 'Gloves', 'VoidPaladinGloves').Layer[0].PoseMapping.BackBoxTie,
-			taped: AssetGet('Female3DCG', 'Gloves', 'VoidPaladinGloves').Layer[0].PoseMapping.TapedHands,
-			legsClosed: AssetGet('Female3DCG', 'Garters', 'VoidPaladinLegRig').Layer[0].PoseMapping.LegsClosed,
-			allFours: AssetGet('Female3DCG', 'Garters', 'VoidPaladinLegRig').Layer[0].PoseMapping.AllFours,
+		const outfitLeft = await page.evaluate(() => ({
+			pieces: [
+				['Hat', 'VoidPaladinHelmet'],
+				['Necklace', 'VoidPaladinPlateCarrier'],
+				['Gloves', 'VoidPaladinGloves'],
+				['ClothAccessory', 'VoidPaladinCloak'],
+				['Garters', 'VoidPaladinLegRig'],
+			].filter(([g, n]) => !!AssetGet('Female3DCG', g, n)),
+			uniformRow: (window.CharacterAppearanceGroups || []).some((g) => g && g.Name === 'VoidUniforms'),
 		}));
-		check(
-			'a piece hides only in the poses its standing pictures don’t fit',
-			poses.gloves === 'Hide' && poses.taped === '' && poses.legsClosed === '' && poses.allFours === 'Hide',
-			poses,
-		);
-		await page.evaluate(() => {
-			InventoryRemove(Player, 'Hat');
-			CharacterRefresh(Player, false);
-		});
-
-		// Void uniforms: the last row of the wardrobe. The full outfit puts on every item it may, in the uniform's colours;
-		// a locked item stays; each item can be put on by itself.
-		await page.evaluate(() => document.getElementById('void-panel')?.remove());
-		/** The wardrobe's rows as drawn: the labels of their back/next buttons, the uniform row's top on the page. */
-		const wardrobeRows = () =>
-			page.evaluate(() => {
-				const labels = [];
-				const real = DrawBackNextButton;
-				DrawBackNextButton = (...a) => {
-					labels.push(a[4]);
-					return real(...a);
-				};
-				MainCanvas.fillStyle = '#222';
-				MainCanvas.fillRect(0, 0, 2000, 1000);
-				AppearanceRun();
-				DrawBackNextButton = real;
-				const i = CharacterAppearanceGroups.findIndex((g) => g.Name === 'VoidUniforms');
-				return { labels, last: i === CharacterAppearanceGroups.length - 1, top: 145 + (i - CharacterAppearanceOffset) * 95 };
-			});
-		const opened = await page.evaluate(async () => {
-			for (const [n, g] of [
-				['MilitaryFatigue', 'Cloth'],
-				['MilitaryPants', 'ClothLower'],
-				['CombatBoots', 'Shoes'],
-			])
-				InventoryAdd(Player, n, g, false);
-			CharacterAppearanceSetDefault(Player);
-			const hat = AssetGroupGet('Female3DCG', 'Hat').Asset.find((a) => a.Name !== 'VoidPaladinHelmet' && a.Value >= 0);
-			InventoryWear(Player, hat.Name, 'Hat');
-			InventoryGet(Player, 'Hat').Property = { LockedBy: 'MetalPadlock', LockMemberNumber: 12 };
-			CharacterAppearanceSelection = Player;
-			await AppearanceLoad();
-			CharacterAppearanceMoveGroup(Player, -1);
-			return hat.Name;
-		});
-		const rows = await wardrobeRows();
-		check(
-			'the wardrobe ends with a Void uniforms row: the full Void Paladin outfit first',
-			rows.last && rows.labels[rows.labels.length - 1] === 'Void uniforms: Void Paladin (full outfit)',
-			rows,
-		);
-		await page.evaluate(() => document.querySelectorAll('body > :not(canvas)').forEach((el) => el.classList.add('vo-test-hidden')));
-		await page.addStyleTag({ content: '.vo-test-hidden { visibility: hidden !important; }' });
-		await shot(page, '25-wardrobe-uniforms');
-		const putOn = (top) =>
-			page.evaluate((top) => {
-				MouseX = 1700;
-				MouseY = top + 30;
-				AppearanceClick();
-				const get = (g) => {
-					const i = InventoryGet(Player, g);
-					return i ? [i.Asset.Name, i.Color] : null;
-				};
-				return {
-					header: CharacterAppearanceHeaderText,
-					cloth: get('Cloth'),
-					pants: get('ClothLower'),
-					boots: get('Shoes'),
-					hat: get('Hat'),
-					carrier: get('Necklace'),
-					gloves: get('Gloves'),
-					cloak: get('ClothAccessory'),
-					rig: get('Garters'),
-					others: Player.Appearance.filter(
-						(i) =>
-							i.Asset.Group.Clothing &&
-							!i.Asset.Group.Underwear &&
-							!['Cloth', 'ClothLower', 'Shoes', 'Hat', 'Necklace', 'Gloves', 'ClothAccessory', 'Garters'].includes(i.Asset.Group.Name),
-					).map((i) => i.Asset.Group.Name),
-				};
-			}, top);
-		const worn = await putOn(rows.top);
-		const allColored = (x, c) => !!x && [].concat(x[1]).every((v) => v === c);
-		check(
-			'the full outfit: the fatigues, pants and boots, and the armour, each in the uniform’s colours',
-			worn.cloth[0] === 'MilitaryFatigue' &&
-				allColored(worn.cloth, '#1E1F24') &&
-				worn.pants[0] === 'MilitaryPants' &&
-				allColored(worn.boots, '#18181C') &&
-				JSON.stringify(worn.carrier) === '["VoidPaladinPlateCarrier",["#262833","#17181D","#3FE6FF"]]' &&
-				JSON.stringify(worn.gloves) === '["VoidPaladinGloves",["#262833","#17181D"]]' &&
-				worn.cloak[0] === 'VoidPaladinCloak' &&
-				worn.rig[0] === 'VoidPaladinLegRig' &&
-				!worn.others.length,
-			worn,
-		);
-		check(
-			'the locked hat stays, and the header says why the helmet was left',
-			worn.hat[0] === opened && /Left: Void Paladin helmet \(.* is locked on\)/.test(worn.header),
-			worn,
-		);
-		// Each item on its own: the cloak again after taking it off.
-		await page.evaluate(() => InventoryRemove(Player, 'ClothAccessory'));
-		for (let i = 0; i < 12; i++) {
-			const r = await wardrobeRows();
-			if (/cloak/i.test(r.labels[r.labels.length - 1])) break;
-			await page.evaluate((top) => {
-				MouseX = 1500;
-				MouseY = top + 30;
-				AppearanceClick();
-			}, r.top);
-		}
-		const cloakRow = await wardrobeRows();
-		const cloakOn = await putOn(cloakRow.top);
-		check(
-			'one item of the uniform goes on by itself',
-			/Void Paladin: Void Paladin cloak/.test(cloakRow.labels[cloakRow.labels.length - 1]) &&
-				JSON.stringify(cloakOn.cloak) === '["VoidPaladinCloak",["#3A3C44","#101014","#3A3C44","#101014"]]',
-			{ label: cloakRow.labels[cloakRow.labels.length - 1], cloak: cloakOn.cloak },
-		);
-		// The whole set worn, standing and in two poses.
-		const wearAll = await page.evaluate(() => {
-			InventoryRemove(Player, 'Hat');
-			MouseX = 1700;
-			return true;
-		});
-		await page.evaluate(() => {
-			CharacterAppearanceMoveGroup(Player, 0);
-		});
-		const fullRows = await wardrobeRows();
-		for (let i = 0; i < 12; i++) {
-			const r = await wardrobeRows();
-			if (/full outfit/.test(r.labels[r.labels.length - 1])) break;
-			await page.evaluate((top) => {
-				MouseX = 1500;
-				MouseY = top + 30;
-				AppearanceClick();
-			}, r.top);
-		}
-		const full = await putOn((await wardrobeRows()).top);
-		check('with the hat unlocked, the helmet goes on too', wearAll && fullRows.last && full.hat[0] === 'VoidPaladinHelmet', full);
-		/** Draws Ann in a pose and saves that drawing (taken at once: the game's own loop redraws the screen after). */
-		const posed = async (pose, name) => {
-			const png = await page.evaluate(async (pose) => {
-				PoseSetActive(Player, pose, true);
-				CharacterRefresh(Player, false);
-				const draw = () => {
-					MainCanvas.fillStyle = '#2a2a33';
-					MainCanvas.fillRect(0, 0, 2000, 1000);
-					DrawCharacter(Player, 750, 0, 1);
-				};
-				for (let i = 0; i < 4; i++) {
-					draw();
-					await new Promise((r) => setTimeout(r, 250));
-				}
-				draw();
-				const c = document.createElement('canvas');
-				c.width = 500;
-				c.height = 1000;
-				c.getContext('2d').drawImage(MainCanvas.canvas, 750, 0, 500, 1000, 0, 0, 500, 1000);
-				return c.toDataURL('image/png');
-			}, pose);
-			if (process.env.SHOTS) {
-				fs.mkdirSync(path.join(__dirname, 'shots'), { recursive: true });
-				fs.writeFileSync(path.join(__dirname, 'shots', `${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
-			}
-		};
-		await posed(null, '26-uniform-worn');
-		/** Draws Ann standing and counts, around a spot of the character's picture, the pixels that pass `test`. */
-		const pixelsNear = (x, y, kind) =>
-			page.evaluate(
-				(x, y, kind) => {
-					PoseSetActive(Player, null, true);
-					CharacterRefresh(Player, false);
-					MainCanvas.fillStyle = '#2a2a33';
-					MainCanvas.fillRect(0, 0, 2000, 1000);
-					DrawCharacter(Player, 750, 0, 1);
-					const d = MainCanvas.getImageData(750 + x - 40, y - 40, 80, 80).data;
-					let n = 0;
-					for (let i = 0; i < d.length; i += 4) {
-						const [r, g, b] = [d[i], d[i + 1], d[i + 2]];
-						if (kind === 'cyan' ? g > r + 30 && b > r + 40 : r > g + 60 && r > b + 60) n++;
-					}
-					return n;
-				},
-				x,
-				y,
-				kind,
-			);
-		const goggles = await pixelsNear(251, 148, 'cyan');
-		const strip = await pixelsNear(252, 281, 'cyan');
-		check('the uniform’s glow is cyan: the goggles and the plate carrier’s strip', goggles > 200 && strip > 40, { goggles, strip });
-		await page.evaluate(() => {
-			InventoryGet(Player, 'Hat').Color[2] = '#FF2020';
-			CharacterRefresh(Player, false);
-		});
-		const red = await pixelsNear(251, 148, 'red');
-		check('and the glow can be recoloured, like any other layer', red > 200, red);
-		await page.evaluate(() => {
-			InventoryGet(Player, 'Hat').Color[2] = '#3FE6FF';
-			CharacterRefresh(Player, false);
-		});
-		await posed('Kneel', '27-uniform-kneel');
-		await posed('BackBoxTie', '28-uniform-arms-tied');
-		await page.evaluate(() => document.querySelectorAll('.vo-test-hidden').forEach((el) => el.classList.remove('vo-test-hidden')));
-		await page.evaluate(() => {
-			PoseSetActive(Player, null, true);
-			CharacterAppearanceSetDefault(Player);
-			CharacterRefresh(Player, false);
-		});
-
-		// Power armour: Fay wears the plate carrier and the helmet and may carry 4; out of it, back to 2.
-		for (const id of [1, 2, 3]) await bea.req({ t: 'issue', member: 15, weapon: id });
-		const fayLimit = () => bea.state.members.find((m) => m.n === 15)?.carryLimit;
-		const fayCarries = () => (bea.state.members.find((m) => m.n === 15)?.carried || []).join();
-		await fay.page.bringToFront();
-		await fay.page.evaluate(() => {
-			InventoryWear(Player, 'VoidPaladinPlateCarrier', 'Necklace');
-			InventoryWear(Player, 'VoidPaladinHelmet', 'Hat');
-			CharacterRefresh(Player, false);
-		});
-		for (let i = 0; i < 20 && fayLimit() !== 4; i++) await wait(250);
-		check(
-			'in the power armour Fay may carry 4',
-			fayLimit() === 4,
-			bea.state.members.find((m) => m.n === 15),
-		);
-		await slash(fay.page, '');
-		await click(fay.page, 'Armory');
-		await fay.page.waitForSelector('#weapon-3', { timeout: 10000 }).catch(() => {});
-		for (const id of [1, 2, 3]) {
-			await fay.page.evaluate(
-				(id) => [...document.querySelectorAll(`#weapon-${id} button`)].find((b) => b.textContent === 'Carry')?.click(),
-				id,
-			);
-			await wait(400);
-		}
-		check('and carries 3', fayCarries() === '1,2,3', fayCarries());
-		await fay.page.evaluate(() => {
-			window.local = [];
-			InventoryRemove(Player, 'Hat');
-			CharacterRefresh(Player, false);
-		});
-		for (let i = 0; i < 20 && fayLimit() !== 2; i++) await wait(250);
-		await wait(400);
-		check(
-			'without the helmet she is back to 2: the first she took up is put down, and she is told',
-			fayLimit() === 2 &&
-				fayCarries() === '2,3' &&
-				(await fay.page.evaluate(() => window.local.some((l) => /you put down Old sawed-off shotgun/.test(l)))),
-			{ limit: fayLimit(), carries: fayCarries(), local: await fay.page.evaluate(() => window.local) },
-		);
-		await fay.page.evaluate(() => {
-			InventoryRemove(Player, 'Necklace');
-			CharacterRefresh(Player, false);
-			document.getElementById('void-panel')?.remove();
-		});
+		check('the Void Paladin outfit is gone', !outfitLeft.pieces.length && !outfitLeft.uniformRow, outfitLeft);
+		const fayRecord = bea.state.members.find((m) => m.n === 15);
+		check('Fay carries 2, with no power armour', !!fayRecord && !fayRecord.armor && fayRecord.carryLimit === 2, fayRecord);
+		await fay.page.evaluate(() => document.getElementById('void-panel')?.remove());
 		check('no page errors', errors.length === 0 && fay.errors.length === 0 && second.errors.length === 0, [
 			...errors,
 			...fay.errors,
