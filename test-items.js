@@ -803,6 +803,23 @@ const playAround = (page) =>
 		});
 		check('a player without the add-on can’t take your weapon off by accident', kept[0] === false && kept[1], kept);
 		check('a player with the add-on can', kept[2] === true, kept);
+		// A held weapon must not count as changed on every load (R134 compared the options' colour lists with ===, so
+		// the outfit was resent until the server cut the player off).
+		const steady = await page.evaluate(() => {
+			const C = CharacterLoadNPC('NPC_Steady');
+			CharacterAppearanceSetDefault(C);
+			InventoryWear(C, 'VoidRifles', 'ItemHandheld');
+			const item = InventoryGet(C, 'ItemHandheld');
+			ExtendedItemSetOptionByRecord(C, item, { ...(item.Property.TypeRecord || {}), w: 1 }, { push: false, refresh: false });
+			const inits = [1, 2, 3].map(() => ExtendedItemInit(C, item, false, false));
+			// The server's echo of your own outfit, holding that weapon: the game must find nothing to correct.
+			const saved = ServerAppearanceBundle(Player.Appearance);
+			const mine = [...saved.filter((x) => x.Group !== 'ItemHandheld'), ...ServerAppearanceBundle(C.Appearance).filter((x) => x.Group === 'ItemHandheld')];
+			const valid = ServerAppearanceLoadFromBundle(Player, 'Female3DCG', mine, Player.MemberNumber);
+			ServerAppearanceLoadFromBundle(Player, 'Female3DCG', saved, Player.MemberNumber);
+			return { inits, valid };
+		});
+		check('a held weapon doesn’t count as changed on every load (no resend loop)', steady.inits.every((x) => !x) && steady.valid !== false, steady);
 		check('no errors with the items', !errors.length, errors);
 		await page.close();
 	}

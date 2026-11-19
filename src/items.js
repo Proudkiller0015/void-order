@@ -197,11 +197,34 @@
 		}
 
 		/**
+		 * R134 compares an item's DefaultColor lists with === (its DefaultColor property has no comparison of its own), which
+		 * is never true for two lists. Every weapon option sets one, so a held weapon counted as changed on every load: the
+		 * game resent the outfit until the server cut the player off (ErrorRateLimited) and kneeling or removing items was lost.
+		 * The lists are compared colour by colour instead. Left alone when the game (or ER) already compares them properly.
+		 */
+		function fixColourCompare() {
+			const data = w.PropertyData;
+			const entry = data && data.DefaultColor;
+			if (!entry || typeof entry.isSubset !== 'function' || entry.isSubset(['#123456', 'Default'], ['#123456', 'Default'], {}) === true) {
+				return;
+			}
+			const same = (/** @type {unknown} */ a, /** @type {unknown} */ b) =>
+				a === b || (Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => v === b[i]));
+			entry._compare = same;
+			entry._isSubset = same;
+		}
+
+		/**
 		 * Adds the items to the game's hand-held group, with their pictures and texts. An item the game already has is
 		 * left alone. If the game refuses one, the items stop there and the ones added are kept.
 		 * @param {any} data assets/items/items.json
 		 */
 		function register(data) {
+			try {
+				fixColourCompare();
+			} catch (e) {
+				guard.problem('Weapon colours', e);
+			}
 			const group = w.AssetGroupGet('Female3DCG', data.group);
 			const groupDef = w.AssetFemale3DCG.find((/** @type {any} */ g) => g && g.Group === data.group);
 			if (!group || !groupDef || !Array.isArray(group.Asset) || !Array.isArray(data.items) || !Array.isArray(data.images)) {
