@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Oculus Nihili
 // @namespace    https://github.com/Proudkiller0015/void-order
-// @version      1.0.0
+// @version      1.0.1
 // @description  Oculus Nihili, the Eye of the Void: the Void Order's add-on for Bondage Club. Orders and photo sessions, the members by branch, ID cards and Void dice. /void opens it. Always runs the newest version.
 // @author       SlimeQueenSamantha
 // @homepageURL  https://github.com/Proudkiller0015/void-order
@@ -14,6 +14,9 @@
 // @match        https://www.bondage-europe.com/*
 // @match        https://bondage-europe.com/*
 // @match        https://www.bondage-asia.com/*
+// @match        https://bondage-asia.com/*
+// @match        https://www.bondageeurope.com/*
+// @match        https://bondageeurope.com/*
 // @run-at       document-end
 // @grant        none
 // ==/UserScript==
