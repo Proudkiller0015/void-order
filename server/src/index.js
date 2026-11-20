@@ -135,7 +135,8 @@ const ORIGINS = [
  *   elements: string[] }} Branch
  * @typedef {{ b: string, t: number, c: string }} Place a branch, the rank in it (1-5) and the chapter ('' for none).
  * @typedef {{ n: number, name: string, pub: { x: string, y: string } | null, joined: number, bio: string,
- *   form: string, el: string, places: Place[], mon: boolean, roomFor?: string, reset?: { code: string, exp: number } }} Member
+ *   form: string, el: string, places: Place[], mon: boolean, rank?: number, roomFor?: string,
+ *   reset?: { code: string, exp: number } }} Member `rank`: their Order rank (an index into STRUCTURE.ranks).
  *   `places`: the first is their main branch. `mon`: a Monsignor. `pub` is null until a member brought in joins.
  *   `roomFor`: who sees the public room they are in (ROOM_FOR; everyone when unset). `medals`: their commendations
  *   (see Medal), oldest first.
@@ -154,6 +155,22 @@ const ORDER_NAME = 'Holy Order of Void';
 const QUEENS_WRATH = 100;
 const STRUCTURE = {
 	motto: 'Praise the Void! 𓁹‿𓁹',
+	/**
+	 * The Order's ranks, from Neophyte (every member's first) up; the Founder stands above them all. Set by the Founder
+	 * and admins. A member's `rank` is an index into this list (0 when unset).
+	 */
+	ranks: [
+		'Neophyte',
+		'Elder Neophyte',
+		'Follower',
+		'Elder Follower',
+		'Acolyte',
+		'Elder Acolyte',
+		'Zealot',
+		'Elder Zealot',
+		'Elder',
+		'One of the First Ones',
+	],
 	founder: { name: 'Founder', sym: '𓁹‿𓁹', color: '#ffe3a3' },
 	monsignor: {
 		name: 'Monsignor',
@@ -692,6 +709,7 @@ export class Order extends DurableObject {
 			carryLimit: this.carryLimit(m.n),
 			badge: badgeOf(m),
 			...(m.mon ? { mon: 1 } : {}),
+			...(m.rank ? { rank: m.rank } : {}),
 			...(m.armor ? { armor: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
@@ -927,6 +945,8 @@ export class Order extends DurableObject {
 					return await this.unplace(ws, me, p);
 				case 'monsignor':
 					return await this.setMonsignor(ws, me, p);
+				case 'rank':
+					return await this.setRank(ws, me, p);
 				case 'admin':
 					return await this.setAdmin(ws, me, p);
 				case 'kick':
@@ -1211,6 +1231,31 @@ export class Order extends DurableObject {
 		this.broadcast();
 		this.pushAllOrders();
 	}
+	/** Gives a member one of the Order's ranks: { member, rank } (an index into STRUCTURE.ranks). The Founder and admins only. */
+	async setRank(ws, me, p) {
+		const m = this.target(ws, p);
+		if (!m) {
+			return;
+		}
+		const r = p.rank;
+		if (!Number.isInteger(r) || r < 0 || r >= STRUCTURE.ranks.length) {
+			return this.no(ws, 'no such rank', p);
+		}
+		if (!this.topOver(me, m.n)) {
+			return this.no(ws, 'not allowed', p);
+		}
+		if ((m.rank || 0) !== r) {
+			if (r) {
+				m.rank = r;
+			} else {
+				delete m.rank;
+			}
+			await this.putMember(m.n);
+			await this.note(me, `${this.nameOf(me)} made ${this.nameOf(m.n)} ${STRUCTURE.ranks[r]}`);
+		}
+		this.ok(ws, p);
+		this.broadcast();
+	}
 	/** Names an app admin, or takes it back: { member, on }. The Founder and the app admin only. */
 	async setAdmin(ws, me, p) {
 		const m = this.target(ws, p);
@@ -1432,6 +1477,7 @@ export class Order extends DurableObject {
 				el: m.el,
 				places: m.places,
 				mon: m.mon,
+				rank: m.rank || 0,
 				founder: this.isFounder(m.n),
 				keeper: m.n === this.appAdmin,
 				bio: m.bio,

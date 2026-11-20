@@ -11,7 +11,7 @@
 	if (w.VoidOrder) {
 		return;
 	}
-	const VERSION = '2.0.0-beta.2.22';
+	const VERSION = '2.0.0-beta.2.23';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
 	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
 	/** Where the add-on's pictures are (a test page sets VoidOrderAssets). */
@@ -473,6 +473,9 @@
 		if (m.mon) {
 			lines.push({ text: s.monsignor.name, sym: s.monsignor.sym, color: s.monsignor.color });
 		}
+		if (showsRank(m, founder)) {
+			lines.push({ text: orderRank(m), cls: 'rank' });
+		}
 		const title = hybridTitle(m);
 		if (title) {
 			lines.push({ text: title, cls: 'hybrid' });
@@ -487,11 +490,15 @@
 				lines.push({ text: chapterName(p), cls: 'chapter' });
 			}
 		}
-		if (!founder && !m.mon && !m.places.length) {
-			lines.push({ text: NEOPHYTE });
-		}
 		return lines;
 	}
+	/** A member's Order rank ("Zealot"): every member starts a Neophyte. */
+	function orderRank(/** @type {any} */ m) {
+		const ranks = structure().ranks;
+		return (Array.isArray(ranks) && ranks[m.rank || 0]) || NEOPHYTE;
+	}
+	/** Whether an ID shows the Order rank: everyone's but the Founder's, and the Keeper's only once she has one. */
+	const showsRank = (/** @type {any} */ m, /** @type {boolean} */ founder) => !founder && (!isKeeper(m) || !!m.rank);
 
 	/** A member's place in a few words: "Founder · Monsignor", "Warmage", "Paladin - Knight", "Neophyte". */
 	function placeSummary(/** @type {any} */ m) {
@@ -507,7 +514,7 @@
 		}
 		const title = hybridTitle(m);
 		parts.push(...(title ? [title] : m.places.map((/** @type {any} */ p) => placeText(p, m))));
-		return parts.join(' · ') || NEOPHYTE;
+		return parts.join(' · ') || orderRank(m);
 	}
 
 	// ---- Who stands where (the server decides; this only shows what you may do)
@@ -708,6 +715,7 @@
 		#void-card .ln.motto { font: italic 600 14px Georgia, serif; color: #e9dcff; letter-spacing: 1px; text-shadow: 0 0 12px #b48cff99; }
 		#void-card .ln.hybrid { font: 600 18px Georgia, serif; color: #fff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 14px #b48cffaa; }
 		#void-card .ln.chapter { font: italic 14px Georgia, serif; color: #d9c8ff; }
+		#void-card .ln.rank { font: 600 15px Georgia, serif; color: #e9dcff; letter-spacing: 1px; }
 		#void-panel a, #void-card a { color: var(--v-accent); text-decoration: underline; word-break: break-all; }
 		#void-card .pic.zoomable { cursor: zoom-in; }
 		#void-zoom { position: absolute; inset: 0; z-index: 2; border-radius: 18px; cursor: zoom-out; background: #05020af2 center/contain no-repeat; }
@@ -765,6 +773,7 @@
 		#void-panel .idprev .ln .sym { font-size: 12px; opacity: .85; margin: 0 6px; }
 		#void-panel .idprev .ln.motto { font: italic 600 13px Georgia, serif; color: #e9dcff; }
 		#void-panel .idprev .ln.hybrid { font-size: 16px; letter-spacing: 2px; text-transform: uppercase; color: #fff; }
+		#void-panel .idprev .ln.rank { color: #e9dcff; letter-spacing: 1px; }
 		#void-panel .idprev .ln.chapter { font: italic 13px Georgia, serif; color: #d9c8ff; }
 		#void-panel .sec { margin: 14px 0 0; padding-top: 2px; }
 		#void-panel .sec.danger { margin-top: 22px; padding: 10px 12px; border: 1px solid #ff7a9055; border-radius: 12px; background: #ff7a900a; }
@@ -4269,7 +4278,9 @@
 				}
 			}
 		}
-		if (!m.places.length && !m.mon && m.n !== founderN() && !isKeeper(m)) {
+		if (m.rank) {
+			pill(orderRank(m), NEOPHYTE_COLOR, 'soft');
+		} else if (!m.places.length && !m.mon && m.n !== founderN() && !isKeeper(m)) {
 			pill(NEOPHYTE, NEOPHYTE_COLOR);
 		}
 		if (m.admin) {
@@ -4353,7 +4364,7 @@
 	let adminView = 'manage';
 	/** The member whose sheet is open in Manage (0: the list). */
 	let sheetFor = 0;
-	/** @typedef {{ places: { b: string, t: number, c: string }[], mon: boolean }} Place what the sheet saves */
+	/** @typedef {{ places: { b: string, t: number, c: string }[], mon: boolean, rank: number }} Place what the sheet saves */
 	/** @type {(Place & { n: number }) | null} Changes to the open sheet's place, not saved yet. */
 	let sheetDraft = null;
 	/** @type {{ n: number, undo: Record<string, any>[], until: number } | null} The last save, undone for a few seconds. */
@@ -4363,7 +4374,10 @@
 	const sheetCards = new Map();
 	/** The member whose sheet shows the weapon picker. */
 	let issuing = 0;
-	/** The requests that take a member from one place to another: out of branches first, then into ranks, then Monsignor. */
+	/**
+	 * The requests that take a member from one place to another: out of branches first, then into ranks, then Monsignor,
+	 * then their Order rank.
+	 */
 	function placeSteps(/** @type {number} */ n, /** @type {Place} */ from, /** @type {Place} */ to) {
 		/** @type {Record<string, any>[]} */
 		const steps = [];
@@ -4382,6 +4396,9 @@
 		if (from.mon !== to.mon) {
 			steps.push({ t: 'monsignor', member: n, on: to.mon });
 		}
+		if (from.rank !== to.rank) {
+			steps.push({ t: 'rank', member: n, rank: to.rank });
+		}
 		return steps;
 	}
 	/** Runs requests in turn; stops at the first refused (its reason shows). Whether all went through. */
@@ -4396,6 +4413,7 @@
 	const placeOf = (/** @type {any} */ m) => ({
 		places: m.places.map((/** @type {any} */ p) => ({ b: p.b, t: p.t, c: p.c || '' })),
 		mon: !!m.mon,
+		rank: m.rank || 0,
 	});
 	/** Saves the sheet's changes to member m; for a few seconds they can be undone. */
 	async function saveSheet(/** @type {any} */ m) {
@@ -4403,7 +4421,7 @@
 			return;
 		}
 		const before = placeOf(m);
-		const after = { places: sheetDraft.places, mon: sheetDraft.mon };
+		const after = { places: sheetDraft.places, mon: sheetDraft.mon, rank: sheetDraft.rank };
 		const ok = await runSteps(placeSteps(m.n, before, after));
 		if (!ok) {
 			return;
@@ -4456,7 +4474,7 @@
 		who.append(make('div', 'nm', m.name), make('div', 'dim', `#${m.n}${m.n === me.n ? ' · you' : ''}`));
 		head.append(who);
 		body.append(head);
-		const preview = { ...m, places: d.places, mon: d.mon ? 1 : 0 };
+		const preview = { ...m, places: d.places, mon: d.mon ? 1 : 0, rank: d.rank };
 		const idCard = idBlock(idLines(preview, m.n === founderN()), 'idprev');
 		if (sheetDraft) {
 			idCard.prepend(make('div', 'dim', 'Their ID card, once saved'));
@@ -4520,6 +4538,18 @@
 				make('span', 'dim', `Rank names in the ${{ f: 'feminine', m: 'masculine' }[m.form] || 'neutral'} form (their own choice).`),
 			);
 			sec.append(roles);
+			const ranks = structure().ranks;
+			if (mayMon && Array.isArray(ranks) && m.n !== founderN()) {
+				const wrap = make('div', 'chips');
+				wrap.append(make('span', 'dim', 'Order rank:'));
+				ranks.forEach((/** @type {string} */ name, /** @type {number} */ i) => {
+					const ch = make('button', `chip${i === d.rank ? ' on' : ''}`, name);
+					ch.dataset.rank = String(i);
+					ch.addEventListener('click', () => edit((x) => (x.rank = i)));
+					wrap.append(ch);
+				});
+				sec.append(wrap);
+			}
 			if (sheetDraft) {
 				const row = make('div', 'row save');
 				row.append(

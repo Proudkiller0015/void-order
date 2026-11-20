@@ -438,6 +438,21 @@ const openCardOf = async (page, name) => {
 		await click(page, 'Save');
 		await wait(500);
 		check('Ann makes herself a Monsignor', bea.state.members.find((m) => m.n === 11)?.mon === 1);
+		// The Order's ranks (Neophyte up to One of the First Ones): the Founder and admins give them, from the sheet.
+		await openSheet(page, 'Cat');
+		await tap(page, '.chip[data-rank="6"]');
+		await shot(page, '04b-sheet-order-rank');
+		await click(page, 'Save');
+		await wait(500);
+		check(
+			'Ann makes Cat a Zealot from her sheet',
+			bea.state.members.find((m) => m.n === 13)?.rank === 6,
+			bea.state.members.find((m) => m.n === 13),
+		);
+		const beaRank = await bea.req({ t: 'rank', member: 14, rank: 3 });
+		check('a branch leader may not give Order ranks', beaRank.t === 'error' && !bea.state.members.find((m) => m.n === 14)?.rank, beaRank);
+		const badRank = await bea.req({ t: 'rank', member: 12, rank: 99 });
+		check('a rank past the list is refused', badRank.t === 'error', badRank);
 
 		// Fay joins from the game: at once, from the join button.
 		const fay = await gamePage(browser, { me: [15, 'Fay'], other: [11, 'Ann'], slimebeep: true });
@@ -478,8 +493,8 @@ const openCardOf = async (page, name) => {
 		await openCardOf(page, 'Dan');
 		const dCard = await cardText(page);
 		check(
-			'an ID card: the motto, (Branch) - (Rank), the chapter',
-			dCard === 'Praise the Void! 𓁹‿𓁹\n☨✙☨Priest - High Priestess☨✙☨\nVox Nihil',
+			'an ID card: the motto, the Order rank, (Branch) - (Rank), the chapter',
+			dCard === 'Praise the Void! 𓁹‿𓁹\nNeophyte\n☨✙☨Priest - High Priestess☨✙☨\nVox Nihil',
 			dCard,
 		);
 		await shot(page, '04-card');
@@ -487,7 +502,7 @@ const openCardOf = async (page, name) => {
 		const cCard = await cardText(page);
 		check(
 			"a hybrid's card: the title, then each branch with rank and chapter",
-			cCard === 'Praise the Void! 𓁹‿𓁹\nWarmage\n✦⸸✦Paladin - Knight, Salvatoris✦⸸✦\n☿⸸☿Mage - Spellblade, Conjurers☿⸸☿',
+			cCard === 'Praise the Void! 𓁹‿𓁹\nZealot\nWarmage\n✦⸸✦Paladin - Knight, Salvatoris✦⸸✦\n☿⸸☿Mage - Spellblade, Conjurers☿⸸☿',
 			cCard,
 		);
 		check(
