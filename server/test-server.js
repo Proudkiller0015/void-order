@@ -753,6 +753,11 @@ async function joined(member, name) {
 	const badPlace = (await botPost(botBody({ t: 'places', member: 13, places: [{ b: 'maid', t: 1, c: 'nope' }] }))).data;
 	check(badPlace && badPlace.error === 'no such chapter', 'and follows the same rules as the game', badPlace);
 	check((await botPost(botBody({ t: 'places', member: 13, places: [{ b: 'paladin', t: 1 }, { b: 'mage', t: 1 }, { b: 'maid', t: 1 }] }))).data.error === 'a member holds at most 2 branches', 'at most two branches');
+	const fresh = (await botPost(botBody({ t: 'founder', member: 77, name: 'Nomad', by: 'Sam' }))).data;
+	check(fresh && fresh.ok && fresh.founder === 77 && fresh.name === 'Nomad', 'the bot makes someone who never used the add-on the Founder, bringing them in', fresh);
+	const shown = (await botPost(botBody({ t: 'members' }))).data;
+	check(shown.founder === 77 && shown.members.some((m) => m.n === 77 && m.name === 'Nomad'), 'they are in the Order, as the Founder');
+	check((await botPost(botBody({ t: 'founder', member: 18, by: 'Sam' }))).data.founder === 18, 'and the Founder can be handed back (to Mag)');
 	const viewer = await connect(ann);
 	const rankBody = botBody({ t: 'rank', member: 13, rank: 7, by: 'Mag' });
 	const ranked = await botPost(rankBody);

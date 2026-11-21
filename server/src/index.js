@@ -733,7 +733,8 @@ export class Order extends DurableObject {
 			...(rankFromDiscord(this, m.n) ? { discord: 1 } : {}),
 			...(m.armor ? { armor: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
-			...(m.pub ? {} : { invited: 1 }),
+			// The Founder can be in the Order without the add-on (Mag: shown, never signs in): never shown as invited.
+			...(m.pub || this.isFounder(m.n) ? {} : { invited: 1 }),
 			...(m.n in on ? { on: 1, room: seesRoom ? on[m.n] : '' } : {}),
 		};
 	}
@@ -1213,6 +1214,44 @@ export class Order extends DurableObject {
 		this.ok(ws, p);
 		this.broadcast();
 		this.pushAllOrders();
+	}
+	/**
+	 * The Discord bot, on the app admin's word: makes member n the Founder, bringing them in under `name` first if they
+	 * aren't in the Order. Unlike setFounder they need not have joined: the Founder may never use the add-on and is still
+	 * shown as Founder. Returns { ok, founder, name } or { error }.
+	 */
+	async botFounder(n, name, by) {
+		if (!this.meta) {
+			return { error: 'the Order is not founded yet' };
+		}
+		if (!isNum(n)) {
+			return { error: 'no such member' };
+		}
+		if (n === this.appAdmin) {
+			return { error: "the app admin's number can't be the Founder" };
+		}
+		let m = this.members[n];
+		if (!m) {
+			const nm = clean(name, LIMITS.name);
+			if (!nm) {
+				return { error: 'a name is needed to bring them in' };
+			}
+			if (Object.keys(this.members).length >= LIMITS.members) {
+				return { error: 'the Order is full' };
+			}
+			m = this.members[n] = this.newMember(n, nm, null);
+			await this.putMember(n);
+			await this.note(0, `${this.nameOf(n)} brought in (${String(by || 'Discord').slice(0, 60)}, on Discord)`);
+		}
+		if (this.meta.founder !== n) {
+			this.meta.founder = n;
+			this.meta.admins = this.meta.admins.filter((x) => x !== n);
+			await this.ctx.storage.put('meta', this.meta);
+			await this.note(0, `${this.nameOf(n)} is now the Founder (${String(by || 'Discord').slice(0, 60)}, on Discord)`);
+			this.broadcast();
+			this.pushAllOrders();
+		}
+		return { ok: true, founder: n, name: m.name };
 	}
 	/** The branches for the Discord bot's pickers: ids, names, rank names (neutral form), chapters, and from which rank chapters open. */
 	botStructure() {

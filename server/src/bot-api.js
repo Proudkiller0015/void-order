@@ -9,6 +9,8 @@
  *   rank          { member, rank, by }: gives a member one of the Order's ranks (the bot decides who may)
  *   places        { member, places: [{ b, t, c }], by }: sets every branch the member holds (main first, at most two;
  *                 [] = none), with the same rules as placing them in Oculus Nihili
+ *   founder       { member, name, by }: makes them the Founder, bringing them in under `name` if needed (they need
+ *                 not use the add-on)
  *   links         { members: [n] }: the members linked to a Discord account; their rank comes from Discord
  *                 (Oculus Nihili shows it, and the Founder and admins don't set it there)
  */
@@ -92,6 +94,8 @@ export async function botCall(order, body) {
 			}
 			return { ok: true, rank: r };
 		}
+		case 'founder':
+			return await order.botFounder(p.member, p.name, typeof p.by === 'string' ? p.by : 'Discord');
 		case 'places':
 			return await order.botPlaces(p.member, p.places, typeof p.by === 'string' ? p.by : 'Discord');
 		case 'links': {
