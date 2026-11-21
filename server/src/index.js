@@ -36,6 +36,7 @@ import { ORDER_SHEET_CSV, parseOrderSheet } from './order-sheet.js';
 import { addReport, clearReports, listReports } from './reports.js';
 import { badgeOf, setBadge } from './badges.js';
 import { endLendTo, lend, lentTo, loadLend, recall } from './lend.js';
+import { botCall, botKey, loadBotLinks, rankFromDiscord } from './bot-api.js';
 import WEAPONS from '../../assets/weapons/index.json';
 
 const LIMITS = {
@@ -369,6 +370,15 @@ export default {
 			}
 			return order.opReset(p.member);
 		}
+		// The Order's Discord bot (see bot-api.js): signed with its own key.
+		if (url.pathname === '/bot' && req.method === 'POST') {
+			const key = botKey(env);
+			const body = await req.text();
+			if (!key || body.length > 20000 || !(await verify(key, req.headers.get('X-Void-Bot-Sig') || '', body))) {
+				return new Response('Not found', { status: 404 });
+			}
+			return Response.json(await order.botCall(body));
+		}
 		if (url.pathname !== '/ws') {
 			return new Response('Not found', { status: 404 });
 		}
@@ -414,7 +424,17 @@ export class Order extends DurableObject {
 			/** @type {{ list: any[], at: number }} The Order's bounties, from its sheet. */
 			this.sheet = (await ctx.storage.get('sheet')) || { list: [], at: 0 };
 			await loadLend(this);
+			await loadBotLinks(this);
 		});
+	}
+
+	/** The Order's ranks (STRUCTURE.ranks), for the Discord bot. */
+	get ranks() {
+		return STRUCTURE.ranks;
+	}
+	/** A request from the Discord bot, its signature checked by the Worker (see bot-api.js). */
+	async botCall(body) {
+		return await botCall(this, body);
 	}
 
 	/** The app admin's member number: founds the Order and always has every power. */
@@ -710,6 +730,7 @@ export class Order extends DurableObject {
 			badge: badgeOf(m),
 			...(m.mon ? { mon: 1 } : {}),
 			...(m.rank ? { rank: m.rank } : {}),
+			...(rankFromDiscord(this, m.n) ? { discord: 1 } : {}),
 			...(m.armor ? { armor: 1 } : {}),
 			...(this.isAdmin(m.n) ? { admin: 1 } : {}),
 			...(m.pub ? {} : { invited: 1 }),
@@ -1243,6 +1264,9 @@ export class Order extends DurableObject {
 		}
 		if (!this.topOver(me, m.n)) {
 			return this.no(ws, 'not allowed', p);
+		}
+		if (rankFromDiscord(this, m.n)) {
+			return this.no(ws, 'their rank comes from their rank role on Discord', p);
 		}
 		if ((m.rank || 0) !== r) {
 			if (r) {

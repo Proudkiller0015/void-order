@@ -4,7 +4,7 @@
 	"description": "The Void Order add-on's server: members, their places in the Order, orders and dice rolls, in one Durable Object.",
 	"scripts": {
 		"dev": "wrangler dev --port 8788",
-		"dev:test": "wrangler dev --port 8788 --var ALLOW_ANY_ORIGIN:1 --var ADMIN:11 --var FOUND_CODE:test-founding-code --var SLIMEBEEP_RELAY:http://127.0.0.1:8799 --var SLIMEBEEP_LINK_KEY:test-link-key --var HUNT_BOARD_URL:http://127.0.0.1:8799/hunt-board --var HUNT_EVERY:4000 --var HUNT_GAP:300 --var BOUNTY_BOARD_URL:http://127.0.0.1:8799/bounty-board --var ORDER_SHEET_URL:http://127.0.0.1:8799/order-sheet.csv",
+		"dev:test": "wrangler dev --port 8788 --var ALLOW_ANY_ORIGIN:1 --var ADMIN:11 --var FOUND_CODE:test-founding-code --var SLIMEBEEP_RELAY:http://127.0.0.1:8799 --var SLIMEBEEP_LINK_KEY:test-link-key --var HUNT_BOARD_URL:http://127.0.0.1:8799/hunt-board --var HUNT_EVERY:4000 --var HUNT_GAP:300 --var BOUNTY_BOARD_URL:http://127.0.0.1:8799/bounty-board --var ORDER_SHEET_URL:http://127.0.0.1:8799/order-sheet.csv --var VOID_BOT_KEY:xQrjNdCbD13bmMEpNnF0F83tUX-yeeVyBmwcD9ikCjc.seLoWxivyQh_NKQ6zkpgK6IXyzs-gC3NN4FYigOATDU",
 		"deploy": "wrangler deploy",
 		"test": "node test-server.js",
 		"test:hunt-board": "node test-hunt-board.js"

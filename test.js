@@ -453,6 +453,38 @@ const openCardOf = async (page, name) => {
 		check('a branch leader may not give Order ranks', beaRank.t === 'error' && !bea.state.members.find((m) => m.n === 14)?.rank, beaRank);
 		const badRank = await bea.req({ t: 'rank', member: 12, rank: 99 });
 		check('a rank past the list is refused', badRank.t === 'error', badRank);
+		// Linked on Discord (the Order's bot, signed with dev:test's test key), Cat's rank comes from her rank role there.
+		const botSend = async (x) => {
+			const { webcrypto } = require('crypto');
+			const key = await webcrypto.subtle.importKey(
+				'jwk',
+				{
+					kty: 'EC',
+					crv: 'P-256',
+					x: 'xQrjNdCbD13bmMEpNnF0F83tUX-yeeVyBmwcD9ikCjc',
+					y: 'seLoWxivyQh_NKQ6zkpgK6IXyzs-gC3NN4FYigOATDU',
+					d: 'EKNmMH8Nyv4dfi3BF8mZiW3OUc504AWBEU10WsCDm3k',
+				},
+				{ name: 'ECDSA', namedCurve: 'P-256' },
+				false,
+				['sign'],
+			);
+			const body = JSON.stringify({ ...x, ts: Date.now(), id: String(Math.random()) });
+			const sig = Buffer.from(await webcrypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, Buffer.from(body))).toString('base64url');
+			return (await fetch(`${SERVER.replace(/^ws/, 'http')}/bot?o=${ORDER}`, { method: 'POST', body, headers: { 'X-Void-Bot-Sig': sig } })).json();
+		};
+		await botSend({ t: 'links', members: [13] });
+		await wait(500);
+		await openSheet(page, 'Cat');
+		const linkedSheet = await panelText(page);
+		check(
+			"a member linked on Discord: her sheet says her rank comes from Discord, with no rank buttons",
+			/Order rank: Zealot, from their rank role on the Order's Discord\./.test(linkedSheet) && !(await page.$('.chip[data-rank]')),
+			linkedSheet.slice(0, 600),
+		);
+		await shot(page, '04c-sheet-rank-from-discord');
+		await botSend({ t: 'links', members: [] });
+		await wait(500);
 
 		// Fay joins from the game: at once, from the join button.
 		const fay = await gamePage(browser, { me: [15, 'Fay'], other: [11, 'Ann'], slimebeep: true });
@@ -481,8 +513,8 @@ const openCardOf = async (page, name) => {
 		await wait(200);
 		const list = await panelText(page);
 		check(
-			'the member list: the Founder, Monsignor, then each branch by rank',
-			/𓁹‿𓁹 Keeper of the Eye 𓁹‿𓁹\s+Ann #11[\s\S]*Founder: not yet handed over[\s\S]*🎇 Monsignor 🎇 · 1[\s\S]*Ann #11[\s\S]*☨✙☨ Priest ☨✙☨ · 1[\s\S]*Leaders of spiritual[\s\S]*HIGH PRIEST \/ HIGH PRIESTESS\s+Dan #14 · High Priestess · Vox Nihil[\s\S]*✦⸸✦ Paladin ✦⸸✦ · 4[\s\S]*CHAMPION\s+Bea #12 · Champion[\s\S]*CRUSADER[\s\S]*Fay #15 · Crusader[\s\S]*Gus #16 · Crusader[\s\S]*KNIGHT\s+Cat #13 · Knight · Salvatoris\s+Warmage[\s\S]*☿⸸☿ Mage ☿⸸☿ · 1[\s\S]*…MANCER\s+Cat #13 · Spellblade · Conjurers/.test(
+			'the member list: the Founder, Monsignor, then each branch by rank; the Keeper (a Monsignor) shows only as Monsignor',
+			/^(?![\s\S]*Keeper of the Eye)[\s\S]*Founder: not yet handed over[\s\S]*🎇 Monsignor 🎇 · 1[\s\S]*Ann #11[\s\S]*☨✙☨ Priest ☨✙☨ · 1[\s\S]*Leaders of spiritual[\s\S]*HIGH PRIEST \/ HIGH PRIESTESS\s+Dan #14 · High Priestess · Vox Nihil[\s\S]*✦⸸✦ Paladin ✦⸸✦ · 4[\s\S]*CHAMPION\s+Bea #12 · Champion[\s\S]*CRUSADER[\s\S]*Fay #15 · Crusader[\s\S]*Gus #16 · Crusader[\s\S]*KNIGHT\s+Cat #13 · Knight · Salvatoris\s+Warmage[\s\S]*☿⸸☿ Mage ☿⸸☿ · 1[\s\S]*…MANCER\s+Cat #13 · Spellblade · Conjurers/.test(
 				list,
 			),
 			list,
@@ -515,8 +547,8 @@ const openCardOf = async (page, name) => {
 		await page.evaluate(() => document.getElementById('void-card').remove());
 		await openCardOf(page, 'Ann');
 		check(
-			"the app admin's card: Keeper of the Eye (while she holds the Founder's place) and Monsignor",
-			/^Praise the Void! 𓁹‿𓁹\n.*Keeper of the Eye.*\n.*Monsignor/.test(await cardText(page)) && !/Founder/.test(await cardText(page)),
+			"the app admin's card: only Monsignor (the Keeper of the Eye stays hidden behind it, and never shows as Founder)",
+			/^Praise the Void! 𓁹‿𓁹\n.*Monsignor/.test(await cardText(page)) && !/Keeper|Founder/.test(await cardText(page)),
 			await cardText(page),
 		);
 		await page.evaluate(() => document.getElementById('void-card').remove());

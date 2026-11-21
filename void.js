@@ -11,7 +11,7 @@
 	if (w.VoidOrder) {
 		return;
 	}
-	const VERSION = '2.0.0-beta.2.23';
+	const VERSION = '2.0.0-beta.2.24';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
 	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
 	/** Where the add-on's pictures are (a test page sets VoidOrderAssets). */
@@ -466,7 +466,9 @@
 			lines.push({ text: s.motto, cls: 'motto' });
 		}
 		if (isKeeper(m)) {
-			lines.push({ text: KEEPER.name, sym: KEEPER.sym, color: KEEPER.color });
+			if (showsKeeper(m)) {
+				lines.push({ text: KEEPER.name, sym: KEEPER.sym, color: KEEPER.color });
+			}
 		} else if (founder) {
 			lines.push({ text: s.founder.name, sym: s.founder.sym, color: s.founder.color });
 		}
@@ -505,7 +507,9 @@
 		const s = structure();
 		const parts = [];
 		if (isKeeper(m)) {
-			parts.push(KEEPER.name);
+			if (showsKeeper(m)) {
+				parts.push(KEEPER.name);
+			}
 		} else if (m.n === founderN()) {
 			parts.push(s.founder.name);
 		}
@@ -522,6 +526,12 @@
 	const founderN = () => (state && state.meta ? state.meta.founder : 0);
 	/** Whether a member (or their ID card) is the Keeper of the Eye, the app admin. */
 	const isKeeper = (/** @type {any} */ m) => !!m && (!!m.keeper || (!!state && !!state.appAdmin && m.n === state.appAdmin));
+	/**
+	 * Whether the Keeper of the Eye title shows for m. The Keeper stays hidden behind Monsignor (the owner, 20 Nov: "i
+	 * wanna only appear as monsignor the keeper of the eye is staying hidden"); it shows only for a Keeper with no other
+	 * place, who would otherwise show as nothing. Never shown as the Founder either way.
+	 */
+	const showsKeeper = (/** @type {any} */ m) => isKeeper(m) && !m.mon;
 	const memberOf = (/** @type {number} */ n) => (state && state.members ? state.members.find((/** @type {any} */ m) => m.n === n) : null);
 	/** The Founder or an admin: every power, everywhere. */
 	const isTop = (/** @type {any} */ m) => m.n === founderN() || !!m.admin;
@@ -1553,7 +1563,7 @@
 	function markOf(/** @type {any} */ m) {
 		const s = structure();
 		const b = m.places[0] && branchOf(m.places[0].b);
-		const x = isKeeper(m) ? KEEPER : m.n === founderN() ? s.founder : m.mon ? s.monsignor : b || { sym: '⸸', color: NEOPHYTE_COLOR };
+		const x = showsKeeper(m) ? KEEPER : m.n === founderN() && !isKeeper(m) ? s.founder : m.mon ? s.monsignor : b || { sym: '⸸', color: NEOPHYTE_COLOR };
 		return { sym: x.sym || '⸸', color: isColor(x.color) ? x.color : '#b48cff' };
 	}
 	/** Whether the mouse is on the mark of a character drawn at x, y with zoom. */
@@ -3845,7 +3855,7 @@
 		body.append(make('p', 'dim', `${plural(state.members.length, 'member')}, ${on} online. Click someone for their ID card.`));
 		const byName = (/** @type {any} */ a, /** @type {any} */ b) => Number(!!b.on) - Number(!!a.on) || a.name.localeCompare(b.name);
 		const all = [...state.members].sort(byName);
-		const keeper = all.filter(isKeeper);
+		const keeper = all.filter(showsKeeper);
 		if (keeper.length) {
 			body.append(branchTitle(KEEPER));
 			for (const m of keeper) {
@@ -4258,7 +4268,9 @@
 		};
 		const s = structure();
 		if (isKeeper(m)) {
-			pill(`${KEEPER.sym} ${KEEPER.name}`, KEEPER.color);
+			if (showsKeeper(m)) {
+				pill(`${KEEPER.sym} ${KEEPER.name}`, KEEPER.color);
+			}
 		} else if (m.n === founderN()) {
 			pill(`${s.founder.sym} ${s.founder.name}`, s.founder.color);
 		}
@@ -4539,7 +4551,9 @@
 			);
 			sec.append(roles);
 			const ranks = structure().ranks;
-			if (mayMon && Array.isArray(ranks) && m.n !== founderN()) {
+			if (mayMon && Array.isArray(ranks) && m.n !== founderN() && m.discord) {
+				sec.append(make('div', 'dim', `Order rank: ${ranks[m.rank || 0]}, from their rank role on the Order's Discord.`));
+			} else if (mayMon && Array.isArray(ranks) && m.n !== founderN()) {
 				const wrap = make('div', 'chips');
 				wrap.append(make('span', 'dim', 'Order rank:'));
 				ranks.forEach((/** @type {string} */ name, /** @type {number} */ i) => {

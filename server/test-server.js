@@ -714,6 +714,56 @@ async function joined(member, name) {
 	}
 	await wait(500);
 
+	// The Discord bot's API: signed with the bot's key (dev:test's VOID_BOT_KEY is this test key's public half).
+	const BOT_JWK = {
+		kty: 'EC',
+		crv: 'P-256',
+		x: 'xQrjNdCbD13bmMEpNnF0F83tUX-yeeVyBmwcD9ikCjc',
+		y: 'seLoWxivyQh_NKQ6zkpgK6IXyzs-gC3NN4FYigOATDU',
+		d: 'EKNmMH8Nyv4dfi3BF8mZiW3OUc504AWBEU10WsCDm3k',
+	};
+	const botPriv = await subtle.importKey('jwk', BOT_JWK, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+	const otherKey = (await subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign'])).privateKey;
+	const HTTP = BASE.replace(/^ws/, 'http');
+	let botSeq = 0;
+	const botBody = (x, ts = Date.now()) => JSON.stringify({ ...x, ts, id: `t${++botSeq}${Math.random()}` });
+	const botPost = async (body, key = botPriv, sig) => {
+		const s = sig !== undefined ? sig : b64url(await subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(body)));
+		const r = await fetch(`${HTTP}/bot?o=${ORDER}`, { method: 'POST', body, headers: s ? { 'X-Void-Bot-Sig': s } : {} });
+		return { status: r.status, data: r.status === 200 ? await r.json() : null };
+	};
+	check((await botPost(botBody({ t: 'members' }), botPriv, '')).status === 404, 'the bot API answers nobody without a signature');
+	check((await botPost(botBody({ t: 'members' }), otherKey)).status === 404, 'or signed with another key');
+	const roster = (await botPost(botBody({ t: 'members' }))).data;
+	check(
+		// The Founder by then is Mag (18): Ann handed it on earlier.
+		roster && roster.ranks.length === 10 && roster.founder === 18 && roster.members.some((m) => m.n === 13 && m.name === 'Cat' && m.places.length),
+		'the bot reads the ranks, the Founder and the members with their places',
+		roster,
+	);
+	const viewer = await connect(ann);
+	const rankBody = botBody({ t: 'rank', member: 13, rank: 7, by: 'Mag' });
+	const ranked = await botPost(rankBody);
+	await wait(300);
+	check(ranked.data && ranked.data.ok && listed(viewer, 13).rank === 7, 'the bot ranks Cat Elder Zealot, and the Order sees it at once', ranked);
+	check(viewer.state.log.some((l) => /Cat \(13\) is now Elder Zealot \(Mag, on Discord\)/.test(l.text)), 'the log says who ranked her, on Discord');
+	check((await botPost(rankBody)).data.error === 'seen before', 'a request sent again is turned away');
+	check((await botPost(botBody({ t: 'members' }, Date.now() - 10 * 60 * 1000))).data.error === 'stale or bad request', 'so is an old one');
+	check((await botPost(botBody({ t: 'rank', member: 999, rank: 1 }))).data.error === 'no such member', 'the bot only ranks members');
+	check((await botPost(botBody({ t: 'rank', member: 13, rank: 10 }))).data.error === 'no such rank', 'and only to real ranks');
+	await botPost(botBody({ t: 'links', members: [13] }));
+	await wait(300);
+	check(listed(viewer, 13).discord === 1, 'a member linked on Discord is marked so');
+	check(
+		(await viewer.req({ t: 'rank', member: 13, rank: 2 })).why === 'their rank comes from their rank role on Discord',
+		'and their rank is not set in the game any more',
+	);
+	await botPost(botBody({ t: 'links', members: [] }));
+	await wait(300);
+	check(!listed(viewer, 13).discord && (await viewer.req({ t: 'rank', member: 13, rank: 6 })).t === 'ok', 'unlinked, it is set in the game again');
+	viewer.close();
+	await wait(300);
+
 	// Connections that never sign in are closed after 10 s, and one address holds at most 12.
 	const raw = () => new WebSocket(`${BASE}/ws?o=${ORDER}`, { headers: { Origin: 'https://www.bondageprojects.elementfx.com' } });
 	const idle = raw();

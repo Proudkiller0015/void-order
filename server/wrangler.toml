@@ -7,6 +7,8 @@ compatibility_date = "2026-09-01"
 ADMIN = "255659"
 # The SlimeBeep relay that keeps the Order's group chat; its link key is the SLIMEBEEP_LINK_KEY secret.
 SLIMEBEEP_RELAY = "https://slimebeep-relay.slimebeep-relay.workers.dev"
+# The Order's Discord bot's public key (its private key stays encrypted on the PC it runs on). See src/bot-api.js.
+VOID_BOT_KEY = "AQOwxNDwE0QF99TWoqTR_VcTK25Iyp7aVIiOaJkk8mE.41J5rE4UAn64dOPVSRWvcH9-FPmGtb0g6mlZusAWG8g"
 
 [[durable_objects.bindings]]
 name = "ORDER"
