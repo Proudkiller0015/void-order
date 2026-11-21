@@ -737,8 +737,8 @@ async function joined(member, name) {
 	const roster = (await botPost(botBody({ t: 'members' }))).data;
 	check(
 		// The Founder by then is Mag (18): Ann handed it on earlier.
-		roster && roster.ranks.length === 10 && roster.founder === 18 && roster.members.some((m) => m.n === 13 && m.name === 'Cat' && m.places.length),
-		'the bot reads the ranks, the Founder and the members with their places',
+		roster && roster.ranks.length === 10 && roster.founder === 18 && roster.members.some((m) => m.n === 13 && m.name === 'Cat' && m.places.length) && roster.members.every((m) => typeof m.bio === 'string'),
+		'the bot reads the ranks, the Founder and the members with their places and bios',
 		roster,
 	);
 	const viewer = await connect(ann);

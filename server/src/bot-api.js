@@ -60,6 +60,8 @@ export async function botCall(order, body) {
 					name: m.name,
 					rank: m.rank || 0,
 					places: m.places.map((x) => order.placeName(x, m)).filter(Boolean),
+					// What they wrote on their ID card (every member can read it there).
+					bio: typeof m.bio === 'string' ? m.bio : '',
 				})),
 			};
 		case 'rank': {
