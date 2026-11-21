@@ -741,6 +741,18 @@ async function joined(member, name) {
 		'the bot reads the ranks, the Founder and the members with their places and bios',
 		roster,
 	);
+	const placed = (await botPost(botBody({ t: 'places', member: 13, places: [{ b: 'paladin', t: 5, c: 'bellator' }, { b: 'mage', t: 3, c: 'conjurers' }], by: 'Mag' }))).data;
+	const after = (await botPost(botBody({ t: 'members' }))).data;
+	const mage = after.structure.branches.find((b) => b.id === 'mage');
+	check(
+		after.structure.chapterFrom === 2 && mage.tiers[2] === '…mancer' && mage.chapters[0].tiers[2] === 'Spellblade' && after.members.find((m) => m.n === 13).at.length === 2,
+		"the bot gets the branches, rank names and chapters, and each member's places as data",
+		after.structure,
+	);
+	check(placed && placed.ok && placed.places.join() === 'Paladin - Champion,Mage - Spellblade', 'the bot places Cat: Paladin Champion (Bellator) and Mage Spellblade (Conjurers)', placed);
+	const badPlace = (await botPost(botBody({ t: 'places', member: 13, places: [{ b: 'maid', t: 1, c: 'nope' }] }))).data;
+	check(badPlace && badPlace.error === 'no such chapter', 'and follows the same rules as the game', badPlace);
+	check((await botPost(botBody({ t: 'places', member: 13, places: [{ b: 'paladin', t: 1 }, { b: 'mage', t: 1 }, { b: 'maid', t: 1 }] }))).data.error === 'a member holds at most 2 branches', 'at most two branches');
 	const viewer = await connect(ann);
 	const rankBody = botBody({ t: 'rank', member: 13, rank: 7, by: 'Mag' });
 	const ranked = await botPost(rankBody);

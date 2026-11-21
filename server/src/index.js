@@ -1214,6 +1214,62 @@ export class Order extends DurableObject {
 		this.broadcast();
 		this.pushAllOrders();
 	}
+	/** The branches for the Discord bot's pickers: ids, names, rank names (neutral form), chapters, and from which rank chapters open. */
+	botStructure() {
+		const word = (/** @type {any} */ x) => (x ? String(x.n || x.m || x.f).replace('*', '…') : null);
+		return {
+			chapterFrom: CHAPTER_FROM,
+			most: PLACES,
+			branches: STRUCTURE.branches.map((b) => ({
+				id: b.id,
+				name: b.name,
+				tiers: b.tiers.map(word),
+				chapters: b.chapters.map((c) => ({ id: c.id, name: c.name, tiers: c.tiers.map(word) })),
+			})),
+		};
+	}
+	/**
+	 * The Discord bot (on the app admin's word) sets every branch a member holds at once: places [{ b, t, c }], the main
+	 * branch first, at most PLACES; [] takes them out of every branch. Same rules as place(). Returns { ok } or { error }.
+	 */
+	async botPlaces(n, places, by) {
+		const m = Number.isInteger(n) ? this.members[n] : null;
+		if (!m) {
+			return { error: 'no such member' };
+		}
+		if (!Array.isArray(places) || places.length > PLACES) {
+			return { error: `a member holds at most ${PLACES} branches` };
+		}
+		const next = [];
+		for (const x of places) {
+			const b = x && this.branch(x.b);
+			const t = x && Number(x.t);
+			if (!b || !Number.isInteger(t) || t < 1 || t > TIERS) {
+				return { error: 'pick a branch and a rank' };
+			}
+			if (next.some((y) => y.b === b.id)) {
+				return { error: 'the same branch twice' };
+			}
+			const c = typeof x.c === 'string' ? x.c : '';
+			if (c && !b.chapters.some((y) => y.id === c)) {
+				return { error: 'no such chapter' };
+			}
+			if (c && t < CHAPTER_FROM) {
+				return { error: `chapters are open from rank ${CHAPTER_FROM}` };
+			}
+			next.push({ b: b.id, t, c });
+		}
+		const same = JSON.stringify(next) === JSON.stringify(m.places.map((x) => ({ b: x.b, t: x.t, c: x.c || '' })));
+		if (!same) {
+			m.places = next;
+			await this.putMember(m.n);
+			const what = next.length ? next.map((x) => this.placeName(x, m)).join(' and ') : 'no branch';
+			await this.note(0, `${this.nameOf(m.n)} placed: ${what} (${String(by || 'Discord').slice(0, 60)}, on Discord)`);
+			this.broadcast();
+			this.pushAllOrders();
+		}
+		return { ok: true, places: m.places.map((x) => this.placeName(x, m)) };
+	}
 	/** Takes a member out of one branch: { member, branch }. */
 	async unplace(ws, me, p) {
 		const m = this.target(ws, p);

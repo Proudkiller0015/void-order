@@ -5,8 +5,10 @@
  * `id`: a body older than BOT_SKEW, or an id seen before, is turned away.
  *
  * Requests ({ t, ... }):
- *   members       the ranks and every member: { ranks, founder, members: [{ n, name, rank, places }] }
+ *   members       the ranks and every member: { ranks, founder, members: [{ n, name, rank, places, bio }] }
  *   rank          { member, rank, by }: gives a member one of the Order's ranks (the bot decides who may)
+ *   places        { member, places: [{ b, t, c }], by }: sets every branch the member holds (main first, at most two;
+ *                 [] = none), with the same rules as placing them in Oculus Nihili
  *   links         { members: [n] }: the members linked to a Discord account; their rank comes from Discord
  *                 (Oculus Nihili shows it, and the Founder and admins don't set it there)
  */
@@ -55,6 +57,8 @@ export async function botCall(order, body) {
 			return {
 				ranks: order.ranks,
 				founder: (order.meta && order.meta.founder) || 0,
+				// The branches, each rank's name and the chapters (with their own rank names), for the bot's pickers.
+				structure: order.botStructure(),
 				members: Object.values(order.members).map((m) => ({
 					n: m.n,
 					name: m.name,
@@ -62,6 +66,8 @@ export async function botCall(order, body) {
 					places: m.places.map((x) => order.placeName(x, m)).filter(Boolean),
 					// What they wrote on their ID card (every member can read it there).
 					bio: typeof m.bio === 'string' ? m.bio : '',
+					// The branches they hold as data (main first), for the bot's pickers.
+					at: m.places.map((x) => ({ b: x.b, t: x.t, c: x.c || '' })),
 				})),
 			};
 		case 'rank': {
@@ -86,6 +92,8 @@ export async function botCall(order, body) {
 			}
 			return { ok: true, rank: r };
 		}
+		case 'places':
+			return await order.botPlaces(p.member, p.places, typeof p.by === 'string' ? p.by : 'Discord');
 		case 'links': {
 			const list = Array.isArray(p.members) ? p.members.filter((n) => Number.isInteger(n) && n > 0).slice(0, 2000) : [];
 			const next = new Set(list);
