@@ -466,9 +466,8 @@
 			lines.push({ text: s.motto, cls: 'motto' });
 		}
 		if (isKeeper(m)) {
-			if (showsKeeper(m)) {
-				lines.push({ text: KEEPER.name, sym: KEEPER.sym, color: KEEPER.color });
-			}
+			// The ID card still says Keeper of the Eye (owner: "eye watcher can be in my card").
+			lines.push({ text: KEEPER.name, sym: KEEPER.sym, color: KEEPER.color });
 		} else if (founder) {
 			lines.push({ text: s.founder.name, sym: s.founder.sym, color: s.founder.color });
 		}
@@ -527,9 +526,9 @@
 	/** Whether a member (or their ID card) is the Keeper of the Eye, the app admin. */
 	const isKeeper = (/** @type {any} */ m) => !!m && (!!m.keeper || (!!state && !!state.appAdmin && m.n === state.appAdmin));
 	/**
-	 * Whether the Keeper of the Eye title shows for m. The Keeper stays hidden behind Monsignor (the owner, 20 Nov: "i
-	 * wanna only appear as monsignor the keeper of the eye is staying hidden"); it shows only for a Keeper with no other
-	 * place, who would otherwise show as nothing. Never shown as the Founder either way.
+	 * Whether the member list (and the mark over their character) shows m as the Keeper of the Eye. A Keeper who is a
+	 * Monsignor shows once, as Monsignor (the owner, 20 Nov: "i want to show ONCE in list as monsignor"); their ID card
+	 * still says Keeper of the Eye. A Keeper with no other place keeps the title, so they don't show as nothing.
 	 */
 	const showsKeeper = (/** @type {any} */ m) => isKeeper(m) && !m.mon;
 	const memberOf = (/** @type {number} */ n) => (state && state.members ? state.members.find((/** @type {any} */ m) => m.n === n) : null);
@@ -3878,7 +3877,9 @@
 				body.append(make('div', 'dim', s.monsignor.about));
 			}
 			for (const m of mons) {
-				body.append(drawMemberRow(m, m.places.map((/** @type {any} */ p) => placeText(p, m)).join(' · ')));
+				// The Keeper shows here once, with Keeper of the Eye as their subrank (owner: "like champion for monsignor").
+				const sub = [isKeeper(m) ? KEEPER.name : '', ...m.places.map((/** @type {any} */ p) => placeText(p, m))].filter(Boolean);
+				body.append(drawMemberRow(m, sub.join(' · ')));
 			}
 		}
 		for (const b of s.branches) {
@@ -4268,9 +4269,7 @@
 		};
 		const s = structure();
 		if (isKeeper(m)) {
-			if (showsKeeper(m)) {
-				pill(`${KEEPER.sym} ${KEEPER.name}`, KEEPER.color);
-			}
+			pill(`${KEEPER.sym} ${KEEPER.name}`, KEEPER.color);
 		} else if (m.n === founderN()) {
 			pill(`${s.founder.sym} ${s.founder.name}`, s.founder.color);
 		}

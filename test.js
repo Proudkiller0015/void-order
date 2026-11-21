@@ -512,9 +512,10 @@ const openCardOf = async (page, name) => {
 		await click(page, 'Members');
 		await wait(200);
 		const list = await panelText(page);
+		check('the Keeper (a Monsignor) is in the list once, under Monsignor with Keeper of the Eye as subrank', (list.match(/Ann #11/g) || []).length === 1 && /Ann #11 · Keeper of the Eye/.test(list), list.match(/Ann #11.*/g));
 		check(
 			'the member list: the Founder, Monsignor, then each branch by rank; the Keeper (a Monsignor) shows only as Monsignor',
-			/^(?![\s\S]*Keeper of the Eye)[\s\S]*Founder: not yet handed over[\s\S]*🎇 Monsignor 🎇 · 1[\s\S]*Ann #11[\s\S]*☨✙☨ Priest ☨✙☨ · 1[\s\S]*Leaders of spiritual[\s\S]*HIGH PRIEST \/ HIGH PRIESTESS\s+Dan #14 · High Priestess · Vox Nihil[\s\S]*✦⸸✦ Paladin ✦⸸✦ · 4[\s\S]*CHAMPION\s+Bea #12 · Champion[\s\S]*CRUSADER[\s\S]*Fay #15 · Crusader[\s\S]*Gus #16 · Crusader[\s\S]*KNIGHT\s+Cat #13 · Knight · Salvatoris\s+Warmage[\s\S]*☿⸸☿ Mage ☿⸸☿ · 1[\s\S]*…MANCER\s+Cat #13 · Spellblade · Conjurers/.test(
+			/^(?![\s\S]*𓁹‿𓁹 Keeper of the Eye 𓁹‿𓁹)[\s\S]*Founder: not yet handed over[\s\S]*🎇 Monsignor 🎇 · 1[\s\S]*Ann #11[\s\S]*☨✙☨ Priest ☨✙☨ · 1[\s\S]*Leaders of spiritual[\s\S]*HIGH PRIEST \/ HIGH PRIESTESS\s+Dan #14 · High Priestess · Vox Nihil[\s\S]*✦⸸✦ Paladin ✦⸸✦ · 4[\s\S]*CHAMPION\s+Bea #12 · Champion[\s\S]*CRUSADER[\s\S]*Fay #15 · Crusader[\s\S]*Gus #16 · Crusader[\s\S]*KNIGHT\s+Cat #13 · Knight · Salvatoris\s+Warmage[\s\S]*☿⸸☿ Mage ☿⸸☿ · 1[\s\S]*…MANCER\s+Cat #13 · Spellblade · Conjurers/.test(
 				list,
 			),
 			list,
@@ -547,8 +548,8 @@ const openCardOf = async (page, name) => {
 		await page.evaluate(() => document.getElementById('void-card').remove());
 		await openCardOf(page, 'Ann');
 		check(
-			"the app admin's card: only Monsignor (the Keeper of the Eye stays hidden behind it, and never shows as Founder)",
-			/^Praise the Void! 𓁹‿𓁹\n.*Monsignor/.test(await cardText(page)) && !/Keeper|Founder/.test(await cardText(page)),
+			"the app admin's card: Keeper of the Eye and Monsignor (never Founder)",
+			/^Praise the Void! 𓁹‿𓁹\n.*Keeper of the Eye.*\n.*Monsignor/.test(await cardText(page)) && !/Founder/.test(await cardText(page)),
 			await cardText(page),
 		);
 		await page.evaluate(() => document.getElementById('void-card').remove());
