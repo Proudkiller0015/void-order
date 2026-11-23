@@ -11,7 +11,7 @@
 	if (w.VoidOrder) {
 		return;
 	}
-	const VERSION = '2.0.0-beta.2.24';
+	const VERSION = '2.0.0-beta.2.25';
 	/** The Order's server (a test page sets VoidOrderServer before loading this). */
 	const SERVER = w.VoidOrderServer || 'wss://void-order.slimebeep-relay.workers.dev/ws';
 	/** Where the add-on's pictures are (a test page sets VoidOrderAssets). */
@@ -91,6 +91,16 @@
 		}
 	};
 	const date = (/** @type {number} */ t) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+	/** A day from a date field ("2025-08-18") as midday UTC, so it reads as that day in every time zone; 0 if none. */
+	const dayAt = (/** @type {string} */ s) => {
+		const x = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+		return x ? Date.UTC(Number(x[1]), Number(x[2]) - 1, Number(x[3]), 12) : 0;
+	};
+	/** A time as a date field's value ("2025-08-18"), in this browser's time zone. */
+	const dayOf = (/** @type {number} */ t) => {
+		const d = new Date(t);
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+	};
 	const dateTime = (/** @type {number} */ t) =>
 		new Date(t).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 	/** "in 2 h 5 min", "5 min ago". */
@@ -1562,7 +1572,13 @@
 	function markOf(/** @type {any} */ m) {
 		const s = structure();
 		const b = m.places[0] && branchOf(m.places[0].b);
-		const x = showsKeeper(m) ? KEEPER : m.n === founderN() && !isKeeper(m) ? s.founder : m.mon ? s.monsignor : b || { sym: '⸸', color: NEOPHYTE_COLOR };
+		const x = showsKeeper(m)
+			? KEEPER
+			: m.n === founderN() && !isKeeper(m)
+				? s.founder
+				: m.mon
+					? s.monsignor
+					: b || { sym: '⸸', color: NEOPHYTE_COLOR };
 		return { sym: x.sym || '⸸', color: isColor(x.color) ? x.color : '#b48cff' };
 	}
 	/** Whether the mouse is on the mark of a character drawn at x, y with zoom. */
@@ -4652,6 +4668,29 @@
 				),
 			);
 		}
+		if (topOver(me, m) || mayReset(me, m)) {
+			const sec = sheetSection(body, 'Join date');
+			const key = `since:${m.n}`;
+			const day = field(key, dayOf(m.joined), 10);
+			day.type = 'date';
+			day.max = dayOf(Date.now());
+			day.classList.add('auto');
+			sec.append(
+				make('div', 'dim', `In the Order since ${date(m.joined)}. Set the day they really joined; it shows on their ID card.`),
+				day,
+				button('Set join date', () => {
+					const at = dayAt(String(drafts[key] || ''));
+					if (!at) {
+						panelSay('⚠ Pick a day first.');
+						return;
+					}
+					return act({ t: 'since', member: m.n, at }, () => {
+						delete drafts[key];
+						panelSay(`${m.name} is in the Order since ${date(at)}.`);
+					});
+				}),
+			);
+		}
 		if (mayRemove(me, m)) {
 			const sec = sheetSection(body, 'Danger zone', 'danger');
 			sec.append(
@@ -5099,7 +5138,7 @@
 						panelSay('⚠ Add at least one person.');
 						return;
 					}
-					const day = drafts['in:since'] ? new Date(drafts['in:since']).getTime() : 0;
+					const day = dayAt(String(drafts['in:since'] || ''));
 					return act(
 						{
 							t: 'add',

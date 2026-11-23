@@ -11,6 +11,7 @@
  *                 [] = none), with the same rules as placing them in Oculus Nihili
  *   founder       { member, name, by }: makes them the Founder, bringing them in under `name` if needed (they need
  *                 not use the add-on)
+ *   since         { member, at, by }: when they joined the Order (ms), the date on their ID card
  *   links         { members: [n] }: the members linked to a Discord account; their rank comes from Discord
  *                 (Oculus Nihili shows it, and the Founder and admins don't set it there)
  */
@@ -28,7 +29,9 @@ export const rankFromDiscord = (order, n) => !!order.dlinked && order.dlinked.ha
 
 /** The bot's public key from VOID_BOT_KEY, or null. */
 export function botKey(env) {
-	const [x, y] = String(env.VOID_BOT_KEY || '').trim().split('.');
+	const [x, y] = String(env.VOID_BOT_KEY || '')
+		.trim()
+		.split('.');
 	return x && y && /^[A-Za-z0-9_-]{43}$/.test(x) && /^[A-Za-z0-9_-]{43}$/.test(y) ? { x, y } : null;
 }
 
@@ -98,6 +101,8 @@ export async function botCall(order, body) {
 			return await order.botFounder(p.member, p.name, typeof p.by === 'string' ? p.by : 'Discord');
 		case 'places':
 			return await order.botPlaces(p.member, p.places, typeof p.by === 'string' ? p.by : 'Discord');
+		case 'since':
+			return await order.botSince(p.member, p.at, typeof p.by === 'string' ? p.by : 'Discord');
 		case 'links': {
 			const list = Array.isArray(p.members) ? p.members.filter((n) => Number.isInteger(n) && n > 0).slice(0, 2000) : [];
 			const next = new Set(list);

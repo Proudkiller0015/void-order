@@ -272,6 +272,11 @@ const STRUCTURE = {
 
 /** A plausible member number. */
 const isNum = (n) => Number.isInteger(n) && n > 0 && n < 1e9;
+/** A join date (ms) from a client or the bot: from 2010 (before BC's chat rooms) up to tomorrow (time zones), or 0. */
+const joinDay = (at) => {
+	const t = Number(at);
+	return Number.isFinite(t) && t >= Date.UTC(2010, 0, 1) && t <= Date.now() + 864e5 ? Math.round(t) : 0;
+};
 /** A string with control characters removed, trimmed and cut to `max`; '' for anything else. */
 const clean = (x, max) =>
 	typeof x === 'string'
@@ -975,6 +980,8 @@ export class Order extends DurableObject {
 					return await this.kick(ws, me, p);
 				case 'reset':
 					return await this.reset(ws, me, p);
+				case 'since':
+					return await this.setSince(ws, me, p);
 				case 'add':
 					return await this.addMembers(ws, me, p);
 				case 'about':
@@ -1437,6 +1444,48 @@ export class Order extends DurableObject {
 		await this.putMember(m.n);
 		await this.note(me, `${this.nameOf(me)} made a ${m.pub ? 'reset' : 'join'} code for ${this.nameOf(m.n)}`);
 		this.ok(ws, p, { code: m.reset.code, hours });
+	}
+	/**
+	 * When a member joined the Order, the date on their ID card: { member, at } (ms). The Founder and admins set anyone's
+	 * (an admin their own too, not another admin's); a leader those below them, like a reset code.
+	 */
+	async setSince(ws, me, p) {
+		const m = this.target(ws, p);
+		if (!m) {
+			return;
+		}
+		if (!this.topOver(me, m.n) && !this.mayReset(me, m.n)) {
+			return this.no(ws, 'only someone over them can change when they joined', p);
+		}
+		const at = joinDay(p.at);
+		if (!at) {
+			return this.no(ws, 'pick a real day, not in the future', p);
+		}
+		await this.moveSince(m, at, this.nameOf(me));
+		this.ok(ws, p, { at });
+	}
+	/** Sets member m's join date and tells the Order. */
+	async moveSince(m, at, by) {
+		if (m.joined === at) {
+			return;
+		}
+		m.joined = at;
+		await this.putMember(m.n);
+		await this.note(0, `${by} set when ${this.nameOf(m.n)} joined: ${new Date(at).toISOString().slice(0, 10)}`);
+		this.broadcast();
+	}
+	/** The bot's 'since': { member, at, by } (the bot decides who may). */
+	async botSince(n, at, by) {
+		const m = Number.isInteger(n) ? this.members[n] : null;
+		if (!m) {
+			return { error: 'no such member' };
+		}
+		const day = joinDay(at);
+		if (!day) {
+			return { error: 'pick a real day, not in the future' };
+		}
+		await this.moveSince(m, day, `${String(by || 'Discord').slice(0, 60)} (on Discord)`);
+		return { ok: true, at: day };
 	}
 	/**
 	 * Brings in members the Order had before the add-on, at a set place: { people: [{ member, name }], branch, tier,

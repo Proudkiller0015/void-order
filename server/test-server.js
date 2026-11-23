@@ -354,7 +354,27 @@ async function joined(member, name) {
 	check(c2.state.status === 'member' && c2.orders.has(o1.id), 'with the code, the new key is Cat, orders and all');
 	const reuse = await connect(await makePeer(13, 'Cat'), { fields: { code: code.code } });
 	check(reuse.state.status === 'mismatch', 'a reset code works once');
+	// Join dates: the date on the ID card, set by someone over the member (the Founder and admins over anyone).
+	const day = Date.UTC(2025, 7, 18, 12);
+	check(
+		(await b.req({ t: 'since', member: 13, at: day })).why === 'only someone over them can change when they joined',
+		"Bea can't move Cat's join date: Cat is a Mage too",
+	);
+	check((await c2.req({ t: 'since', member: 13, at: day })).t === 'error', 'nor can Cat move her own');
+	check(
+		(await a.req({ t: 'since', member: 13, at: Date.now() + 5 * 864e5 })).why === 'pick a real day, not in the future',
+		'a day in the future is refused',
+	);
+	check((await a.req({ t: 'since', member: 13, at: 'soon' })).t === 'error', 'and so is nonsense');
+	const moved = await a.req({ t: 'since', member: 13, at: day });
+	await wait(200);
+	check(
+		moved.t === 'ok' && moved.at === day && listed(c2, 13).joined === day && listed(b, 13).joined === day,
+		'Ann sets when Cat joined, and everyone sees it at once',
+		moved,
+	);
 	const { c: e } = await joined(17, 'Eve');
+	check((await b.req({ t: 'since', member: 17, at: day })).t === 'ok', 'a leader sets the join date of an unplaced member');
 	check((await b.req({ t: 'kick', member: 17 })).t === 'ok' && e.state.status === 'guest', 'a leader removes an unplaced member');
 	// One address holds at most 12 connections.
 	for (const x of [c, c2bad, reuse, e]) x.close();
@@ -737,33 +757,92 @@ async function joined(member, name) {
 	const roster = (await botPost(botBody({ t: 'members' }))).data;
 	check(
 		// The Founder by then is Mag (18): Ann handed it on earlier.
-		roster && roster.ranks.length === 10 && roster.founder === 18 && roster.members.some((m) => m.n === 13 && m.name === 'Cat' && m.places.length) && roster.members.every((m) => typeof m.bio === 'string'),
+		roster &&
+			roster.ranks.length === 10 &&
+			roster.founder === 18 &&
+			roster.members.some((m) => m.n === 13 && m.name === 'Cat' && m.places.length) &&
+			roster.members.every((m) => typeof m.bio === 'string'),
 		'the bot reads the ranks, the Founder and the members with their places and bios',
 		roster,
 	);
-	const placed = (await botPost(botBody({ t: 'places', member: 13, places: [{ b: 'paladin', t: 5, c: 'bellator' }, { b: 'mage', t: 3, c: 'conjurers' }], by: 'Mag' }))).data;
+	const placed = (
+		await botPost(
+			botBody({
+				t: 'places',
+				member: 13,
+				places: [
+					{ b: 'paladin', t: 5, c: 'bellator' },
+					{ b: 'mage', t: 3, c: 'conjurers' },
+				],
+				by: 'Mag',
+			}),
+		)
+	).data;
 	const after = (await botPost(botBody({ t: 'members' }))).data;
 	const mage = after.structure.branches.find((b) => b.id === 'mage');
 	check(
-		after.structure.chapterFrom === 2 && mage.tiers[2] === '…mancer' && mage.chapters[0].tiers[2] === 'Spellblade' && after.members.find((m) => m.n === 13).at.length === 2,
+		after.structure.chapterFrom === 2 &&
+			mage.tiers[2] === '…mancer' &&
+			mage.chapters[0].tiers[2] === 'Spellblade' &&
+			after.members.find((m) => m.n === 13).at.length === 2,
 		"the bot gets the branches, rank names and chapters, and each member's places as data",
 		after.structure,
 	);
-	check(placed && placed.ok && placed.places.join() === 'Paladin - Champion,Mage - Spellblade', 'the bot places Cat: Paladin Champion (Bellator) and Mage Spellblade (Conjurers)', placed);
+	check(
+		placed && placed.ok && placed.places.join() === 'Paladin - Champion,Mage - Spellblade',
+		'the bot places Cat: Paladin Champion (Bellator) and Mage Spellblade (Conjurers)',
+		placed,
+	);
 	const badPlace = (await botPost(botBody({ t: 'places', member: 13, places: [{ b: 'maid', t: 1, c: 'nope' }] }))).data;
 	check(badPlace && badPlace.error === 'no such chapter', 'and follows the same rules as the game', badPlace);
-	check((await botPost(botBody({ t: 'places', member: 13, places: [{ b: 'paladin', t: 1 }, { b: 'mage', t: 1 }, { b: 'maid', t: 1 }] }))).data.error === 'a member holds at most 2 branches', 'at most two branches');
+	check(
+		(
+			await botPost(
+				botBody({
+					t: 'places',
+					member: 13,
+					places: [
+						{ b: 'paladin', t: 1 },
+						{ b: 'mage', t: 1 },
+						{ b: 'maid', t: 1 },
+					],
+				}),
+			)
+		).data.error === 'a member holds at most 2 branches',
+		'at most two branches',
+	);
 	const fresh = (await botPost(botBody({ t: 'founder', member: 77, name: 'Nomad', by: 'Sam' }))).data;
-	check(fresh && fresh.ok && fresh.founder === 77 && fresh.name === 'Nomad', 'the bot makes someone who never used the add-on the Founder, bringing them in', fresh);
+	check(
+		fresh && fresh.ok && fresh.founder === 77 && fresh.name === 'Nomad',
+		'the bot makes someone who never used the add-on the Founder, bringing them in',
+		fresh,
+	);
 	const shown = (await botPost(botBody({ t: 'members' }))).data;
 	check(shown.founder === 77 && shown.members.some((m) => m.n === 77 && m.name === 'Nomad'), 'they are in the Order, as the Founder');
-	check((await botPost(botBody({ t: 'founder', member: 18, by: 'Sam' }))).data.founder === 18, 'and the Founder can be handed back (to Mag)');
+	check(
+		(await botPost(botBody({ t: 'founder', member: 18, by: 'Sam' }))).data.founder === 18,
+		'and the Founder can be handed back (to Mag)',
+	);
+	const amelia = Date.UTC(2026, 5, 16, 12);
+	const dated = (await botPost(botBody({ t: 'since', member: 77, at: amelia, by: 'Milim' }))).data;
+	check(dated && dated.ok && dated.at === amelia, 'the bot sets when a member joined', dated);
+	check(
+		(await botPost(botBody({ t: 'since', member: 77, at: Date.now() + 5 * 864e5 }))).data.error === 'pick a real day, not in the future',
+		'but not a day in the future',
+	);
 	const viewer = await connect(ann);
 	const rankBody = botBody({ t: 'rank', member: 13, rank: 7, by: 'Mag' });
 	const ranked = await botPost(rankBody);
 	await wait(300);
-	check(ranked.data && ranked.data.ok && listed(viewer, 13).rank === 7, 'the bot ranks Cat Elder Zealot, and the Order sees it at once', ranked);
-	check(viewer.state.log.some((l) => /Cat \(13\) is now Elder Zealot \(Mag, on Discord\)/.test(l.text)), 'the log says who ranked her, on Discord');
+	check(
+		ranked.data && ranked.data.ok && listed(viewer, 13).rank === 7,
+		'the bot ranks Cat Elder Zealot, and the Order sees it at once',
+		ranked,
+	);
+	check(
+		viewer.state.log.some((l) => /Cat \(13\) is now Elder Zealot \(Mag, on Discord\)/.test(l.text)),
+		'the log says who ranked her, on Discord',
+	);
 	check((await botPost(rankBody)).data.error === 'seen before', 'a request sent again is turned away');
 	check((await botPost(botBody({ t: 'members' }, Date.now() - 10 * 60 * 1000))).data.error === 'stale or bad request', 'so is an old one');
 	check((await botPost(botBody({ t: 'rank', member: 999, rank: 1 }))).data.error === 'no such member', 'the bot only ranks members');
@@ -777,7 +856,10 @@ async function joined(member, name) {
 	);
 	await botPost(botBody({ t: 'links', members: [] }));
 	await wait(300);
-	check(!listed(viewer, 13).discord && (await viewer.req({ t: 'rank', member: 13, rank: 6 })).t === 'ok', 'unlinked, it is set in the game again');
+	check(
+		!listed(viewer, 13).discord && (await viewer.req({ t: 'rank', member: 13, rank: 6 })).t === 'ok',
+		'unlinked, it is set in the game again',
+	);
 	viewer.close();
 	await wait(300);
 

@@ -453,6 +453,29 @@ const openCardOf = async (page, name) => {
 		check('a branch leader may not give Order ranks', beaRank.t === 'error' && !bea.state.members.find((m) => m.n === 14)?.rank, beaRank);
 		const badRank = await bea.req({ t: 'rank', member: 12, rank: 99 });
 		check('a rank past the list is refused', badRank.t === 'error', badRank);
+		// Join dates (the "In the Order since" on the ID card): set from the member's sheet.
+		await openSheet(page, 'Cat');
+		const dateSet = await page.evaluate(() => {
+			const inputs = [...document.querySelectorAll('#void-panel main input[type="date"]')];
+			const el = /** @type {HTMLInputElement | undefined} */ (inputs[inputs.length - 1]);
+			if (!el) {
+				return false;
+			}
+			el.scrollIntoView({ block: 'center' });
+			el.value = '2025-08-18';
+			el.dispatchEvent(new Event('input', { bubbles: true }));
+			return true;
+		});
+		await shot(page, '04c-sheet-join-date');
+		await click(page, 'Set join date');
+		await wait(500);
+		check(
+			'Ann sets when Cat joined from her sheet (midday UTC, so it reads as that day everywhere)',
+			dateSet && bea.state.members.find((m) => m.n === 13)?.joined === Date.UTC(2025, 7, 18, 12),
+			bea.state.members.find((m) => m.n === 13)?.joined,
+		);
+		const beaDate = await bea.req({ t: 'since', member: 11, at: Date.UTC(2025, 0, 1, 12) });
+		check("a leader can't move the Founder's join date", beaDate.t === 'error', beaDate);
 		// Linked on Discord (the Order's bot, signed with dev:test's test key), Cat's rank comes from her rank role there.
 		const botSend = async (x) => {
 			const { webcrypto } = require('crypto');
@@ -470,15 +493,19 @@ const openCardOf = async (page, name) => {
 				['sign'],
 			);
 			const body = JSON.stringify({ ...x, ts: Date.now(), id: String(Math.random()) });
-			const sig = Buffer.from(await webcrypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, Buffer.from(body))).toString('base64url');
-			return (await fetch(`${SERVER.replace(/^ws/, 'http')}/bot?o=${ORDER}`, { method: 'POST', body, headers: { 'X-Void-Bot-Sig': sig } })).json();
+			const sig = Buffer.from(await webcrypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key, Buffer.from(body))).toString(
+				'base64url',
+			);
+			return (
+				await fetch(`${SERVER.replace(/^ws/, 'http')}/bot?o=${ORDER}`, { method: 'POST', body, headers: { 'X-Void-Bot-Sig': sig } })
+			).json();
 		};
 		await botSend({ t: 'links', members: [13] });
 		await wait(500);
 		await openSheet(page, 'Cat');
 		const linkedSheet = await panelText(page);
 		check(
-			"a member linked on Discord: her sheet says her rank comes from Discord, with no rank buttons",
+			'a member linked on Discord: her sheet says her rank comes from Discord, with no rank buttons',
 			/Order rank: Zealot, from their rank role on the Order's Discord\./.test(linkedSheet) && !(await page.$('.chip[data-rank]')),
 			linkedSheet.slice(0, 600),
 		);
@@ -512,7 +539,11 @@ const openCardOf = async (page, name) => {
 		await click(page, 'Members');
 		await wait(200);
 		const list = await panelText(page);
-		check('the Keeper (a Monsignor) is in the list once, under Monsignor with Keeper of the Eye as subrank', (list.match(/Ann #11/g) || []).length === 1 && /Ann #11 · Keeper of the Eye/.test(list), list.match(/Ann #11.*/g));
+		check(
+			'the Keeper (a Monsignor) is in the list once, under Monsignor with Keeper of the Eye as subrank',
+			(list.match(/Ann #11/g) || []).length === 1 && /Ann #11 · Keeper of the Eye/.test(list),
+			list.match(/Ann #11.*/g),
+		);
 		check(
 			'the member list: the Founder, Monsignor, then each branch by rank; the Keeper (a Monsignor) shows only as Monsignor',
 			/^(?![\s\S]*𓁹‿𓁹 Keeper of the Eye 𓁹‿𓁹)[\s\S]*Founder: not yet handed over[\s\S]*🎇 Monsignor 🎇 · 1[\s\S]*Ann #11[\s\S]*☨✙☨ Priest ☨✙☨ · 1[\s\S]*Leaders of spiritual[\s\S]*HIGH PRIEST \/ HIGH PRIESTESS\s+Dan #14 · High Priestess · Vox Nihil[\s\S]*✦⸸✦ Paladin ✦⸸✦ · 4[\s\S]*CHAMPION\s+Bea #12 · Champion[\s\S]*CRUSADER[\s\S]*Fay #15 · Crusader[\s\S]*Gus #16 · Crusader[\s\S]*KNIGHT\s+Cat #13 · Knight · Salvatoris\s+Warmage[\s\S]*☿⸸☿ Mage ☿⸸☿ · 1[\s\S]*…MANCER\s+Cat #13 · Spellblade · Conjurers/.test(
