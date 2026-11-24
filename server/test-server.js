@@ -830,6 +830,14 @@ async function joined(member, name) {
 		(await botPost(botBody({ t: 'since', member: 77, at: Date.now() + 5 * 864e5 }))).data.error === 'pick a real day, not in the future',
 		'but not a day in the future',
 	);
+	const monned = (await botPost(botBody({ t: 'monsignor', member: 77, on: true, by: 'Sam' }))).data;
+	check(
+		monned && monned.ok && monned.mon === true && (await botPost(botBody({ t: 'members' }))).data.members.some((m) => m.n === 77 && m.mon),
+		'the bot makes a member a Monsignor',
+		monned,
+	);
+	check((await botPost(botBody({ t: 'monsignor', member: 77, on: 'yes' }))).data.error === 'on must be true or false', 'and wants a clear yes or no');
+	check((await botPost(botBody({ t: 'monsignor', member: 77, on: false }))).data.mon === false, 'and can take it away again');
 	const viewer = await connect(ann);
 	const rankBody = botBody({ t: 'rank', member: 13, rank: 7, by: 'Mag' });
 	const ranked = await botPost(rankBody);

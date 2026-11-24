@@ -12,6 +12,7 @@
  *   founder       { member, name, by }: makes them the Founder, bringing them in under `name` if needed (they need
  *                 not use the add-on)
  *   since         { member, at, by }: when they joined the Order (ms), the date on their ID card
+ *   monsignor     { member, on, by }: makes them a Monsignor (on: true) or not
  *   links         { members: [n] }: the members linked to a Discord account; their rank comes from Discord
  *                 (Oculus Nihili shows it, and the Founder and admins don't set it there)
  */
@@ -68,6 +69,7 @@ export async function botCall(order, body) {
 					n: m.n,
 					name: m.name,
 					rank: m.rank || 0,
+					mon: !!m.mon,
 					places: m.places.map((x) => order.placeName(x, m)).filter(Boolean),
 					// What they wrote on their ID card (every member can read it there).
 					bio: typeof m.bio === 'string' ? m.bio : '',
@@ -103,6 +105,8 @@ export async function botCall(order, body) {
 			return await order.botPlaces(p.member, p.places, typeof p.by === 'string' ? p.by : 'Discord');
 		case 'since':
 			return await order.botSince(p.member, p.at, typeof p.by === 'string' ? p.by : 'Discord');
+		case 'monsignor':
+			return await order.botMonsignor(p.member, p.on, typeof p.by === 'string' ? p.by : 'Discord');
 		case 'links': {
 			const list = Array.isArray(p.members) ? p.members.filter((n) => Number.isInteger(n) && n > 0).slice(0, 2000) : [];
 			const next = new Set(list);

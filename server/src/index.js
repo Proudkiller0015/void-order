@@ -1487,6 +1487,25 @@ export class Order extends DurableObject {
 		await this.moveSince(m, day, `${String(by || 'Discord').slice(0, 60)} (on Discord)`);
 		return { ok: true, at: day };
 	}
+	/** The bot makes a member a Monsignor, or not (as the Founder and admins do in Oculus Nihili). */
+	async botMonsignor(n, on, by) {
+		const m = Number.isInteger(n) ? this.members[n] : null;
+		if (!m) {
+			return { error: 'no such member' };
+		}
+		if (typeof on !== 'boolean') {
+			return { error: 'on must be true or false' };
+		}
+		if (m.mon !== on) {
+			m.mon = on;
+			await this.putMember(m.n);
+			const what = on ? `${this.nameOf(m.n)} is now a ${STRUCTURE.monsignor.name}` : `${this.nameOf(m.n)} is no longer a ${STRUCTURE.monsignor.name}`;
+			await this.note(0, `${what} (${String(by || 'Discord').slice(0, 60)}, on Discord)`);
+			this.broadcast();
+			this.pushAllOrders();
+		}
+		return { ok: true, mon: m.mon };
+	}
 	/**
 	 * Brings in members the Order had before the add-on, at a set place: { people: [{ member, name }], branch, tier,
 	 * chapter, mon, since }. Leaders bring people into their branch below their own rank; the Founder and admins also
